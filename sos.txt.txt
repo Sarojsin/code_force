@@ -1,0 +1,8 @@
+I want to build a simple Android app in Kotlin that allows a user to send a predefined SMS message with their current GPS location by just pressing one button. The app should:
+
+Request location and SMS permissions (ACCESS_FINE_LOCATION and SEND_SMS).
+Use the Fused Location Provider to get the user's current GPS coordinates.
+Have a button that, when clicked, launches the default SMS app with a predefined message like "Help me, my location: [GPS coordinates]" and fills in a specific recipient phone number.
+The user presses send in the SMS app, and the SMS is sent via the phone’s normal cellular network.
+
+Please provide the full Kotlin code, including the main activity, permission handling, location fetching, and how to construct and launch the SMS intent. Make sure to explain how to request permissions at runtime and fetch location properly.

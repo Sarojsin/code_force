@@ -1,0 +1,27 @@
+Act as a Senior Full-Stack Engineer specializing in React Native (Expo) and Node.js/Express security architectures. 
+
+I need you to build a complete, production-ready authentication system designed for a mobile app. Currently, the application is in the development phase, so we are shifting away from SMS/Phone OTP to implement a flexible, dual-method authentication paradigm: 
+
+1. Method A (Modern Custom Credentials): Email + Password authentication paired with a stateless JWT (JSON Web Token) architecture, additionally secured by a unique server-side system/user-specific secret validation layer.
+2. Method B (Social Federated Identity): OAuth 2.0 integration specifically optimized for Google Sign-In using Expo SDK workflows.
+
+Please provide a clean, production-grade implementation addressing the following specifications:
+
+### 1. BACKEND ARCHITECTURE (Node.js/Express)
+- **Database Schema Concept:** Define a User Model containing fields for: `id`, `email`, `password_hash` (nullable for pure OAuth users), `provider` (local vs. google), `is_verified`, and a unique `user_secret_key` (generated dynamically on registration using crypto.randomBytes).
+- **Security Protocols:** - Passwords must be hashed using `bcrypt` (salt rounds: 10).
+  - JWT generation must sign a payload containing the `userId`, `email`, and embed the dynamic `user_secret_key`. This ensures that if a user changes their password or security settings, the secret rotates, rendering old tokens instantly invalid.
+- **API Endpoints Required:**
+  - `POST /api/auth/register` (Validates email uniqueness, hashes password, creates unique user secret, returns JWT).
+  - `POST /api/auth/login` (Verifies bcrypt hash, issues fresh access/refresh token pair).
+  - `POST /api/auth/google` (Verifies incoming Google ID tokens from the mobile client, upserts user profile, handles stateless session conversion).
+
+### 2. FRONTEND CLIENT INTEGRATION (React Native / Expo)
+- **State Management:** Set up a clean React Context (`AuthContext`) to expose `user`, `token`, `login()`, `logout()`, and `googleLogin()` states across the app tree.
+- **Security Storage:** Securely persist tokens locally on the device using `expo-secure-store` (not standard AsyncStorage).
+- **OAuth Handling:** Utilize `expo-auth-session/providers/google` and `expo-web-browser` to launch sandboxed sign-in workflows and catch returning payloads natively.
+
+### 3. EXPECTED OUTPUT DELIVERABLES
+- Step-by-step modular code files for both Backend (Express middleware, controllers, routes) and Frontend (Context provider, Login screen mockup).
+- Clear instructions on how to structure environmental variables (.env) safely to protect server secrets and API keys.
+- Write production-grade code: include robust try/catch blocks, strict inputs/validation, and clear logging patterns. Do not use shortcuts or placeholder code.

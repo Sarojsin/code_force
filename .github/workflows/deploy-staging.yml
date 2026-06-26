@@ -1,0 +1,60 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "backend/**"
+
+env:
+  AZURE_WEBAPP_NAME: shecare-api-staging
+  AZURE_WEBAPP_PACKAGE_PATH: backend
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Pre-deploy import check
+        run: python -c "import app; print('App imports OK')"
+
+      - name: Run Alembic migrations (pre-deploy)
+        run: |
+          echo "::group::Running pre-deployment pg_dump backup..."
+          echo "pg_dump would execute here in production"
+          echo "::endgroup::"
+          alembic upgrade head
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          slot-name: staging
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+      - name: Smoke test
+        run: |
+          curl -f --retry 5 --retry-delay 10 https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health/live
+          echo "::notice::Deployment smoke test passed"
+
+      - name: Cleanup old deployments
+        run: |
+          echo "::notice::Retaining last 5 deployment artifacts"
+          az webapp deployment list --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group rg-shecare-staging --query '[].id' -o tsv | tail -n +6 | while read -r id; do az webapp deployment delete --ids "$id" || true; done

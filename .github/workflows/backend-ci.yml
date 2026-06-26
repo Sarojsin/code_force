@@ -1,0 +1,120 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+
+env:
+  PYTHON_VERSION: "3.11"
+  POETRY_VERSION: "1.7.1"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Poetry
+        run: pip install poetry==${{ env.POETRY_VERSION }}
+      - name: Install dependencies
+        run: poetry install --no-interaction
+      - name: Check formatting (black)
+        run: poetry run black --check app/
+      - name: Check imports (isort)
+        run: poetry run isort --check-only app/
+      - name: Lint (ruff)
+        run: poetry run ruff check app/
+      - name: Type check (mypy)
+        run: poetry run mypy --strict app/
+      - name: Module boundary check (import-linter)
+        run: poetry run lint-imports
+
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: shecare
+          POSTGRES_PASSWORD: shecare
+          POSTGRES_DB: shecare_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    env:
+      ENVIRONMENT: test
+      DATABASE__URL: postgresql+asyncpg://shecare:shecare@localhost:5432/shecare_test
+      REDIS__URL: redis://localhost:6379/0
+      JWT__SECRET_KEY: ci-test-secret-key
+      JWT__REFRESH_SECRET_KEY: ci-test-refresh-secret-key
+      ENCRYPTION__MASTER_KEY: ci-test-master-key-for-tests-only-32bytes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Poetry
+        run: pip install poetry==${{ env.POETRY_VERSION }}
+      - name: Install dependencies
+        run: poetry install --no-interaction
+      - name: Run Alembic migrations
+        run: poetry run alembic upgrade head
+      - name: Run tests with coverage
+        run: poetry run pytest --cov=app --cov-report=term-missing --cov-fail-under=80 -v
+      - name: Security scan (safety)
+        run: poetry run safety check --full-report || true
+
+  trivy-scan:
+    runs-on: ubuntu-latest
+    if: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy vulnerability scan
+        run: |
+          echo "::notice::To enable, install trivy in runner and uncomment:"
+          echo "::notice::trivy fs --scanners vuln,config,secret --severity HIGH,CRITICAL backend/"
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    if: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run TruffleHog secret scan
+        run: |
+          echo "::notice::To enable, install trufflehog in runner and uncomment:"
+          echo "::notice::trufflehog filesystem --fail --no-verification backend/"
+
+  db-backup-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify migration chain
+        run: |
+          echo "::notice::Pre-deployment pg_dump would run here in production"

@@ -1,0 +1,29 @@
+"""Dockerfile for the Celery worker + beat.
+
+Reuses the same application code as the API image.
+"""
+
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN groupadd --system shecare && useradd --system --gid shecare shecare
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml poetry.lock* ./
+RUN pip install --no-cache-dir poetry && poetry install --only=main --no-root
+
+COPY app ./app
+COPY alembic ./alembic
+COPY alembic.ini ./alembic.ini
+
+USER shecare
+
+# Default command: run the worker. Override to `celery -A app.core.celery_app beat`
+# when starting the beat container.
+CMD ["celery", "-A", "app.core.celery_app", "worker", "--loglevel=info", "--concurrency=4"]

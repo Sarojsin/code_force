@@ -1,0 +1,9 @@
+{
+  "version": 0,
+  "trained_on": "built-in",
+  "rmse": 4.5,
+  "mae": 3.8,
+  "feature_names": [],
+  "coefficients": { "intercept": 28 },
+  "scaler": { "avg_cycle_mean": 29, "avg_cycle_std": 4 }
+}

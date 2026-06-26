@@ -1,0 +1,143 @@
+[tool.poetry]
+name = "shecare-backend"
+version = "0.1.0"
+description = "SheCare backend API - FastAPI / PostgreSQL / Redis / Celery"
+authors = ["SheCare Team"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+# Web framework
+fastapi = "^0.110.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+# Data
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.27"}
+asyncpg = "^0.31.0"
+alembic = "^1.13.1"
+# Settings
+pydantic = "^2.6.1"
+pydantic-settings = "^2.1.0"
+# Auth
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+bcrypt = "^5.0.0"
+pyotp = "^2.9.0"
+# Cache / queue
+redis = "^5.0.1"
+celery = "^5.3.6"
+# Logging
+structlog = "^24.1.0"
+# External integrations
+twilio = "^9.0.4"
+firebase-admin = "^6.4.0"
+boto3 = "^1.34.0"
+stream-chat = "^4.32.0"
+httpx = "^0.27.0"
+# ML / prediction
+scikit-learn = "^1.5.0"
+xgboost = "^2.1.0"
+numpy = "^1.26.0"
+pandas = "^2.2.0"
+# Monitoring
+sentry-sdk = "^2.3.0"
+prometheus-client = "^0.20.0"
+# Crypto
+cryptography = "^42.0.0"
+# Utilities
+python-multipart = "^0.0.9"
+email-validator = "^2.1.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+pytest-asyncio = "^0.23.5"
+pytest-cov = "^4.1.0"
+pytest-mock = "^3.12.0"
+ruff = "^0.3.0"
+mypy = "^1.8.0"
+black = "^24.2.0"
+isort = "^5.13.0"
+factory-boy = "^3.3.0"
+faker = "^23.2.0"
+freezegun = "^1.4.0"
+httpx = "^0.27.0"
+import-linter = "^2.0.0"
+pre-commit = "^3.6.0"
+
+[tool.poetry.group.deploy.dependencies]
+gunicorn = "^21.2.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+# --- Tooling config (mirrors backend_rules.md §16) -----------------------------
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["app", "tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+    "N",  # pep8-naming
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501",  # line length handled by black
+    "B008",  # FastAPI uses Depends() in defaults (standard pattern)
+    "N806",  # numpy uses X/y (ML convention), Session is a common alias
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402"]  # pytest env setup before imports
+"scripts/*" = ["N806"]  # ML scripts use X/y/numpy convention
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--cov=app --cov-report=term-missing --cov-fail-under=65"
+markers = [
+    "integration: requires postgres + redis",
+    "slow: skip in unit test run",
+]
+
+# --- import-linter: enforce module boundaries (backend_rules.md §20.2) ----------
+
+[tool.importlinter]
+root_package = "app"
+
+[[tool.importlinter.contracts]]
+name = "modules do not import from each other"
+type = "forbidden"
+source_modules = ["app.modules.*"]
+forbidden_modules = ["app.modules.*.services"]
+
+[[tool.importlinter.contracts]]
+name = "modules only depend on core / integrations / tasks"
+type = "forbidden"
+source_modules = ["app.modules.*"]
+forbidden_modules = ["app.modules"]

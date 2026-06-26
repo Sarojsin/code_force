@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "SheCare",
+    "slug": "shecare",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "shecare",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.shecare.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "SheCare uses the microphone for voice journal entries.",
+        "NSPhotoLibraryUsageDescription": "SheCare accesses your photos for profile avatars."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E63462"
+      },
+      "package": "com.shecare.app",
+      "permissions": [
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-notifications",
+      "expo-dev-client"
+    ]
+  }
+}
