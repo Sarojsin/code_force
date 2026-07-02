@@ -31,7 +31,7 @@ from sklearn.model_selection import train_test_split
 
 logger = logging.getLogger("scripts.train_global_model")
 
-STORAGE_DIR = "/storage/models"
+STORAGE_DIR = os.path.join(os.path.dirname(__file__), "..", "storage", "models")
 STAGING_DIR = os.path.join(STORAGE_DIR, "staging")
 PROD_DIR = os.path.join(STORAGE_DIR, "prod")
 

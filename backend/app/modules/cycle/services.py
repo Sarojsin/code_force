@@ -349,7 +349,15 @@ class CycleService:
         )
         latest = (await self.db.execute(stmt)).scalar_one_or_none()
         if latest is None:
-            raise PredictionNotFoundError("No predictions available")
+            entries = await self._get_recent_entries(user_id, limit=1)
+            if entries:
+                try:
+                    await self.compute_predictions(user_id)
+                    latest = (await self.db.execute(stmt)).scalar_one_or_none()
+                except InsufficientDataError:
+                    pass
+            if latest is None:
+                return []
 
         avg_cycle = 28
         entries = await self._get_recent_entries(user_id, limit=12)

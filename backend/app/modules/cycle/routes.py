@@ -35,7 +35,7 @@ from app.modules.cycle.schemas import (
 
 router = APIRouter(prefix="/cycle", tags=["cycle"])
 
-STORAGE_DIR = "/storage/models"
+STORAGE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "scripts", "..", "storage", "models")
 PROD_DIR = os.path.join(STORAGE_DIR, "prod")
 
 
@@ -141,7 +141,7 @@ async def get_predictions(
         for p in predictions
     ]
 
-    data_quality = "minimal"
+    data_quality = "insufficient"
     if predictions and predictions[0].training_data_points:
         n = predictions[0].training_data_points
         if n < 3:

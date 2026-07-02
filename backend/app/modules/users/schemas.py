@@ -19,7 +19,7 @@ class ProfileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    phone_number: str
+    phone_number: str | None
     display_name: str | None
     profile_pic_url: str | None
     date_of_birth: date | None

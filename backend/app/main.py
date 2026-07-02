@@ -116,10 +116,11 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(SentryTaggingMiddleware)
+    origins = settings.cors_origins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
+        allow_origins=origins,
+        allow_credentials="*" not in origins,
         allow_methods=["*"],
         allow_headers=["*"],
         expose_headers=["X-Request-ID"],

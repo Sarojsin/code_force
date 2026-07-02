@@ -22,7 +22,7 @@ from sklearn.linear_model import LinearRegression
 
 logger = logging.getLogger("app.modules.cycle.prediction")
 
-STORAGE_DIR = "/storage/models"
+STORAGE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "scripts", "..", "storage", "models")
 PROD_DIR = os.path.join(STORAGE_DIR, "prod")
 
 
