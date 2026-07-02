@@ -3,6 +3,7 @@ import pako from 'pako';
 import { api } from 'src/services/api/client';
 import { EncryptedStorage } from 'src/services/storage';
 import { logger } from 'src/utils';
+import { useAuthStore } from 'src/stores/authStore';
 import { useOfflineStore } from 'src/stores/offlineStore';
 
 import type { PendingOperation, SyncBatchResponse, SyncChangesResponse } from './types';
@@ -25,6 +26,12 @@ const GZIP_THRESHOLD = 10;
 
 export async function pushOperations(ops: PendingOperation[]): Promise<void> {
   if (ops.length === 0) return;
+
+  const user = useAuthStore.getState().user;
+  if (!user) {
+    logger.info('sync.push_skipped_no_auth');
+    return;
+  }
 
   const store = useOfflineStore.getState();
   const operations = ops.map(op => ({
@@ -49,8 +56,8 @@ export async function pushOperations(ops: PendingOperation[]): Promise<void> {
   }
 
   try {
-    const response = await api.post<{ data: SyncBatchResponse }>('/sync/batch', payload, config);
-    const { results } = response.data.data;
+    const response = await api.post<SyncBatchResponse>('/sync/batch', payload, config);
+    const results = response.data.results;
 
     const succeeded: string[] = [];
     const failedOps: PendingOperation[] = [];
@@ -128,8 +135,8 @@ export async function pullServerData(): Promise<string | null> {
   if (since) params.since = since;
 
   try {
-    const response = await api.get<{ data: SyncChangesResponse }>('/sync/changes', { params });
-    const { changes } = response.data.data;
+    const response = await api.get<SyncChangesResponse>('/sync/changes', { params });
+    const { changes } = response.data;
 
     if (changes.length > 0) {
       const latestChange = changes[changes.length - 1].updated_at;
@@ -172,6 +179,13 @@ export async function syncAll(): Promise<void> {
     logger.info('sync.already_in_progress');
     return;
   }
+
+  const user = useAuthStore.getState().user;
+  if (!user) {
+    logger.info('sync.skipped_no_auth');
+    return;
+  }
+
   _isSyncing = true;
   logger.info('sync.starting');
 

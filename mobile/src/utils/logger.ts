@@ -22,6 +22,17 @@ const SCRUB_KEYS = new Set([
 
 function scrub(value: unknown): unknown {
   if (value === null || typeof value !== 'object') return value;
+  if (value instanceof Error) {
+    const err = value as any;
+    const out: Record<string, unknown> = { message: err.message, name: err.name };
+    if (err.code) out.code = err.code;
+    if (err.status) out.status = err.status;
+    if (err.statusText) out.statusText = err.statusText;
+    if (err.response) {
+      out.response = { status: err.response.status, statusText: err.response.statusText };
+    }
+    return out;
+  }
   if (Array.isArray(value)) return value.map(scrub);
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {

@@ -3,8 +3,8 @@
  * the shapes and the development defaults.
  */
 
-export const API_BASE_URL = process.env.SHE_CARE_API_URL ?? 'http://localhost:8000/api/v1';
-export const SOCKET_URL = process.env.SHE_CARE_SOCKET_URL ?? 'ws://localhost:8000/ws';
+export const API_BASE_URL = 'http://192.168.0.100:8000/api/v1';
+export const SOCKET_URL = 'ws://192.168.0.100:8000/ws';
 
 // Feature flags (plan 35). Mobile reads these on launch.
 export interface FeatureFlags {
