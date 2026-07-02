@@ -1,5 +1,6 @@
 # Run
-
+Email: testuser@shecare.app
+Password: TestPass123!
 ## Quick Start (Full Stack)
 
 ### 1. Start Infrastructure
