@@ -54,11 +54,12 @@ export function LifestyleScreen() {
   const diet = useOnboardingStore((s) => s.diet);
   const defaults = { stressLevel: stressLevel ?? undefined, exerciseFrequency: exerciseFrequency ?? undefined, sleepHours: sleepHours ?? undefined, diet: diet ?? undefined };
 
-  const { control, handleSubmit, formState } = useForm<LifestyleForm>({
+  const { control, handleSubmit, formState, watch } = useForm<LifestyleForm>({
     resolver: zodResolver(lifestyleSchema),
-    defaultValues: { stressLevel: defaults.stressLevel as any, exerciseFrequency: defaults.exerciseFrequency as any, sleepHours: defaults.sleepHours as any, diet: defaults.diet as any },
-    mode: 'onBlur',
+    defaultValues: defaults,
+    mode: 'onChange',
   });
+  const sleepValue = watch('sleepHours');
 
   const onSubmit = (data: LifestyleForm) => {
     setLifestyle(data);
@@ -93,14 +94,14 @@ export function LifestyleScreen() {
 
             <View style={{ height: 20 }} />
 
-            <Text variant="body" style={{ marginBottom: 8 }}>Sleep: <Text variant="body" color="primary" style={{ fontWeight: '600' }}>{defaults.sleepHours || 7} hours</Text></Text>
+            <Text variant="body" style={{ marginBottom: 8 }}>Sleep: <Text variant="body" color="primary" style={{ fontWeight: '600' }}>{sleepValue ?? 7} hours</Text></Text>
             <Controller control={control} name="sleepHours" render={({ field: { onChange, value } }) => (
               <View>
                 <Slider
                   minimumValue={4}
                   maximumValue={12}
                   step={0.5}
-                  value={value || 7}
+                  value={value ?? 7}
                   onValueChange={onChange}
                   minimumTrackTintColor={theme.colors.primary}
                   maximumTrackTintColor={theme.colors.border}

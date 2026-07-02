@@ -36,8 +36,8 @@ export function PastCycleScreen() {
 
   const { control, handleSubmit, formState, setValue, watch } = useForm<PastCycleForm>({
     resolver: zodResolver(pastCycleSchema),
-    defaultValues: { cycleStart: '', cycleLength: undefined as any, periodLength: undefined as any, symptoms: [] },
-    mode: 'onBlur',
+    defaultValues: { cycleStart: '', cycleLength: undefined, periodLength: undefined, symptoms: [] },
+    mode: 'onChange',
   });
 
   const selectedSymptoms = watch('symptoms');

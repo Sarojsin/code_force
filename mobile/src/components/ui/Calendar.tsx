@@ -96,53 +96,55 @@ export function Calendar({ selectedDate, onDateSelect, markedDates, minDate, max
         ))}
       </View>
 
-      <View style={styles.weekRow} accessibilityRole="list">
-        {days.map((day, idx) => {
-          const inMonth = isSameMonth(day, currentMonth);
-          const selected = selectedDate && isSameDay(day, selectedDate);
-          const today = isToday(day);
-          const marked = markedDates?.some((d) => isSameDay(d, day));
-          const disabled =
-            (minDate && day < startOfMonth(minDate)) ||
-            (maxDate && day > endOfMonth(maxDate));
+      {Array.from({ length: Math.ceil(days.length / 7) }, (_, weekIdx) => (
+        <View key={weekIdx} style={styles.weekRow} accessibilityRole="list">
+          {days.slice(weekIdx * 7, weekIdx * 7 + 7).map((day, dayIdx) => {
+            const inMonth = isSameMonth(day, currentMonth);
+            const selected = selectedDate && isSameDay(day, selectedDate);
+            const today = isToday(day);
+            const marked = markedDates?.some((d) => isSameDay(d, day));
+            const disabled =
+              (minDate && day < startOfMonth(minDate)) ||
+              (maxDate && day > endOfMonth(maxDate));
 
-          const dateStr = format(day, 'yyyy-MM-dd');
-          const dayType = encodedDays?.[dateStr] ?? 'none';
-          const typeColor = DAY_TYPE_COLORS[dayType];
-          const bgColor = typeColor?.bg ?? (selected ? theme.colors.primary : 'transparent');
-          const txtColor = typeColor?.text ?? (
-            disabled ? theme.colors.textMuted
-            : selected ? theme.colors.textInverse
-            : today ? theme.colors.primary
-            : inMonth ? theme.colors.textPrimary
-            : theme.colors.textMuted
-          );
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const dayType = encodedDays?.[dateStr] ?? 'none';
+            const typeColor = DAY_TYPE_COLORS[dayType];
+            const bgColor = typeColor?.bg ?? (selected ? theme.colors.primary : 'transparent');
+            const txtColor = typeColor?.text ?? (
+              disabled ? theme.colors.textMuted
+              : selected ? theme.colors.textInverse
+              : today ? theme.colors.primary
+              : inMonth ? theme.colors.textPrimary
+              : theme.colors.textMuted
+            );
 
-          return (
-            <Pressable
-              key={idx}
-              onPress={() => inMonth && !disabled && onDateSelect(day)}
-              disabled={!inMonth || disabled}
-              accessibilityLabel={`${format(day, 'MMMM d, yyyy')}${dayType !== 'none' ? `, ${dayType}` : ''}`}
-              accessibilityRole="button"
-              accessibilityState={{ selected: !!selected, disabled: !inMonth || disabled }}
-              style={[
-                styles.dayCell,
-                { minHeight: theme.minTouchTarget, minWidth: theme.minTouchTarget },
-                { backgroundColor: bgColor, borderRadius: theme.radius.pill },
-                selected && { backgroundColor: theme.colors.primary },
-              ]}
-            >
-              <Text variant="body" align="center" style={{ color: txtColor }}>
-                {format(day, 'd')}
-              </Text>
-              {marked && !selected && !dayType && (
-                <View style={[styles.dot, { backgroundColor: theme.colors.primary }]} />
-              )}
-            </Pressable>
-          );
-        })}
-      </View>
+            return (
+              <Pressable
+                key={dayIdx}
+                onPress={() => inMonth && !disabled && onDateSelect(day)}
+                disabled={!inMonth || disabled}
+                accessibilityLabel={`${format(day, 'MMMM d, yyyy')}${dayType !== 'none' ? `, ${dayType}` : ''}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: !!selected, disabled: !inMonth || disabled }}
+                style={[
+                  styles.dayCell,
+                  { minHeight: theme.minTouchTarget, minWidth: theme.minTouchTarget },
+                  { backgroundColor: bgColor, borderRadius: theme.radius.pill },
+                  selected && { backgroundColor: theme.colors.primary },
+                ]}
+              >
+                <Text variant="body" align="center" style={{ color: txtColor }}>
+                  {format(day, 'd')}
+                </Text>
+                {marked && !selected && !dayType && (
+                  <View style={[styles.dot, { backgroundColor: theme.colors.primary }]} />
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
     </View>
   );
 }

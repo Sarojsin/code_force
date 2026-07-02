@@ -22,10 +22,10 @@ export function DatePickerField<T extends FieldValues>({ control, name, label, m
   };
 
   const handleChange = (onChange: (v: string) => void) => (_event: DateTimePickerEvent, selectedDate?: Date) => {
-    if (Platform.OS === 'android') setShow(false);
     if (selectedDate) {
       onChange(formatDate(selectedDate));
     }
+    setShow(false);
   };
 
   return (
@@ -45,14 +45,39 @@ export function DatePickerField<T extends FieldValues>({ control, name, label, m
             </Txt>
           </TouchableOpacity>
           {error ? <Text style={{ color: theme.colors.danger, fontSize: 12, marginTop: 4 }}>{error.message}</Text> : null}
-          {show && (
-            <DateTimePicker
-              value={value ? new Date(value) : new Date()}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              maximumDate={maximumDate}
-              onChange={handleChange(onChange)}
+          {Platform.OS === 'web' ? (
+            <input
+              type="date"
+              value={value || ''}
+              onChange={(e) => { onChange(e.target.value); }}
+              max={maximumDate?.toISOString().split('T')[0]}
+              style={{
+                width: '100%',
+                padding: 14,
+                fontSize: 16,
+                borderWidth: 1.5,
+                borderColor: error ? theme.colors.danger : theme.colors.border,
+                borderRadius: theme.radius.lg,
+                backgroundColor: theme.colors.surface,
+                color: theme.colors.text,
+                fontFamily: 'inherit',
+              }}
             />
+          ) : show && (
+            <View>
+              <DateTimePicker
+                value={value ? new Date(value) : new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                maximumDate={maximumDate}
+                onChange={handleChange(onChange)}
+              />
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity onPress={() => setShow(false)} style={styles.doneButton} accessibilityLabel="Done">
+                  <Txt variant="body" color="primary" align="center">Done</Txt>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
       )}
@@ -63,4 +88,5 @@ export function DatePickerField<T extends FieldValues>({ control, name, label, m
 const styles = StyleSheet.create({
   container: { marginBottom: 16 },
   button: { borderWidth: 1.5, paddingVertical: 14, paddingHorizontal: 16 },
+  doneButton: { paddingVertical: 12, alignItems: 'center' },
 });

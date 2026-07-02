@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, TouchableOpacity } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
+import { logger } from 'src/utils';
 
 import { Button, FormField, PickerField, Text, ProgressDots } from 'src/components/ui';
 import { useTheme, shadow } from 'src/theme';
@@ -17,6 +17,23 @@ type Nav = StackNavigationProp<OnboardingStackParamList, 'PersonalInfo'>;
 const HEIGHT_OPTIONS = Array.from({ length: 201 }, (_, i) => ({ label: `${i + 50} cm`, value: i + 50 }));
 const WEIGHT_OPTIONS = Array.from({ length: 281 }, (_, i) => ({ label: `${i + 20} kg`, value: i + 20 }));
 
+class ScreenErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    logger.error('PersonalInfoScreen.crash', { message: error.message, stack: error.stack, componentStack: info.componentStack });
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
 export function PersonalInfoScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
@@ -28,7 +45,7 @@ export function PersonalInfoScreen() {
 
   const { control, handleSubmit, formState } = useForm<PersonalInfoForm>({
     resolver: zodResolver(personalInfoSchema),
-    defaultValues: { age: defaults.age as any, heightCm: defaults.heightCm as any, weightKg: defaults.weightKg as any },
+    defaultValues: { age: defaults.age, heightCm: defaults.heightCm, weightKg: defaults.weightKg },
     mode: 'onBlur',
   });
 
@@ -38,6 +55,7 @@ export function PersonalInfoScreen() {
   };
 
   return (
+    <ScreenErrorBoundary>
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -60,6 +78,7 @@ export function PersonalInfoScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </ScreenErrorBoundary>
   );
 }
 

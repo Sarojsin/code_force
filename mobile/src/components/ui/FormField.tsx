@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Control, Controller, FieldPath, FieldValues } from 'react-hook-form';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 
+import { logger } from 'src/utils';
 import { useTheme } from 'src/theme';
 import { Text as Txt } from './Text';
 
@@ -18,13 +19,16 @@ export interface FormFieldProps<T extends FieldValues>
   hint?: string;
 }
 
-export function FormField<T extends FieldValues>({
-  control,
-  name,
-  label,
-  hint,
-  ...inputProps
-}: FormFieldProps<T>) {
+export function FormField<T extends FieldValues>(props: FormFieldProps<T>) {
+  if (!props) {
+    logger.error('FormField.render_null_props');
+    return null;
+  }
+  const { control, name, label, hint, ...inputProps } = props;
+  if (!control) {
+    logger.error('FormField.render_missing_control', { name, label });
+    return null;
+  }
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
 
@@ -60,7 +64,7 @@ export function FormField<T extends FieldValues>({
             >
               <TextInput
                 {...inputProps}
-                value={value as string}
+                value={value ?? ''}
                 onChangeText={onChange}
                 onBlur={handleBlur}
                 onFocus={() => setFocused(true)}

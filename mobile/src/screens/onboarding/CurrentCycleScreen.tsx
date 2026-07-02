@@ -33,11 +33,11 @@ export function CurrentCycleScreen() {
     resolver: zodResolver(currentCycleSchema),
     defaultValues: {
       cycleStartDate: defaults.currentCycleStart,
-      cycleLength: defaults.currentCycleLength as any,
-      periodLength: defaults.currentPeriodLength as any,
+      cycleLength: defaults.currentCycleLength,
+      periodLength: defaults.currentPeriodLength,
       symptoms: defaults.currentSymptoms,
     },
-    mode: 'onBlur',
+    mode: 'onChange',
   });
 
   const selectedSymptoms = watch('symptoms');
