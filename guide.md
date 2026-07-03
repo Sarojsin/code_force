@@ -103,26 +103,26 @@ def on_period_started(user_id: str):
 
 ```bash
 # Run all tests
-pytest
+poetry run pytest
 
 # Run specific module tests
-pytest tests/modules/cycle/
+poetry run pytest tests/modules/cycle/
 
 # With coverage
-pytest --cov=app
+poetry run pytest --cov=app
 ```
 
 ### 5. Migrations
 
 ```bash
 # Create a new migration
-alembic revision --autogenerate -m "feature_add_field"
+poetry run alembic revision --autogenerate -m "feature_add_field"
 
 # Apply migrations
-alembic upgrade head
+poetry run alembic upgrade head
 
 # Rollback
-alembic downgrade -1
+poetry run alembic downgrade -1
 ```
 
 ---

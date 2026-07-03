@@ -15,15 +15,15 @@ docker compose up -d postgres redis minio
 ```bash
 cd backend
 
-# Activate virtual environment
-.\venv\Scripts\activate        # Windows
-source venv/bin/activate       # macOS/Linux
+# Install dependencies (first run / after lock change)
+poetry install
 
-# Run migrations
-alembic upgrade head
+# Apply database migrations
+poetry run alembic upgrade head
 
-# Start dev server (auto-reload)
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Start dev server (hot-reload)
+poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# OR: poetry run python run.py
 ```
 
 API available at `http://localhost:8000`
@@ -35,16 +35,15 @@ Open separate terminals:
 
 ```bash
 cd backend
-.\venv\Scripts\activate
 
 # Main worker (default + priority queues)
-celery -A app.core.celery_app worker --loglevel=info -Q default,priority
+poetry run celery -A app.core.celery_app worker --loglevel=info -Q default,priority
 
 # AI worker (separate for ML inference)
-celery -A app.core.celery_app worker --loglevel=info -Q ai
+poetry run celery -A app.core.celery_app worker --loglevel=info -Q ai
 
 # Beat scheduler (periodic tasks)
-celery -A app.core.celery_app beat --loglevel=info
+poetry run celery -A app.core.celery_app beat --loglevel=info
 ```
 
 ### 4. Start Mobile App
@@ -70,65 +69,59 @@ npx react-native start
 
 ```bash
 cd backend
-.\venv\Scripts\activate
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Workers Only
 
 ```bash
 cd backend
-.\venv\Scripts\activate
-celery -A app.core.celery_app worker --loglevel=info --concurrency=4
+poetry run celery -A app.core.celery_app worker --loglevel=info --concurrency=4
 ```
 
 ### Database Migrations
 
 ```bash
 cd backend
-.\venv\Scripts\activate
-alembic upgrade head          # Apply all pending
-alembic downgrade -1           # Rollback one step
-alembic history                # Show migration history
+poetry run alembic upgrade head          # Apply all pending
+poetry run alembic downgrade -1           # Rollback one step
+poetry run alembic history                # Show migration history
 ```
 
 ### Seed Reference Data
 
 ```bash
 cd backend
-.\venv\Scripts\activate
-python -m app.seed
+poetry run python -m app.seed
 ```
 
 ### Run Tests
 
 ```bash
 cd backend
-.\venv\Scripts\activate
 
 # All tests
-pytest
+poetry run pytest
 
 # With coverage
-pytest --cov=app --cov-report=term-missing
+poetry run pytest --cov=app --cov-report=term-missing
 
 # Specific module
-pytest tests/modules/cycle/
+poetry run pytest tests/modules/cycle/
 
 # Integration tests (requires DB + Redis)
-pytest -m integration
+poetry run pytest -m integration
 ```
 
 ### Lint & Type Check
 
 ```bash
 cd backend
-.\venv\Scripts\activate
 
-ruff check app/
-mypy app/
-black --check app/
-isort --check-only app/
+poetry run ruff check app/
+poetry run mypy app/
+poetry run black --check app/
+poetry run isort --check-only app/
 ```
 
 ---

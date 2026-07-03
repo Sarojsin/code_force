@@ -15,31 +15,21 @@
 ```bash
 cd backend
 
-# Create virtual environment
-python -m venv venv
-
-# Activate
-# Windows:
-.\venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install poetry
+# Install dependencies with Poetry
 poetry install
 
 # Configure environment
 cp .env.example .env
 # Edit .env with your credentials (see .env.example for all vars)
 
-# Start required services (PostgreSQL + Redis)
-docker compose up -d postgres redis
+# Start required services (PostgreSQL + Redis + MinIO)
+docker compose up -d postgres redis minio
 
 # Run database migrations
-alembic upgrade head
+poetry run alembic upgrade head
 
 # Seed reference data
-python -m app.seed
+poetry run python -m app.seed
 ```
 
 ---
@@ -95,7 +85,7 @@ cp .env.example .env
 ```bash
 # Backend — start the server
 cd backend
-uvicorn app.main:app --reload
+poetry run uvicorn app.main:app --reload
 
 # Backend — check health
 curl http://localhost:8000/health/live
