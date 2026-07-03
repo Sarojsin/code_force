@@ -1,74 +1,55 @@
-/**
- * MoodLogScreen — mood picker with intensity slider.
- */
-
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View, Pressable } from 'react-native';
+import { ScrollView, StyleSheet, View, Pressable, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import Toast from 'react-native-toast-message';
 
 import { Button, Card, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { logger } from 'src/utils';
+import { wellnessService } from 'src/services/api/wellness';
 import type { WellnessStackParamList } from 'src/navigation/types';
 
 type Nav = StackNavigationProp<WellnessStackParamList, 'MoodLog'>;
 
 const MOODS = [
-  { emoji: '&#128522;', label: 'Happy', color: '#D1FAE5' },
-  { emoji: '&#128529;', label: 'Neutral', color: '#FEF3C7' },
-  { emoji: '&#128542;', label: 'Sad', color: '#BFDBFE' },
-  { emoji: '&#128545;', label: 'Angry', color: '#FEE2E2' },
-  { emoji: '&#128552;', label: 'Anxious', color: '#EDE9FE' },
-  { emoji: '&#128564;', label: 'Tired', color: '#E5E7EB' },
-  { emoji: '&#128525;', label: 'Loved', color: '#FCE7F3' },
-  { emoji: '&#128170;', label: 'Motivated', color: '#DCFCE7' },
+  { emoji: '😊', label: 'Happy', color: '#D1FAE5' },
+  { emoji: '😐', label: 'Neutral', color: '#FEF3C7' },
+  { emoji: '😢', label: 'Sad', color: '#BFDBFE' },
+  { emoji: '😠', label: 'Angry', color: '#FEE2E2' },
+  { emoji: '😰', label: 'Anxious', color: '#EDE9FE' },
+  { emoji: '😴', label: 'Tired', color: '#E5E7EB' },
+  { emoji: '🥰', label: 'Loved', color: '#FCE7F3' },
+  { emoji: '💪', label: 'Motivated', color: '#DCFCE7' },
 ];
 
 export function MoodLogScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
+  const queryClient = useQueryClient();
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [intensity, setIntensity] = useState(5);
+  const [notes, setNotes] = useState('');
 
-  const MoodButton = ({ mood }: { mood: typeof MOODS[0] }) => {
-    const scale = useSharedValue(1);
-    const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-    const isSelected = selectedMood === mood.label;
-    return (
-      <Animated.View style={animStyle}>
-        <Pressable
-          onPressIn={() => { scale.value = withSpring(0.92); }}
-          onPressOut={() => { scale.value = withSpring(1); }}
-          onPress={() => setSelectedMood(mood.label)}
-          accessibilityRole="button"
-          accessibilityState={{ selected: isSelected }}
-          accessibilityLabel={mood.label}
-          style={[
-            styles.moodBtn,
-            {
-              backgroundColor: isSelected ? mood.color : theme.colors.surface,
-              borderColor: isSelected ? theme.colors.primary : theme.colors.border,
-              borderRadius: theme.radius.lg,
-            },
-          ]}
-        >
-          <Txt variant="h2">{mood.emoji}</Txt>
-          <Txt variant="caption" color="primary" style={{ marginTop: 4 }}>{mood.label}</Txt>
-        </Pressable>
-      </Animated.View>
-    );
-  };
-
-  const handleSave = async () => {
-    try {
-      logger.info('MoodLogScreen.save', { mood: selectedMood, intensity });
+  const mutation = useMutation({
+    mutationFn: (data: { mood: string; intensity: number; notes?: string }) =>
+      wellnessService.createMoodLog(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['wellness', 'mood'] });
+      Toast.show({ type: 'success', text1: 'Mood logged!' });
       navigation.goBack();
-    } catch (err) {
+    },
+    onError: (err) => {
       logger.error('MoodLogScreen.save.failed', err);
-    }
+      Toast.show({ type: 'error', text1: 'Failed to save mood' });
+    },
+  });
+
+  const handleSave = () => {
+    if (!selectedMood) return;
+    mutation.mutate({ mood: selectedMood, intensity, notes: notes || undefined });
   };
 
   return (
@@ -78,14 +59,36 @@ export function MoodLogScreen() {
         <Txt variant="body" color="secondary" style={{ marginBottom: theme.spacing.xl }}>Tap a mood to log it.</Txt>
 
         <View style={styles.grid}>
-          {MOODS.map(m => <MoodButton key={m.label} mood={m} />)}
+          {MOODS.map(m => {
+            const isSelected = selectedMood === m.label;
+            return (
+              <Pressable
+                key={m.label}
+                onPress={() => setSelectedMood(m.label)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+                accessibilityLabel={m.label}
+                style={[
+                  styles.moodBtn,
+                  {
+                    backgroundColor: isSelected ? m.color : theme.colors.surface,
+                    borderColor: isSelected ? theme.colors.primary : theme.colors.border,
+                    borderRadius: theme.radius.lg,
+                  },
+                ]}
+              >
+                <Txt variant="h2">{m.emoji}</Txt>
+                <Txt variant="caption" color="primary" style={{ marginTop: 4 }}>{m.label}</Txt>
+              </Pressable>
+            );
+          })}
         </View>
 
         {selectedMood && (
           <Card style={{ marginTop: theme.spacing.xl }}>
             <Txt variant="bodySmall" color="secondary" style={{ marginBottom: theme.spacing.sm }}>Intensity: {intensity}</Txt>
             <View style={styles.sliderRow}>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+              {[1,2,3,4,5,6,7,8,9,10].map(n => (
                 <Pressable
                   key={n}
                   onPress={() => setIntensity(n)}
@@ -102,11 +105,25 @@ export function MoodLogScreen() {
                 />
               ))}
             </View>
+
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Add a note (optional)"
+              placeholderTextColor={theme.colors.textMuted}
+              style={[styles.notesInput, { borderColor: theme.colors.border, color: theme.colors.textPrimary, borderRadius: theme.radius.md }]}
+              accessibilityLabel="Mood note"
+            />
           </Card>
         )}
 
         <View style={{ height: theme.spacing.xl }} />
-        <Button label="Save mood" onPress={handleSave} disabled={!selectedMood} fullWidth />
+        <Button
+          label={mutation.isPending ? 'Saving...' : 'Save mood'}
+          onPress={handleSave}
+          disabled={!selectedMood || mutation.isPending}
+          fullWidth
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -118,4 +135,5 @@ const styles = StyleSheet.create({
   moodBtn: { width: '23%', alignItems: 'center', paddingVertical: 12, borderWidth: 1, marginBottom: 12, minHeight: 72, justifyContent: 'center' },
   sliderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dot: { alignItems: 'center', justifyContent: 'center' },
+  notesInput: { borderWidth: 1, marginTop: 12, padding: 12, fontSize: 14, minHeight: 44 },
 });

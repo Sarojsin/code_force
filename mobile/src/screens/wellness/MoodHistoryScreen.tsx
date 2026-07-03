@@ -1,65 +1,74 @@
-/**
- * MoodHistoryScreen — timeline of mood logs with trend indicators.
- */
-
-import React from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import React, { useCallback } from 'react';
+import { FlatList, StyleSheet, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQuery } from '@tanstack/react-query';
 
 import { Card, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
+import { wellnessService } from 'src/services/api/wellness';
+import type { MoodLog } from 'src/services/api/wellness';
 
-interface MoodLog {
-  id: string;
-  mood: string;
-  emoji: string;
-  intensity: number;
-  createdAt: string;
-  note?: string;
-}
-
-const MOCK_LOGS: MoodLog[] = [
-  { id: '1', mood: 'Happy', emoji: '&#128522;', intensity: 8, createdAt: 'Today, 10:30 AM', note: 'Great morning walk' },
-  { id: '2', mood: 'Anxious', emoji: '&#128552;', intensity: 6, createdAt: 'Yesterday, 2:15 PM' },
-  { id: '3', mood: 'Tired', emoji: '&#128564;', intensity: 4, createdAt: '2 days ago, 8:00 PM' },
-  { id: '4', mood: 'Sad', emoji: '&#128542;', intensity: 3, createdAt: '3 days ago, 6:30 PM' },
-  { id: '5', mood: 'Motivated', emoji: '&#128170;', intensity: 9, createdAt: '4 days ago, 7:00 AM' },
-];
+const MOOD_EMOJIS: Record<string, string> = {
+  Happy: '😊', Neutral: '😐', Sad: '😢', Angry: '😠',
+  Anxious: '😰', Tired: '😴', Loved: '🥰', Motivated: '💪',
+};
 
 function TrendArrow({ current, next }: { current: number; next?: number }) {
-  if (next === undefined) return <Txt variant="caption" color="muted">&mdash;</Txt>;
-  if (current > next) return <Txt variant="caption" color="success">&uarr;</Txt>;
-  if (current < next) return <Txt variant="caption" color="danger">&darr;</Txt>;
-  return <Txt variant="caption" color="muted">&rarr;</Txt>;
+  if (next === undefined) return <Txt variant="caption" color="muted">—</Txt>;
+  if (current > next) return <Txt variant="caption" color="success">↑</Txt>;
+  if (current < next) return <Txt variant="caption" color="danger">↓</Txt>;
+  return <Txt variant="caption" color="muted">→</Txt>;
 }
 
 export function MoodHistoryScreen() {
   const theme = useTheme();
 
-  const renderItem = ({ item, index }: { item: MoodLog; index: number }) => (
-    <Card elevated style={{ marginBottom: theme.spacing.md }} accessibilityLabel={`Mood: ${item.mood}, intensity ${item.intensity}`}>
-      <View style={styles.row}>
-        <Txt variant="h2" style={{ marginRight: theme.spacing.sm }}>{item.emoji}</Txt>
-        <View style={{ flex: 1 }}>
-          <View style={styles.topRow}>
-            <Txt variant="h3">{item.mood}</Txt>
-            <TrendArrow current={item.intensity} next={MOCK_LOGS[index + 1]?.intensity} />
+  const { data: logs, isLoading, isError, refetch } = useQuery<MoodLog[]>({
+    queryKey: ['wellness', 'mood'],
+    queryFn: () => wellnessService.getMoodLogs(30),
+  });
+
+  const renderItem = useCallback(({ item, index }: { item: MoodLog; index: number }) => {
+    const emoji = MOOD_EMOJIS[item.mood] ?? '😐';
+    const nextIntensity = logs?.[index + 1]?.intensity;
+
+    return (
+      <Card elevated style={{ marginBottom: theme.spacing.md }} accessibilityLabel={`Mood: ${item.mood}, intensity ${item.intensity}`}>
+        <View style={styles.row}>
+          <Txt variant="h2" style={{ marginRight: theme.spacing.sm }}>{emoji}</Txt>
+          <View style={{ flex: 1 }}>
+            <View style={styles.topRow}>
+              <Txt variant="h3">{item.mood}</Txt>
+              <TrendArrow current={item.intensity} next={nextIntensity} />
+            </View>
+            <Txt variant="bodySmall" color="secondary">Intensity: {item.intensity}/10</Txt>
+            {item.notes && <Txt variant="caption" color="muted" style={{ marginTop: 2 }}>{item.notes}</Txt>}
           </View>
-          <Txt variant="bodySmall" color="secondary">Intensity: {item.intensity}/10</Txt>
-          {item.note && <Txt variant="caption" color="muted" style={{ marginTop: 2 }}>{item.note}</Txt>}
         </View>
-      </View>
-      <Txt variant="caption" color="muted" style={{ marginTop: 8 }}>{item.createdAt}</Txt>
-    </Card>
-  );
+        <Txt variant="caption" color="muted" style={{ marginTop: 8 }}>
+          {new Date(item.logged_at).toLocaleString()}
+        </Txt>
+      </Card>
+    );
+  }, [logs, theme]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <FlatList
-        data={MOCK_LOGS}
+        data={logs ?? []}
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ padding: theme.spacing.lg }}
+        refreshing={isLoading}
+        onRefresh={refetch}
         ListHeaderComponent={
           <View style={{ marginBottom: theme.spacing.lg }}>
             <Txt variant="h1">Mood History</Txt>
@@ -67,7 +76,11 @@ export function MoodHistoryScreen() {
           </View>
         }
         ListEmptyComponent={
-          <Card><Txt variant="body" color="secondary" align="center">No moods logged yet.</Txt></Card>
+          <Card>
+            <Txt variant="body" color="secondary" align="center">
+              {isError ? 'Failed to load mood history.' : 'No moods logged yet.'}
+            </Txt>
+          </Card>
         }
       />
     </SafeAreaView>

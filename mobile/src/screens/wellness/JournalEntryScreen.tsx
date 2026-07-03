@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, TextInput } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, TextInput, ActivityIndicator } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,11 +7,13 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { formatDistanceToNow } from 'date-fns';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { Button, FormField, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { EncryptedStorage } from 'src/services/storage';
 import { logger } from 'src/utils';
+import { wellnessService } from 'src/services/api/wellness';
 import type { WellnessStackParamList } from 'src/navigation/types';
 import { z } from 'zod';
 
@@ -22,7 +24,7 @@ const DRAFT_KEY = (id: string) => `shecare.journal.draft.${id}`;
 const DRAFT_SAVE_INTERVAL_MS = 30_000;
 
 const journalSchema = z.object({
-  title: z.string().min(1, 'Title is required').max(100),
+  title: z.string().max(200).optional(),
   content: z.string().min(1, 'Content is required'),
 });
 type JournalForm = z.infer<typeof journalSchema>;
@@ -31,8 +33,9 @@ export function JournalEntryScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Rt>();
+  const queryClient = useQueryClient();
   const { id } = route.params;
-  const isEditing = id !== 'new';
+  const isNew = id === 'new';
   const [draftInfo, setDraftInfo] = useState<string | null>(null);
 
   const { control, handleSubmit, formState, watch, reset } = useForm<JournalForm>({
@@ -41,8 +44,21 @@ export function JournalEntryScreen() {
     mode: 'onBlur',
   });
 
+  const { data: existingEntry, isLoading: entryLoading } = useQuery({
+    queryKey: ['wellness', 'journal', id],
+    queryFn: () => wellnessService.getJournalEntry(id),
+    enabled: !isNew,
+  });
+
+  useEffect(() => {
+    if (existingEntry) {
+      reset({ title: existingEntry.title ?? '', content: existingEntry.content });
+    }
+  }, [existingEntry, reset]);
+
   useEffect(() => {
     (async () => {
+      if (!isNew) return;
       try {
         const raw = await EncryptedStorage.getItem(DRAFT_KEY(id));
         if (raw) {
@@ -54,10 +70,11 @@ export function JournalEntryScreen() {
         }
       } catch {}
     })();
-  }, [id, reset]);
+  }, [id, reset, isNew]);
 
   const autoSaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
+    if (!isNew) return;
     autoSaveTimer.current = setInterval(async () => {
       const values = watch();
       if (values.title || values.content) {
@@ -66,16 +83,16 @@ export function JournalEntryScreen() {
             DRAFT_KEY(id),
             JSON.stringify({ title: values.title, content: values.content, savedAt: new Date().toISOString() }),
           );
-          Toast.show({ type: 'success', text1: 'Draft saved', visibilityTime: 1500 });
         } catch (err) {
           logger.error('JournalEntryScreen.autoSave.failed', err);
         }
       }
     }, DRAFT_SAVE_INTERVAL_MS);
     return () => { if (autoSaveTimer.current) clearInterval(autoSaveTimer.current); };
-  }, [id, watch]);
+  }, [id, watch, isNew]);
 
   useEffect(() => {
+    if (!isNew) return;
     const unsub = navigation.addListener('beforeRemove', async () => {
       const values = watch();
       if (values.title || values.content) {
@@ -86,23 +103,42 @@ export function JournalEntryScreen() {
       }
     });
     return unsub;
-  }, [navigation, id, watch]);
+  }, [navigation, id, watch, isNew]);
+
+  const createMutation = useMutation({
+    mutationFn: (data: { title?: string; content: string }) =>
+      wellnessService.createJournalEntry(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['wellness', 'journal'] });
+      Toast.show({ type: 'success', text1: 'Journal entry saved' });
+      navigation.goBack();
+    },
+    onError: (err) => {
+      logger.error('JournalEntryScreen.save.failed', err);
+      Toast.show({ type: 'error', text1: 'Failed to save entry' });
+    },
+  });
 
   const onSubmit = async (data: JournalForm) => {
-    try {
+    if (isNew) {
       await EncryptedStorage.removeItem(DRAFT_KEY(id));
-      logger.info('JournalEntryScreen.submit', { id, ...data });
-      navigation.goBack();
-    } catch (err) {
-      logger.error('JournalEntryScreen.submit.failed', err);
     }
+    createMutation.mutate({ title: data.title, content: data.content });
   };
+
+  if (entryLoading) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={[styles.scroll, { padding: theme.spacing.lg }]} keyboardShouldPersistTaps="handled">
-          <Txt variant="h1" style={{ marginBottom: theme.spacing.lg }}>{isEditing ? 'Edit Entry' : 'New Entry'}</Txt>
+          <Txt variant="h1" style={{ marginBottom: theme.spacing.lg }}>{isNew ? 'New Entry' : 'Edit Entry'}</Txt>
 
           {draftInfo && (
             <Txt variant="caption" color="secondary" style={{ marginBottom: theme.spacing.sm }}>
@@ -146,7 +182,12 @@ export function JournalEntryScreen() {
           />
 
           <View style={{ height: theme.spacing.lg }} />
-          <Button label={isEditing ? 'Update entry' : 'Save entry'} onPress={handleSubmit(onSubmit)} disabled={!formState.isValid} fullWidth />
+          <Button
+            label={createMutation.isPending ? 'Saving...' : (isNew ? 'Save entry' : 'Update entry')}
+            onPress={handleSubmit(onSubmit)}
+            disabled={!formState.isValid || createMutation.isPending}
+            fullWidth
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

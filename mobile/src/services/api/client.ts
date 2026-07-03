@@ -12,6 +12,7 @@ import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import { EncryptedStorage } from 'src/services/storage';
 
 import { API_BASE_URL } from 'src/constants/config';
+import { generateId } from 'src/utils/uuid';
 
 const ACCESS_TOKEN_KEY = 'shecare.accessToken';
 const REFRESH_TOKEN_KEY = 'shecare.refreshToken';
@@ -57,7 +58,7 @@ api.interceptors.request.use(async config => {
     config.headers.Authorization = `Bearer ${token}`;
   }
   // X-Request-ID for log correlation (project invariant §10)
-  config.headers['X-Request-ID'] = config.headers['X-Request-ID'] ?? crypto.randomUUID();
+  config.headers['X-Request-ID'] = config.headers['X-Request-ID'] ?? generateId();
   return config;
 });
 
