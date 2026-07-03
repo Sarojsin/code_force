@@ -74,6 +74,7 @@ async def update_profile(
 
 @router.delete(
     "/profile",
+    response_model=None,
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Archive pregnancy profile after delivery",
 )

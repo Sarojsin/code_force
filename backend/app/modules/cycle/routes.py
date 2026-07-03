@@ -102,6 +102,7 @@ async def update_entry(
 @router.delete(
     "/entries/{entry_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Soft-delete a period entry",
 )
 async def delete_entry(

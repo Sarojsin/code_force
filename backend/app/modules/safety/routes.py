@@ -88,6 +88,7 @@ async def update_contact(
 
 @router.delete(
     "/emergency-contacts/{contact_id}",
+    response_model=None,
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete an emergency contact",
 )

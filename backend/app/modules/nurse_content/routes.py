@@ -72,6 +72,7 @@ async def update_content(
 
 @router.delete(
     "/contents/{content_id}",
+    response_model=None,
     status_code=204,
     summary="Delete own content",
 )

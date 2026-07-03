@@ -109,6 +109,7 @@ async def update_permissions(
 
 @router.delete(
     "/links/{link_id}",
+    response_model=None,
     status_code=204,
     summary="Revoke a family link",
 )

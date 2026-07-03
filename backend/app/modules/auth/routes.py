@@ -19,7 +19,7 @@ Endpoints:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 
 from app.core.config import get_settings
@@ -195,11 +195,11 @@ async def logout(
     payload: LogoutCreate,
     svc: AuthServiceDep,
     token_payload=Depends(get_current_user_id),
-) -> None:
+) -> Response:
     import uuid as _uuid
     user_id_str = token_payload.get("sub")
     if not user_id_str:
-        return None
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     user_id = _uuid.UUID(user_id_str)
     settings = get_settings().jwt
     auth_header = request.headers.get("Authorization", "")
@@ -220,7 +220,7 @@ async def logout(
         await store.revoke(jti, ttl_seconds=settings.access_token_expire_minutes * 60)
     if payload.all_devices:
         await svc.logout(user_id, jti or "all")
-    return None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ---- MFA ----
@@ -305,9 +305,9 @@ async def set_password(
     payload: PasswordSetCreate,
     current_user: CurrentUser,
     svc: AuthServiceDep,
-) -> None:
+) -> Response:
     await svc.set_password(current_user.id, payload.new_password)
-    return None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
@@ -319,9 +319,9 @@ async def change_password(
     payload: PasswordChangeCreate,
     current_user: CurrentUser,
     svc: AuthServiceDep,
-) -> None:
+) -> Response:
     await svc.change_password(current_user.id, payload.old_password, payload.new_password)
-    return None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ---- Session management (plan 40) ----
@@ -362,10 +362,10 @@ async def revoke_session(
     session_id: str,
     current_user: CurrentUser,
     svc: AuthServiceDep,
-) -> None:
+) -> Response:
     import uuid as _uuid
     await svc.logout_session(current_user.id, _uuid.UUID(session_id))
-    return None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ---- Device Registration (used by Safety SOS push notifications) ----

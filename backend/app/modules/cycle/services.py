@@ -15,10 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.integrations.prediction_engine import (
     PROD_DIR,
-    CyclePredictor,
     PredictionResult,
     apply_global_model,
     confidence_label,
+    fallback_prediction,
 )
 from app.modules.cycle.exceptions import (
     CycleEntryNotFoundError,
@@ -138,26 +138,16 @@ class CycleService:
             )
         ).scalar_one_or_none()
 
-        if user_obj and user_obj.total_cycles_logged >= 10 and await self._global_model_exists():
-            result = await self._predict_with_global_model(user_obj, entries)
+        model = await self._load_active_model()
+        if model is not None and len(entries) >= 3:
+            result = await self._predict_with_global_model(user_obj, entries, model)
         else:
             result = self._predict_with_fallback(entries, user_obj)
 
         return await self._upsert_prediction(user_id, result)
 
-    async def _global_model_exists(self) -> bool:
-        try:
-            stmt = select(SystemConfig.value).where(SystemConfig.key == "global_model_path")
-            config = (await self.db.execute(stmt)).scalar_one_or_none()
-            if not config:
-                return False
-            path = os.path.join(PROD_DIR, config)
-            return os.path.exists(path)
-        except Exception:
-            return False
-
     async def _predict_with_global_model(
-        self, user: object, entries: list[CycleEntry],
+        self, user: object, entries: list[CycleEntry], model: dict | None = None,
     ) -> PredictionResult:
         from app.modules.auth.models import User
         from app.modules.onboarding.models import UserOnboarding
@@ -205,7 +195,6 @@ class CycleService:
         user_stress_level = onboarding.stress_level if onboarding else None
         user_trend_slope = u.trend_slope if u and hasattr(u, 'trend_slope') else None
 
-        model = await self._load_active_model()
         if model is None:
             return self._predict_with_fallback(entries, u)
 
@@ -257,12 +246,27 @@ class CycleService:
 
         from app.modules.auth.models import User
         u = user if isinstance(user, User) else None
+        avg_error = u.avg_prediction_error_days if u else None
 
-        predictor = CyclePredictor()
-        return predictor.predict(
-            start_dates, cycle_lengths, period_lengths,
-            std_dev=u.cycle_length_std_dev if u else None,
-            avg_error=u.avg_prediction_error_days if u else None,
+        predicted_length, confidence, window = fallback_prediction(cycle_lengths, avg_error)
+
+        latest_start = max(start_dates)
+        next_start = latest_start + timedelta(days=predicted_length)
+        next_end = next_start + timedelta(
+            days=int(median(period_lengths)) if period_lengths else 5
+        )
+        fertile_start = next_start - timedelta(days=14)
+        fertile_end = fertile_start + timedelta(days=5)
+
+        return PredictionResult(
+            next_period_start=next_start,
+            next_period_end=next_end,
+            fertile_window_start=fertile_start,
+            fertile_window_end=fertile_end,
+            confidence=confidence,
+            model_used="fallback",
+            data_points=len(cycle_lengths),
+            prediction_window_days=window,
         )
 
     async def _load_active_model(self) -> dict | None:
@@ -487,8 +491,8 @@ class CycleService:
                 existing.predicted_next_period_start = predicted_next
                 existing.predicted_fertile_window_start = fertile_start
                 existing.predicted_fertile_window_end = fertile_end
-                existing.model_type = "fallback_median"
-                existing.model_version = "fallback_median"
+                existing.model_type = "fallback"
+                existing.model_version = "fallback"
                 await self.db.commit()
                 await self.db.refresh(existing)
                 return existing
@@ -497,8 +501,8 @@ class CycleService:
                 predicted_next_period_start=predicted_next,
                 predicted_fertile_window_start=fertile_start,
                 predicted_fertile_window_end=fertile_end,
-                model_type="fallback_median",
-                model_version="fallback_median",
+                model_type="fallback",
+                model_version="fallback",
             )
             self.db.add(prediction)
             await self.db.commit()

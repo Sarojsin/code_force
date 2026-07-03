@@ -18,7 +18,9 @@ class JournalEntry(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
     )
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
     content: Mapped[str] = mapped_column(String, nullable=False)
+    mood: Mapped[str | None] = mapped_column(String(50), nullable=True)
     sentiment_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     sentiment_label: Mapped[str | None] = mapped_column(String(20), nullable=True)
     analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -34,6 +36,7 @@ class MoodLog(Base):
     )
     mood: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     intensity: Mapped[int] = mapped_column(default=3, nullable=False)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
     logged_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), index=True, nullable=False
     )
