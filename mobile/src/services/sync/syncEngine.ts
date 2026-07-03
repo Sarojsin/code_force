@@ -149,7 +149,7 @@ export async function pullServerData(): Promise<string | null> {
 
     return changes.length > 0 ? changes[changes.length - 1].updated_at : null;
   } catch (error) {
-    logger.error('sync.pull_failed', error);
+    logger.warn('sync.pull_failed', error);
     return null;
   }
 }

@@ -4,3 +4,8 @@ export * from './wellnessClassifier';
 export * from './heuristicScorer';
 export * from './modelUpdater';
 export * from './useWellnessHydration';
+export * from './minilmTokenizer';
+export * from './minilmEmbedder';
+export * from './useMinilmHydration';
+export * from './embedder';
+export * from './wordpieceTokenizer';

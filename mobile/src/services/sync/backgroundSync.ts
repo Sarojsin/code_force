@@ -20,7 +20,7 @@ TaskManager.defineTask(TASK_NAME, async () => {
 
     return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch (err) {
-    logger.error('[Background] sync failed', err);
+    logger.warn('[Background] sync failed', err);
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }
 });

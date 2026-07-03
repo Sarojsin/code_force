@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { EncryptedStorage } from 'src/services/storage';
-import { logger } from 'src/utils';
+import { logger, generateId } from 'src/utils';
 import type { PendingOperation } from 'src/services/sync';
 
 const QUEUE_KEY = 'shecare.offline.queue';
@@ -48,7 +48,7 @@ export const useOfflineStore = create<OfflineState>((set, get) => ({
   },
 
   enqueue: async (op) => {
-    const id = crypto.randomUUID();
+    const id = generateId();
     const newOp: PendingOperation = {
       ...op,
       id,
