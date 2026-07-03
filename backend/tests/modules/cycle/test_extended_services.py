@@ -206,7 +206,7 @@ async def test_compute_initial_prediction_with_onboarding(svc: CycleService, use
 async def test_compute_initial_prediction_no_onboarding(svc: CycleService, user: User) -> None:
     prediction = await svc.compute_initial_prediction(user.id)
     assert prediction is not None
-    assert prediction.model_version == "fallback_median"
+    assert prediction.model_version == "fallback"
     assert prediction.predicted_next_period_start >= date.today()
 
 
@@ -249,9 +249,9 @@ async def test_cycle_length_std_dev_with_two_intervals(svc: CycleService, user: 
 
 
 @pytest.mark.asyncio
-async def test_global_model_exists_with_config_missing_path(svc: CycleService, user: User) -> None:
+async def test_load_active_model_missing_path(svc: CycleService, user: User) -> None:
     config = SystemConfig(key="global_model_path", value="nonexistent_model.json")
     svc.db.add(config)
     await svc.db.commit()
-    exists = await svc._global_model_exists()
-    assert exists is False
+    result = await svc._load_active_model()
+    assert result is None

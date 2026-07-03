@@ -1,9 +1,7 @@
-"""Cycle prediction engine: fallback chain + global model inference.
+"""Cycle prediction engine: global model inference + median fallback.
 
-Phase 2: Pure global model strategy (Option A). No per-user models.
-
-The fallback chain handles users with <10 cycles. Users with >=10 cycles
-use the global XGBoost model (same arithmetic as mobile inference).
+Global XGBoost model is used when available and the user has >= 3 cycles.
+Otherwise a simple median-based fallback with avg_error correction is used.
 """
 
 from __future__ import annotations
@@ -17,8 +15,6 @@ from statistics import median
 from typing import Any
 
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LinearRegression
 
 logger = logging.getLogger("app.modules.cycle.prediction")
 
@@ -50,89 +46,30 @@ def confidence_label(score: float) -> str:
     return "Excellent"
 
 
-class CyclePredictor:
-    """Fallback prediction chain for users with <10 cycles.
+def fallback_prediction(
+    cycle_lengths: list[int],
+    avg_error: float | None = None,
+) -> tuple[int, float, int]:
+    """Simple median-based fallback when global model is unavailable.
 
-    Heuristic → Median → Linear Regression → Random Forest (per-user).
-    This runs server-side when the global model isn't available or the
-    user has insufficient data.
+    Returns ``(predicted_length, confidence, window_days)``.
     """
+    if len(cycle_lengths) >= 3:
+        base = int(median(cycle_lengths))
+        confidence = 0.40
+    else:
+        base = 28
+        confidence = 0.20
 
-    def __init__(self) -> None:
-        self._lin_reg: LinearRegression | None = None
-        self._rf_model: RandomForestRegressor | None = None
+    if avg_error is not None and abs(avg_error) > 0.1:
+        base = int(round(base + avg_error))
+        confidence = max(0.15, confidence - 0.05)
 
-    def predict(
-        self,
-        cycle_start_dates: list[date],
-        cycle_lengths: list[int],
-        period_lengths: list[int],
-        std_dev: float | None = None,
-        avg_error: float | None = None,
-    ) -> PredictionResult:
-        n = len(cycle_lengths)
+    base = max(20, min(45, base))
+    pred_std = float(np.std(cycle_lengths)) if len(cycle_lengths) >= 2 else 5.0
+    window = max(3, min(10, int(pred_std)))
 
-        if n < 3:
-            model = "heuristic"
-            predicted_length = 28
-            confidence = 0.20
-        elif n < 6:
-            model = "median"
-            predicted_length = int(median(cycle_lengths))
-            confidence = 0.40 + (n / 10)
-        elif n < 10:
-            model = "linear_regression"
-            predicted_length = self._train_and_predict_linear(cycle_lengths)
-            confidence = 0.60 + (n / 10)
-        else:
-            model = "random_forest"
-            predicted_length = self._train_and_predict_rf(cycle_lengths, period_lengths)
-            confidence = min(0.95, 0.70 + (n / 20))
-
-        if avg_error:
-            predicted_length += avg_error
-
-        window = None
-        if std_dev and std_dev > 3.5:
-            window = int(std_dev)
-        elif n >= 3:
-            window = {3: 7, 5: 5, 7: 3}.get(n, 3)
-
-        latest_start = max(cycle_start_dates)
-        next_start = latest_start + timedelta(days=round(predicted_length))
-        next_end = next_start + timedelta(
-            days=int(median(period_lengths)) if period_lengths else 5
-        )
-        fertile_start = next_start - timedelta(days=14)
-        fertile_end = fertile_start + timedelta(days=5)
-
-        return PredictionResult(
-            next_period_start=next_start,
-            next_period_end=next_end,
-            fertile_window_start=fertile_start,
-            fertile_window_end=fertile_end,
-            confidence=round(confidence, 2),
-            model_used=model,
-            data_points=n,
-            prediction_window_days=window,
-        )
-
-    @staticmethod
-    def _train_and_predict_linear(lengths: list[int]) -> int:
-        X = np.arange(len(lengths)).reshape(-1, 1)
-        y = np.array(lengths)
-        model = LinearRegression()
-        model.fit(X, y)
-        return round(model.predict([[len(lengths)]])[0])
-
-    @staticmethod
-    def _train_and_predict_rf(lengths: list[int], periods: list[int]) -> int:
-        X = np.column_stack([np.arange(len(lengths)), lengths, periods[:len(lengths)]])
-        y = np.array(lengths)
-        model = RandomForestRegressor(n_estimators=100, max_depth=3, random_state=42)
-        model.fit(X, y)
-        next_X = np.array([[len(lengths), lengths[-1], periods[-1]]]).reshape(1, -1)
-        return round(model.predict(next_X)[0])
+    return base, round(confidence, 2), window
 
 
 # ---- Global model inference (server-side, same arithmetic as mobile) ----

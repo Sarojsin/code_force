@@ -123,10 +123,8 @@ async def test_compute_initial_prediction_updates_existing(svc: CycleService, us
     assert second.id == first.id
 
 
-@pytest.mark.asyncio
-async def test_global_model_exists_no_config(svc: CycleService) -> None:
-    result = await svc._global_model_exists()
-    assert result is False
+
+
 
 
 @pytest.mark.asyncio

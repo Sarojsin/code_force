@@ -112,7 +112,7 @@ async def test_compute_initial_prediction_fallback(svc: CycleService, user: User
     prediction = await svc.compute_initial_prediction(user.id)
     assert prediction is not None
     assert prediction.predicted_next_period_start is not None
-    assert prediction.model_version == "fallback_median"
+    assert prediction.model_version == "fallback"
 
 
 @pytest.mark.asyncio

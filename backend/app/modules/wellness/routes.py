@@ -89,12 +89,13 @@ async def get_journal_entry(
     current_user: CurrentUser,
     svc: WellnessServiceDep,
 ) -> JournalEntryResponse:
-    entry = await svc.get_journal_entry(entry_id, current_user.id)
+    entry = await svc.get_journal_entry(entry_id, current_user.id, current_user.encryption_key_salt)
     return JournalEntryResponse.model_validate(entry)
 
 
 @router.delete(
     "/journal/{entry_id}",
+    response_model=None,
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a journal entry",
 )

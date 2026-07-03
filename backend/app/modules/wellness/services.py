@@ -39,7 +39,9 @@ class WellnessService:
         encrypted_content = self.encryption.encrypt_for_user(data.content, user_salt or "")
         entry = JournalEntry(
             user_id=user_id,
+            title=data.title,
             content=encrypted_content,
+            mood=data.mood,
             entry_date=data.entry_date or date.today(),
         )
         self.db.add(entry)
@@ -47,7 +49,7 @@ class WellnessService:
         await self.db.refresh(entry)
         return entry
 
-    async def get_journal_entry(self, entry_id: uuid.UUID, user_id: uuid.UUID) -> JournalEntry:
+    async def get_journal_entry(self, entry_id: uuid.UUID, user_id: uuid.UUID, user_salt: str | None = None) -> JournalEntry:
         stmt = (
             select(JournalEntry)
             .where(JournalEntry.id == entry_id)
@@ -57,6 +59,8 @@ class WellnessService:
         entry = (await self.db.execute(stmt)).scalar_one_or_none()
         if entry is None:
             raise JournalEntryNotFoundError("Journal entry not found")
+        if user_salt and entry.content:
+            entry.content = self.encryption.decrypt_for_user(entry.content, user_salt)
         return entry
 
     async def list_journal_entries(
@@ -83,6 +87,7 @@ class WellnessService:
             user_id=user_id,
             mood=data.mood,
             intensity=data.intensity,
+            notes=data.notes,
             logged_at=data.logged_at or datetime.now(tz=UTC),
         )
         self.db.add(mood)
