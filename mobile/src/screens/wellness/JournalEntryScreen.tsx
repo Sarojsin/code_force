@@ -3,9 +3,8 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, TextInput
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
-import type { StackNavigationProp } from '@react-navigation/stack';
 import { formatDistanceToNow } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -14,11 +13,10 @@ import { useTheme } from 'src/theme';
 import { EncryptedStorage } from 'src/services/storage';
 import { logger } from 'src/utils';
 import { wellnessService } from 'src/services/api/wellness';
-import type { WellnessStackParamList } from 'src/navigation/types';
 import { z } from 'zod';
 
-type Nav = StackNavigationProp<WellnessStackParamList, 'JournalEntry'>;
-type Rt = RouteProp<WellnessStackParamList, 'JournalEntry'>;
+type Nav = any;
+type Rt = any;
 
 const DRAFT_KEY = (id: string) => `shecare.journal.draft.${id}`;
 const DRAFT_SAVE_INTERVAL_MS = 30_000;

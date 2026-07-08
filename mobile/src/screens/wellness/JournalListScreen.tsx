@@ -2,16 +2,14 @@ import React, { useCallback } from 'react';
 import { FlatList, StyleSheet, View, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
 import { useQuery } from '@tanstack/react-query';
 
 import { Button, Card, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { wellnessService } from 'src/services/api/wellness';
-import type { WellnessStackParamList } from 'src/navigation/types';
 import type { JournalEntry } from 'src/services/api/wellness';
 
-type Nav = StackNavigationProp<WellnessStackParamList, 'JournalList'>;
+type Nav = any;
 
 function sentimentColor(label: string | null): string {
   switch (label) {

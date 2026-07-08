@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View, Pressable, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
@@ -10,9 +9,8 @@ import { Button, Card, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { logger } from 'src/utils';
 import { wellnessService } from 'src/services/api/wellness';
-import type { WellnessStackParamList } from 'src/navigation/types';
 
-type Nav = StackNavigationProp<WellnessStackParamList, 'MoodLog'>;
+type Nav = any;
 
 const MOODS = [
   { emoji: '😊', label: 'Happy', color: '#D1FAE5' },

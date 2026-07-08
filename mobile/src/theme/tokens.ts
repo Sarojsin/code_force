@@ -4,14 +4,18 @@
  */
 
 export const palette = {
-  // Brand
+  // Brand — UI_UX Global_Design_Prompt spec
   primary50: '#FFF1F4',
   primary100: '#FFD9E1',
   primary300: '#FF8FA8',
-  primary500: '#E63462', // shecare primary pink
-  primary700: '#A41B45',
+  primary500: '#FF5C8A', // shecare primary pink (UI_UX spec)
+  primary700: '#D6336B',
   // Accent / secondary
-  accent500: '#7E5BEF', // soft purple for pregnancy
+  accent50: '#F5F0FF',
+  accent100: '#EDE9FE',
+  accent300: '#C4B5FD',
+  accent500: '#9B7BFF', // soft purple (UI_UX spec)
+  accent700: '#7E5BEF',
   wellness500: '#4FB7B3', // teal for emotional wellness
   // Neutral
   white: '#FFFFFF',
@@ -23,15 +27,20 @@ export const palette = {
   gray700: '#3B4151',
   gray900: '#1A1D26',
   // Status
-  success500: '#2EB37B',
+  success500: '#4CAF50', // UI_UX spec
   warning500: '#F4A93C',
   danger500: '#D63B3B',
   info500: '#3B82F6',
+  // Phase colors — Calendar & Menstrual_Phases spec
+  menstrual: '#FF5252',
+  follicular: '#FFD54F',
+  ovulation: '#4CAF50',
+  luteal: '#42A5F5',
 } as const;
 
 export const colors = {
-  // Semantic colors used by components
-  background: palette.gray50,
+  // Semantic colors used by components — UI_UX Global_Design_Prompt spec
+  background: '#FFF8FB', // UI_UX spec background
   surface: palette.white,
   textPrimary: palette.gray900,
   textSecondary: palette.gray700,
@@ -41,6 +50,7 @@ export const colors = {
   primary: palette.primary500,
   primaryMuted: palette.primary100,
   accent: palette.accent500,
+  accentMuted: palette.accent100,
   success: palette.success500,
   warning: palette.warning500,
   danger: palette.danger500,
@@ -48,16 +58,16 @@ export const colors = {
 } as const;
 
 export const darkColors = {
-  background: palette.gray900,
-  surface: palette.gray700,
+  background: '#1A1D26',
+  surface: '#2A2D38',
   textPrimary: palette.white,
   textSecondary: palette.gray100,
   textMuted: palette.gray300,
   textInverse: palette.gray900,
-  border: palette.gray700,
+  border: '#3A3D48',
   primary: palette.primary300,
   primaryMuted: palette.primary700,
-  accent: palette.accent500,
+  accent: palette.accent300,
   success: palette.success500,
   warning: palette.warning500,
   danger: palette.danger500,
@@ -76,11 +86,11 @@ export const spacing = {
 } as const;
 
 export const radius = {
-  sm: 4,
-  md: 8,
-  lg: 12,
-  xl: 16,
-  pill: 999,
+  sm: 8,    // inputs, small elements (UI_UX spec: 8px)
+  md: 12,   // buttons, chips
+  lg: 16,   // standard cards
+  xl: 24,   // feature cards, modals, bottom sheets (UI_UX spec: 20-28px)
+  pill: 999, // avatars, badges, toggle handles
 } as const;
 
 export const typography = {
