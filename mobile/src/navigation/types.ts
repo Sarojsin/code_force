@@ -16,6 +16,7 @@ export type WellnessStackParamList = {
   MoodHistory: undefined;
   BreathingList: undefined;
   Insights: undefined;
+  Videos: undefined;
 };
 
 export type CycleStackParamList = {
@@ -24,6 +25,7 @@ export type CycleStackParamList = {
   CycleHistory: undefined;
   CyclePredictions: undefined;
   CycleAnalytics: undefined;
+  PhaseDetail: { phase: string };
 };
 
 export type PregnancyStackParamList = {
@@ -55,6 +57,34 @@ export type ChatStackParamList = {
   ChatRoom: { roomId: string };
 };
 
+export type HomeStackParamList = {
+  HomeDashboard: undefined;
+  MoodLog: undefined;
+  CyclePredictions: undefined;
+  Videos: undefined;
+  AIChat: undefined;
+  JournalList: undefined;
+  JournalEntry: { id: string };
+  WellnessHub: undefined;
+  MoodHistory: undefined;
+  BreathingList: undefined;
+  Insights: undefined;
+};
+
+export type CalendarStackParamList = {
+  CalendarMain: undefined;
+  PhaseDetail: { phase: string };
+};
+
+export type AnalyticsStackParamList = {
+  AnalyticsMain: undefined;
+  AnalyticsDetail: { section: string };
+};
+
+export type AIChatStackParamList = {
+  AIChatMain: undefined;
+};
+
 export type OnboardingStackParamList = {
   Welcome: undefined;
   PersonalInfo: undefined;
@@ -67,14 +97,15 @@ export type OnboardingStackParamList = {
 };
 
 export type MainTabParamList = {
-  Wellness: NavigatorScreenParams<WellnessStackParamList>;
-  Cycle: NavigatorScreenParams<CycleStackParamList>;
-  Pregnancy: NavigatorScreenParams<PregnancyStackParamList>;
-  Safety: NavigatorScreenParams<SafetyStackParamList>;
+  Home: NavigatorScreenParams<HomeStackParamList>;
+  Calendar: NavigatorScreenParams<CalendarStackParamList>;
+  Analytics: NavigatorScreenParams<AnalyticsStackParamList>;
+  AIChat: NavigatorScreenParams<AIChatStackParamList>;
   Profile: NavigatorScreenParams<ProfileStackParamList>;
 };
 
 export type RootStackParamList = {
+  Splash: undefined;
   Auth: NavigatorScreenParams<AuthStackParamList>;
   Onboarding: NavigatorScreenParams<OnboardingStackParamList>;
   Main: NavigatorScreenParams<MainTabParamList>;

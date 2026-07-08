@@ -1,6 +1,6 @@
 /**
- * Root navigator. Decides between Auth stack, Onboarding stack, and Main tabs
- * based on whether the user is logged in and has completed onboarding.
+ * Root navigator. Shows Splash → then decides Auth/Onboarding/Main.
+ * SplashScreen per UI_UX Splash_Screen spec.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -9,6 +9,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 
 import { useAuthStore } from 'src/stores';
 import { onboardingService } from 'src/services/api/onboarding';
+import { SplashScreen } from 'src/screens/SplashScreen';
 import { AuthStack } from './AuthStack';
 import { OnboardingStack } from './OnboardingStack';
 import { MainTabs } from './MainTabs';
@@ -19,6 +20,7 @@ const Root = createStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
   const { user, isHydrated, hydrate } = useAuthStore();
+  const [showSplash, setShowSplash] = useState(true);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
 
@@ -42,8 +44,12 @@ export function RootNavigator() {
       });
   }, [user]);
 
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
+
   if (!isHydrated || !onboardingChecked) {
-    return null;
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
 
   return (
