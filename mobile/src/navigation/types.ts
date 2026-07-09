@@ -74,6 +74,7 @@ export type HomeStackParamList = {
 export type CalendarStackParamList = {
   CalendarMain: undefined;
   PhaseDetail: { phase: string };
+  CycleDashboard: undefined;
 };
 
 export type AnalyticsStackParamList = {

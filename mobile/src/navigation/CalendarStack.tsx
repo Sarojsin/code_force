@@ -3,6 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 
 import { useTheme } from 'src/theme';
 import { CalendarScreen } from 'src/screens/calendar/CalendarScreen';
+import { CycleDashboardScreen } from 'src/screens/cycle/CycleDashboardScreen';
 import { MenstrualPhasesScreen } from 'src/screens/cycle/MenstrualPhasesScreen';
 
 import type { CalendarStackParamList } from './types';
@@ -22,6 +23,7 @@ export function CalendarStack() {
     >
       <Stack.Screen name="CalendarMain" component={CalendarScreen} options={{ title: 'Calendar', headerShown: false }} />
       <Stack.Screen name="PhaseDetail" component={MenstrualPhasesScreen} options={{ title: 'Phase Details' }} />
+      <Stack.Screen name="CycleDashboard" component={CycleDashboardScreen} options={{ title: 'Cycle Dashboard' }} />
     </Stack.Navigator>
   );
 }
