@@ -10,6 +10,7 @@ import { AppState, AppStateStatus, StatusBar, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import * as BackgroundFetch from 'expo-background-fetch';
+import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 
 import { AppProviders, queryClient } from './providers';
@@ -18,6 +19,7 @@ import { ConnectivityBanner } from 'src/components/ui/ConnectivityBanner';
 import { logger } from 'src/utils';
 import { useWellnessHydration } from 'src/services/ml';
 import { useOfflineStore } from 'src/stores/offlineStore';
+import { navigate } from 'src/navigation/rootNavigation';
 import { syncAll, setQueryClient } from 'src/services/sync';
 
 const BACKGROUND_SYNC_TASK = 'shecare-background-sync';
@@ -71,6 +73,16 @@ export default function App() {
       unsubNet();
       sub.remove();
     };
+  }, []);
+
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      if (data?.type === 'checkin') {
+        navigate('Main', { screen: 'Calendar', params: { screen: 'CycleDashboard' } });
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   return (

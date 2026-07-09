@@ -15,5 +15,6 @@ export * from './ProgressBar';
 export * from './ProgressDots';
 export * from './ScreenLayout';
 export * from './Skeleton';
+export * from './StickyCard';
 export * from './SymptomGrid';
 export * from './Text';
