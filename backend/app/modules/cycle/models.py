@@ -4,6 +4,7 @@ import uuid
 from datetime import date, datetime
 
 from sqlalchemy import (
+    Boolean,
     Date,
     DateTime,
     Float,
@@ -66,6 +67,9 @@ class PredictedCycle(Base):
     confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     training_data_points: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     prediction_window_days: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+
+    # Phase 3: check-in notification idempotency
+    checkin_sent: Mapped[bool] = mapped_column(default=False, nullable=False)
 
     # Phase 1: correction feedback
     snooze_events: Mapped[list[SnoozeEvent]] = relationship(

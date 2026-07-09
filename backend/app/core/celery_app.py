@@ -24,6 +24,7 @@ celery_app = Celery(
         # "app.modules.users.tasks",
         # "app.tasks.global_cleanup",
         "app.tasks.retention_cleanup",
+        "app.tasks.checkin",
     ],
 )
 
@@ -53,6 +54,10 @@ celery_app.conf.update(
         #     "task": "app.modules.cycle.tasks.update_cycle_predictions",
         #     "schedule": crontab(hour=2, minute=0),
         # },
+        "checkin-daily": {
+            "task": "app.tasks.checkin.daily_checkin",
+            "schedule": crontab(hour=8, minute=0),
+        },
         "retention-cleanup-daily": {
             "task": "app.tasks.retention_cleanup.cleanup",
             "schedule": crontab(hour=3, minute=0),

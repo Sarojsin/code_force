@@ -535,6 +535,10 @@ class CycleService:
             error = (period_start_date - prediction.predicted_next_period_start).days
             prediction.actual_cycle_entry_id = entry.id
             prediction.prediction_error_days = error
+            # Suppression: if corrected before P-3, suppress notification
+            cutoff = prediction.predicted_next_period_start - timedelta(days=3)
+            if period_start_date < cutoff:
+                prediction.checkin_sent = True
             await self.db.flush()
             await self._update_user_ml_metrics(user_id, error)
 
@@ -553,6 +557,11 @@ class CycleService:
         if prediction is None:
             raise PredictionNotFoundError("Prediction not found")
         return prediction
+
+    async def mark_checkin_sent(self, prediction_id: uuid.UUID, user_id: uuid.UUID) -> None:
+        prediction = await self.get_prediction_by_id(prediction_id, user_id)
+        prediction.checkin_sent = True
+        await self.db.commit()
 
     async def log_snooze(
         self,
