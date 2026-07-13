@@ -110,4 +110,27 @@ the work in the canonical plans.
 |------|--------|
 | `v1_dashboard_ml_plan.md` | **planned** — User onboarding, enhanced cycle dashboard, ML predictions, sentiment keywords, wellness recommendations |
 
+## Architecture Phase Plans (Offline-First Transformation)
+
+These 6 plans describe the complete offline-first transformation of the mobile app, from foundational queue wiring through production monitoring.
+
+| # | Plan | Status | Effort | Dependencies |
+|---|------|--------|--------|-------------|
+| 0 | `architecture_phase0_overview_dataflow.md` | **published** | — (overview) | None (read this first) |
+| 1 | `architecture_phase1_offline_write_queue_persistence.md` | **planned** | 3 days | None (foundational) |
+| 2 | `architecture_phase2_sos_cycle_period.md` | **planned** | 2.5 days | Phase 1 |
+| 3 | `architecture_phase3_ui_polish_network_ux.md` | **planned** | 1.5 days | Phase 1 |
+| 4 | `architecture_phase4_validation_testing_deploy.md` | **planned** | 3 days | Phases 1-3 |
+| 5 | `architecture_phase5_monitoring_observability.md` | **planned** | 2 days | Phases 1-4 |
+| | **Total** | | **12 days** | |
+
+### Quick Links
+
+- [Phase 0: Overview & Data Flow](architecture_phase0_overview_dataflow.md)
+- [Phase 1: Offline Write Queue + React Query Persistence](architecture_phase1_offline_write_queue_persistence.md)
+- [Phase 2: SOS SMS Fallback + Cycle/Period Features](architecture_phase2_sos_cycle_period.md)
+- [Phase 3: UI Polish & Network-Aware UX](architecture_phase3_ui_polish_network_ux.md)
+- [Phase 4: Validation, Testing & Deployment Gate](architecture_phase4_validation_testing_deploy.md)
+- [Phase 5: Monitoring & Observability](architecture_phase5_monitoring_observability.md)
+
 Update this table as work progresses.
