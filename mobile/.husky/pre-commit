@@ -1,0 +1,10 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky"
+
+cd mobile
+
+npx tsc --noEmit || exit 1
+
+npx lint-staged || exit 1
+
+npx jest --bail --findRelatedTests $(git diff --cached --name-only | grep '\.tsx\?$') || exit 1

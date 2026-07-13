@@ -1,10 +1,12 @@
 import { AxiosError } from 'axios';
 import pako from 'pako';
+import * as Sentry from '@sentry/react-native';
 import { api } from 'src/services/api/client';
 import { EncryptedStorage } from 'src/services/storage';
 import { logger } from 'src/utils';
 import { useAuthStore } from 'src/stores/authStore';
 import { useOfflineStore } from 'src/stores/offlineStore';
+import { useSyncMetricsStore } from 'src/stores/syncMetricsStore';
 
 import type { PendingOperation, SyncBatchResponse, SyncChangesResponse } from './types';
 
@@ -72,9 +74,30 @@ export async function pushOperations(ops: PendingOperation[]): Promise<void> {
 
       if (result.status === 'created' || result.status === 'updated' || result.status === 'deleted') {
         succeeded.push(op.tempId || op.id);
-      } else if (result.status === 'conflict' && result.server_data) {
+      } else if (result.status === 'conflict') {
         logger.warn('sync.conflict', { entity_id: result.entity_id });
         succeeded.push(op.tempId || op.id);
+        if (result.server_data && result.entity_id && _queryClient) {
+          const { inferQueryKey, inferBaseQueryKey } = require('./queryKeyMapper');
+          const qKey = inferQueryKey(op.type, result.entity_id);
+          const baseKey = inferBaseQueryKey(op.type);
+          if (qKey.length > 0) {
+            _queryClient.setQueryData(qKey, (old: any) => {
+              if (!old) return old;
+              if (Array.isArray(old)) {
+                return old.map((item: any) =>
+                  item.id === result.entity_id || item.id === op.tempId
+                    ? { ...result.server_data, _conflict_resolved: true }
+                    : item
+                );
+              }
+              return old;
+            });
+          }
+          if (baseKey.length > 0) {
+            _queryClient.invalidateQueries({ queryKey: baseKey });
+          }
+        }
       } else {
         if (result.status === 'failed') {
           const isNonRetryable = (
@@ -176,30 +199,95 @@ function getRetryableOps(ops: PendingOperation[]): PendingOperation[] {
 
 export async function syncAll(): Promise<void> {
   if (_isSyncing) {
-    logger.info('sync.already_in_progress');
+    logger.warn('sync.cycle.skipped_already_syncing');
     return;
   }
 
   const user = useAuthStore.getState().user;
   if (!user) {
-    logger.info('sync.skipped_no_auth');
+    logger.warn('sync.cycle.skipped_no_auth');
     return;
   }
 
+  Sentry.setTag('sync.is_syncing', 'true');
+
   _isSyncing = true;
-  logger.info('sync.starting');
+  const startTime = Date.now();
+  const store = useOfflineStore.getState();
+  const queueSizeBefore = store.operations.length;
+
+  logger.info('sync.cycle.starting', {
+    event: 'sync_cycle_started',
+    queue_size: queueSizeBefore,
+    user_id: user.id,
+  });
+
+  let opsPushed = 0;
+  let opsPulled = 0;
 
   try {
-    const store = useOfflineStore.getState();
     const pending = store.getPendingOperations();
     const pendingToPush = getRetryableOps(pending);
 
     if (pendingToPush.length > 0) {
+      logger.info('sync.push.starting', {
+        event: 'sync_push_started',
+        op_count: pendingToPush.length,
+      });
       await pushOperations(pendingToPush);
+      opsPushed = pendingToPush.length;
     }
-    await pullServerData();
-    logger.info('sync.completed');
+
+    const latestTimestamp = await pullServerData();
+    if (latestTimestamp) {
+      opsPulled = 1;
+    }
+
+    const queueSizeAfter = store.operations.length;
+    const duration = Date.now() - startTime;
+
+    logger.info('sync.cycle.completed', {
+      event: 'sync_cycle_completed',
+      duration_ms: duration,
+      ops_pushed: opsPushed,
+      ops_pulled: opsPulled,
+      queue_size_before: queueSizeBefore,
+      queue_size_after: queueSizeAfter,
+      user_id: user.id,
+    });
+
+    const metrics = useSyncMetricsStore.getState();
+    metrics.recordSync('success', duration, opsPushed, opsPulled, queueSizeAfter);
+  } catch (error) {
+    const duration = Date.now() - startTime;
+
+    Sentry.captureException(error, {
+      tags: {
+        sync_phase: opsPushed > 0 ? 'push' : 'pull',
+        queue_size: String(queueSizeBefore),
+      },
+      extra: {
+        pending_ops: store.operations.slice(0, 50).map(o => ({
+          id: o.id,
+          type: o.type,
+          priority: o.priority,
+          retryCount: o.retryCount,
+        })),
+      },
+    });
+
+    logger.error('sync.cycle.failed', {
+      event: 'sync_cycle_failed',
+      duration_ms: duration,
+      queue_size_before: queueSizeBefore,
+      error: error instanceof Error ? error.message : String(error),
+      user_id: user.id,
+    });
+
+    const metrics = useSyncMetricsStore.getState();
+    metrics.recordSync('failed', duration, opsPushed, opsPulled, store.operations.length);
   } finally {
+    Sentry.setTag('sync.is_syncing', 'false');
     _isSyncing = false;
   }
 }

@@ -13,7 +13,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-na
 
 import { Button, FormField, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
-import { logger } from 'src/utils';
+import { useCreateCycleEntry } from 'src/services/queries';
 import type { CycleStackParamList } from 'src/navigation/types';
 import { z } from 'zod';
 
@@ -42,18 +42,25 @@ export function LogPeriodScreen() {
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [energyLevel, setEnergyLevel] = useState(5);
+  const { mutate: createEntry, isPending } = useCreateCycleEntry();
 
   const toggleChip = (item: string, list: string[], setter: (v: string[]) => void) => {
     setter(list.includes(item) ? list.filter(i => i !== item) : [...list, item]);
   };
 
   const onSubmit = async (data: LogPeriodForm) => {
-    try {
-      logger.info('LogPeriodScreen.submit', { ...data, selectedFlow, selectedSymptoms, selectedMoods, energyLevel });
-      navigation.goBack();
-    } catch (err) {
-      logger.error('LogPeriodScreen.submit.failed', err);
-    }
+    createEntry({
+      period_start_date: data.startDate,
+      period_end_date: data.endDate || undefined,
+      flow_intensity: selectedFlow,
+      symptoms: selectedSymptoms,
+      mood_tags: selectedMoods,
+      energy_level: energyLevel,
+      notes: data.notes,
+    }, {
+      onSuccess: () => navigation.goBack(),
+      onError: () => {},
+    });
   };
 
   const Chip = ({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) => {
@@ -136,7 +143,7 @@ export function LogPeriodScreen() {
           </View>
 
           <View style={{ height: theme.spacing.lg }} />
-          <Button label="Save period log" onPress={handleSubmit(onSubmit)} disabled={!formState.isValid} fullWidth />
+          <Button label={isPending ? 'Saving...' : 'Save period log'} onPress={handleSubmit(onSubmit)} disabled={!formState.isValid || isPending} fullWidth />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

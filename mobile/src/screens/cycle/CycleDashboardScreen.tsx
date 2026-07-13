@@ -3,13 +3,20 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import Toast from 'react-native-toast-message';
 
 import { Button, Calendar, Card, DatePickerField, BottomSheet, StickyCard, Text, Skeleton } from 'src/components/ui';
 import { PredictionDetailCard } from 'src/components/ui/PredictionDetailCard';
 import { useTheme, shadow } from 'src/theme';
 import { useCycleCalendar, useLogCorrection, useLogSnooze } from 'src/services/queries';
 import { globalModelClient } from 'src/services/ml/globalModel';
+import { modelUpdater } from 'src/services/ml';
+import { useNetworkStatus } from 'src/services/sync';
 import type { CycleStackParamList } from 'src/navigation/types';
 
 type Nav = StackNavigationProp<CycleStackParamList, 'CycleDashboard'>;
@@ -21,6 +28,10 @@ interface SnoozeState {
   dayOffset: number;
   snoozedAt: string;
 }
+
+const overrideSchema = z.object({ overrideDate: z.string().min(1, 'Please select a date') });
+
+type OverrideForm = z.infer<typeof overrideSchema>;
 
 function addDays(date: Date, days: number): Date {
   const d = new Date(date);
@@ -38,14 +49,28 @@ export function CycleDashboardScreen() {
   const { data: calData, isLoading } = useCycleCalendar(3, 3);
   const logCorrection = useLogCorrection();
   const logSnooze = useLogSnooze();
+  const { isConnected } = useNetworkStatus();
 
   const [snoozeState, setSnoozeState] = useState<SnoozeState | null>(null);
   const [showOverride, setShowOverride] = useState(false);
-  const [overrideDate, setOverrideDate] = useState(new Date());
+  const overrideForm = useForm<OverrideForm>({
+    resolver: zodResolver(overrideSchema),
+    defaultValues: { overrideDate: toDateStr(new Date()) },
+  });
 
   useEffect(() => {
     globalModelClient.ensureLatest().catch(() => null);
   }, []);
+
+  useEffect(() => {
+    if (isConnected) {
+      modelUpdater.checkForUpdate().then((result) => {
+        if (result.wellness || result.minilm) {
+          Toast.show({ type: 'success', text1: 'Wellness model updated — predictions improved' });
+        }
+      }).catch(() => {});
+    }
+  }, [isConnected]);
 
   useEffect(() => {
     AsyncStorage.getItem(SNOOZE_KEY).then((val) => {
@@ -129,18 +154,17 @@ export function CycleDashboardScreen() {
     [logSnooze, persistSnooze, snoozeState, today],
   );
 
-  const handlePermanentOverride = useCallback(() => {
-    if (!overrideDate) return;
-    const endDate = addDays(overrideDate, 5);
+  const handlePermanentOverride = overrideForm.handleSubmit((data) => {
+    const endDate = addDays(new Date(data.overrideDate), 5);
     logCorrection.mutate(
       {
-        period_start_date: toDateStr(overrideDate),
+        period_start_date: data.overrideDate,
         period_end_date: toDateStr(endDate),
         corrected_prediction_id: prediction?.id ?? null,
       },
       { onSuccess: () => setShowOverride(false) },
     );
-  }, [overrideDate, logCorrection, prediction]);
+  });
 
   const nextPeriodDate = calData?.next_period_in_days != null
     ? addDays(new Date(), calData.next_period_in_days)
@@ -263,7 +287,7 @@ export function CycleDashboardScreen() {
         title="Adjust Period Date"
       >
         <DatePickerField
-          control={null as any}
+          control={overrideForm.control}
           name="overrideDate"
           label="When did your period start?"
         />

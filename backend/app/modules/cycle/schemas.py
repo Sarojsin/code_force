@@ -124,8 +124,9 @@ class CalendarResponse(BaseModel):
     next_period_in_days: int | None = None
 
 
-class PredictionListResponse(BaseModel):
-    predictions: list[PredictionDetail]
+class NextPredictionResponse(BaseModel):
+    prediction: PredictionDetail | None
+    days_until: int | None
     model_used: str
     data_quality: str  # insufficient | minimal | good | excellent
 

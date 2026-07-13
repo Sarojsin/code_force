@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import logging
 import os
 import uuid
@@ -344,7 +343,7 @@ class CycleService:
 
     # ---- Get predictions ----
 
-    async def get_predictions(self, user_id: uuid.UUID) -> list[PredictedCycle]:
+    async def get_predictions(self, user_id: uuid.UUID) -> PredictedCycle | None:
         stmt = (
             select(PredictedCycle)
             .where(PredictedCycle.user_id == user_id)
@@ -360,27 +359,7 @@ class CycleService:
                     latest = (await self.db.execute(stmt)).scalar_one_or_none()
                 except InsufficientDataError:
                     pass
-            if latest is None:
-                return []
-
-        avg_cycle = 28
-        entries = await self._get_recent_entries(user_id, limit=12)
-        cycle_lengths = self._compute_cycle_lengths(entries) if len(entries) > 1 else []
-        if cycle_lengths:
-            avg_cycle = int(median(cycle_lengths))
-        elif latest.training_data_points and latest.training_data_points > 0 and latest.prediction_window_days:
-            avg_cycle = (latest.predicted_next_period_start - (latest.predicted_next_period_start - timedelta(days=latest.prediction_window_days or 28))).days
-
-        predictions = [latest]
-        for _ in range(1, 3):
-            prev = predictions[-1]
-            next_start = prev.predicted_next_period_start + timedelta(days=avg_cycle)
-            next_pred = copy.copy(latest)
-            next_pred.id = uuid.uuid4()
-            next_pred.predicted_next_period_start = next_start
-            predictions.append(next_pred)
-
-        return predictions
+        return latest
 
     # ---- Calendar (Phase 2: dictionary-encoded) ----
 

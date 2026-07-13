@@ -33,7 +33,8 @@ export interface PredictionDetail {
 }
 
 export interface PredictionListResponse {
-  predictions: PredictionDetail[];
+  prediction: PredictionDetail | null;
+  days_until: number | null;
   model_used: string;
   data_quality: string;
 }

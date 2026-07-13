@@ -75,17 +75,17 @@ async def cycle_entry(svc: CycleService, user: User) -> CycleEntry:
 
 
 @pytest.mark.asyncio
-async def test_get_predictions_returns_list(svc: CycleService, user: User, cycle_entry: CycleEntry) -> None:
+async def test_get_predictions_returns_single(svc: CycleService, user: User, cycle_entry: CycleEntry) -> None:
     await svc.compute_predictions(user.id)
-    predictions = await svc.get_predictions(user.id)
-    assert len(predictions) > 0
-    assert predictions[0].user_id == user.id
+    prediction = await svc.get_predictions(user.id)
+    assert prediction is not None
+    assert prediction.user_id == user.id
 
 
 @pytest.mark.asyncio
 async def test_get_predictions_not_found(svc: CycleService, user: User) -> None:
-    with pytest.raises(PredictionNotFoundError):
-        await svc.get_predictions(user.id)
+    prediction = await svc.get_predictions(user.id)
+    assert prediction is None
 
 
 @pytest.mark.asyncio
@@ -110,8 +110,8 @@ async def test_get_predictions_with_cycle_lengths(svc: CycleService, user: User)
     data3 = CycleEntryCreate(period_start_date=date(2026, 4, 2), period_end_date=date(2026, 4, 7))
     await svc.create_entry(user.id, data3)
     await svc.compute_predictions(user.id)
-    predictions = await svc.get_predictions(user.id)
-    assert len(predictions) == 3
+    prediction = await svc.get_predictions(user.id)
+    assert prediction is not None
 
 
 @pytest.mark.asyncio

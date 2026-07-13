@@ -1,6 +1,7 @@
 export interface PendingOperation {
   id: string;
   type: string;
+  endpoint?: string;
   data: Record<string, unknown>;
   tempId?: string;
   idempotencyKey: string;

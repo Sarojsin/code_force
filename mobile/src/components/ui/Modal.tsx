@@ -22,8 +22,8 @@ export function Modal({ visible, onClose, title, children }: ModalProps) {
 
   useEffect(() => {
     const handler = () => { if (visible) { onClose(); return true; } return false; };
-    BackHandler.addEventListener('hardwareBackPress', handler);
-    return () => BackHandler.removeEventListener('hardwareBackPress', handler);
+    const subscription = BackHandler.addEventListener('hardwareBackPress', handler);
+    return () => subscription.remove();
   }, [visible, onClose]);
 
   const overlayStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
@@ -65,6 +65,6 @@ export function Modal({ visible, onClose, title, children }: ModalProps) {
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)' },
-  backdrop: { ...StyleSheet.absoluteFillObject },
+  backdrop: { ...StyleSheet.absoluteFill },
   content: { width: '100%', maxWidth: 400 },
 });

@@ -75,6 +75,10 @@ export type CalendarStackParamList = {
   CalendarMain: undefined;
   PhaseDetail: { phase: string };
   CycleDashboard: undefined;
+  LogPeriod: undefined;
+  CycleHistory: undefined;
+  CyclePredictions: undefined;
+  CycleAnalytics: undefined;
 };
 
 export type AnalyticsStackParamList = {

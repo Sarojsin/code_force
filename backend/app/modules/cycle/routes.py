@@ -27,8 +27,8 @@ from app.modules.cycle.schemas import (
     CycleEntryResponse,
     CycleEntryUpdate,
     ModelStatusResponse,
+    NextPredictionResponse,
     PredictionDetail,
-    PredictionListResponse,
     SnoozeCreate,
     SnoozeResponse,
 )
@@ -115,36 +115,22 @@ async def delete_entry(
 
 @router.get(
     "/predictions",
-    response_model=PredictionListResponse,
-    summary="Get next 3 predicted cycles",
+    response_model=NextPredictionResponse,
+    summary="Get next predicted cycle",
 )
 async def get_predictions(
     current_user: CurrentUser,
     svc: CycleServiceDep,
-) -> PredictionListResponse:
-    predictions = await svc.get_predictions(current_user.id)
-    details = [
-        PredictionDetail(
-            id=p.id,
-            predicted_next_period_start=p.predicted_next_period_start,
-            predicted_period_end=p.predicted_next_period_start + __import__("datetime").timedelta(days=5),
-            predicted_fertile_window_start=p.predicted_fertile_window_start,
-            predicted_fertile_window_end=p.predicted_fertile_window_end,
-            model_type=p.model_type or p.model_version or "unknown",
-            confidence_score=p.confidence_score,
-            confidence_label=(
-                _confidence_label(p.confidence_score)
-                if p.confidence_score is not None else None
-            ),
-            training_data_points=p.training_data_points or 0,
-            prediction_window_days=p.prediction_window_days,
-        )
-        for p in predictions
-    ]
+) -> NextPredictionResponse:
+    prediction = await svc.get_predictions(current_user.id)
 
-    data_quality = "insufficient"
-    if predictions and predictions[0].training_data_points:
-        n = predictions[0].training_data_points
+    data_quality: str = "insufficient"
+    model_used: str = "unknown"
+    detail: PredictionDetail | None = None
+    days_until: int | None = None
+
+    if prediction:
+        n = prediction.training_data_points or 0
         if n < 3:
             data_quality = "insufficient"
         elif n < 6:
@@ -154,13 +140,29 @@ async def get_predictions(
         else:
             data_quality = "excellent"
 
-    if predictions:
-        model_used = predictions[0].model_type or predictions[0].model_version or "unknown"
-    else:
-        model_used = "unknown"
+        model_used = prediction.model_type or prediction.model_version or "unknown"
+        today = __import__("datetime").date.today()
+        days_until = (prediction.predicted_next_period_start - today).days
 
-    return PredictionListResponse(
-        predictions=details,
+        detail = PredictionDetail(
+            id=prediction.id,
+            predicted_next_period_start=prediction.predicted_next_period_start,
+            predicted_period_end=prediction.predicted_next_period_start + __import__("datetime").timedelta(days=5),
+            predicted_fertile_window_start=prediction.predicted_fertile_window_start,
+            predicted_fertile_window_end=prediction.predicted_fertile_window_end,
+            model_type=prediction.model_type or prediction.model_version or "unknown",
+            confidence_score=prediction.confidence_score,
+            confidence_label=(
+                _confidence_label(prediction.confidence_score)
+                if prediction.confidence_score is not None else None
+            ),
+            training_data_points=prediction.training_data_points or 0,
+            prediction_window_days=prediction.prediction_window_days,
+        )
+
+    return NextPredictionResponse(
+        prediction=detail,
+        days_until=days_until,
         model_used=model_used,
         data_quality=data_quality,
     )

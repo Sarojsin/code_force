@@ -59,6 +59,13 @@ export const useOfflineStore = create<OfflineState>((set, get) => ({
     const ops = [...get().operations, newOp];
     set({ operations: ops });
     await persist(ops);
+    logger.info('offlineStore.enqueued', {
+      event: 'offline_op_enqueued',
+      operation_id: id,
+      type: op.type,
+      priority: op.priority,
+      queue_size: ops.length,
+    });
     return id;
   },
 
@@ -92,9 +99,17 @@ export const useOfflineStore = create<OfflineState>((set, get) => ({
   getPendingOperations: () => get().operations.filter(o => o.retryCount < o.maxRetries),
 
   discard: async (id) => {
+    const op = get().operations.find(o => o.id === id);
     const ops = get().operations.filter(o => o.id !== id);
     set({ operations: ops });
     await persist(ops);
+    logger.warn('offlineStore.discarded', {
+      event: 'offline_op_discarded',
+      operation_id: id,
+      type: op?.type,
+      retry_count: op?.retryCount,
+      max_retries: op?.maxRetries,
+    });
   },
 
   discardMany: async (ids) => {

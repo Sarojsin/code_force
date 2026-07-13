@@ -267,9 +267,12 @@ async def test_delete_entry_204(app_client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_predictions_empty_404(app_client: AsyncClient) -> None:
+async def test_get_predictions_empty(app_client: AsyncClient) -> None:
     resp = await app_client.get("/api/v1/cycle/predictions")
-    assert resp.status_code == 404
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["prediction"] is None
+    assert body["days_until"] is None
 
 
 @pytest.mark.asyncio

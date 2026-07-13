@@ -27,14 +27,10 @@ export function BottomSheet({
   onClose,
   title,
   children,
-  snapPoints = [50],
 }: BottomSheetProps) {
   const theme = useTheme();
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const opacity = useSharedValue(0);
-
-  const maxSnap = Math.max(0, Math.min(...snapPoints));
-  const snapHeight = (maxSnap / 100) * SCREEN_HEIGHT;
 
   const closeSheet = useCallback(() => {
     'worklet';
@@ -45,34 +41,35 @@ export function BottomSheet({
 
   useEffect(() => {
     if (visible) {
-      translateY.value = withSpring(SCREEN_HEIGHT - snapHeight, { damping: 20, stiffness: 200 });
+      translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
       opacity.value = withTiming(1, { duration: 250 });
     } else {
       translateY.value = withTiming(SCREEN_HEIGHT, { duration: 250 });
       opacity.value = withTiming(0, { duration: 250 });
     }
-  }, [visible, snapHeight, translateY, opacity]);
+  }, [visible, translateY, opacity]);
 
   useEffect(() => {
     const handler = () => { if (visible) { onClose(); return true; } return false; };
-    BackHandler.addEventListener('hardwareBackPress', handler);
-    return () => BackHandler.removeEventListener('hardwareBackPress', handler);
+    const subscription = BackHandler.addEventListener('hardwareBackPress', handler);
+    return () => subscription.remove();
   }, [visible, onClose]);
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
 
   const pan = Gesture.Pan()
+    .minDistance(10)
     .onUpdate((e) => {
       if (e.translationY > 0) {
-        translateY.value = SCREEN_HEIGHT - snapHeight + e.translationY;
+        translateY.value = e.translationY;
       }
     })
     .onEnd((e) => {
-      if (e.translationY > snapHeight * 0.4) {
+      if (e.translationY > SCREEN_HEIGHT * 0.4) {
         closeSheet();
       } else {
-        translateY.value = withSpring(SCREEN_HEIGHT - snapHeight, { damping: 20, stiffness: 200 });
+        translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
       }
     });
 
@@ -119,7 +116,7 @@ export function BottomSheet({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject },
+  backdrop: { ...StyleSheet.absoluteFill },
   backdropPressable: { flex: 1 },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '90%', paddingTop: 12 },
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },

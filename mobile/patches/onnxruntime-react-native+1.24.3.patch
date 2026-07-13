@@ -1,0 +1,35 @@
+diff --git a/node_modules/onnxruntime-react-native/android/build.gradle b/node_modules/onnxruntime-react-native/android/build.gradle
+index 41b4359..78f262a 100644
+--- a/node_modules/onnxruntime-react-native/android/build.gradle
++++ b/node_modules/onnxruntime-react-native/android/build.gradle
+@@ -7,7 +7,7 @@ buildscript {
+   }
+
+   dependencies {
+-    classpath 'com.android.tools.build:gradle:7.4.2'
++    classpath 'com.android.tools.build:gradle:8.12.0'
+     // noinspection DifferentKotlinGradleVersion
+   }
+ }
+@@ -247,7 +247,7 @@ dependencies {
+     extractLibs "com.microsoft.onnxruntime:onnxruntime-android:latest.integration@aar"
+   }
+
+-  if (VersionNumber.parse(REACT_NATIVE_VERSION) < VersionNumber.parse("0.71")) {
++  if (REACT_NATIVE_MINOR_VERSION < 71) {
+     extractLibs "com.facebook.fbjni:fbjni:+:headers"
+     extractLibs "com.facebook.fbjni:fbjni:+"
+   }
+diff --git a/node_modules/onnxruntime-react-native/android/gradle/wrapper/gradle-wrapper.properties b/node_modules/onnxruntime-react-native/android/gradle/wrapper/gradle-wrapper.properties
+index 381baa9..5b2a2d4 100644
+--- a/node_modules/onnxruntime-react-native/android/gradle/wrapper/gradle-wrapper.properties
++++ b/node_modules/onnxruntime-react-native/android/gradle/wrapper/gradle-wrapper.properties
+@@ -1,7 +1,7 @@
+ distributionBase=GRADLE_USER_HOME
+ distributionPath=wrapper/dists
+ distributionSha256Sum=544c35d6bd849ae8a5ed0bcea39ba677dc40f49df7d1835561582da2009b961d
+-distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-bin.zip
++distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip
+ networkTimeout=10000
+ validateDistributionUrl=true
+ zipStoreBase=GRADLE_USER_HOME

@@ -3,11 +3,46 @@ import { Platform, StyleSheet, Vibration, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import Toast from 'react-native-toast-message';
 
 import { Button, Card, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
-import { useActiveSos, useCancelSos, useResolveSos, useTriggerSos } from 'src/services/queries';
-import { logger } from 'src/utils';
+import { useActiveSos, useCancelSos, useResolveSos, useTriggerSos, useEmergencyContacts } from 'src/services/queries';
+import { sendSmsFallback } from 'src/services/api/safety';
+import { enqueueSos, enqueueResolve, enqueueCancel } from 'src/services/safetySyncQueue';
+import { useAuthStore } from 'src/stores/authStore';
+
+const LAST_LOCATION_KEY = 'shecare.last_known_location';
+
+async function getLocation(): Promise<{
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+} | null> {
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return null;
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+      timeInterval: 5000,
+    });
+    await AsyncStorage.setItem(LAST_LOCATION_KEY, JSON.stringify(location.coords)).catch(() => {});
+    return {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+      accuracy: location.coords.accuracy,
+    };
+  } catch {
+    try {
+      const cached = await AsyncStorage.getItem(LAST_LOCATION_KEY);
+      if (cached) return { ...JSON.parse(cached), accuracy: null };
+    } catch {}
+    return null;
+  }
+}
 
 const SOS_TRIGGER_DELAY_MS = 2000;
 
@@ -15,6 +50,8 @@ export function SOSActiveScreen() {
   const theme = useTheme();
   const navigation = useNavigation();
   const { data: activeAlert, isLoading } = useActiveSos();
+  const { data: contacts } = useEmergencyContacts();
+  const user = useAuthStore(state => state.user);
   const cancelMutation = useCancelSos();
   const resolveMutation = useResolveSos();
   const triggerMutation = useTriggerSos();
@@ -71,21 +108,33 @@ export function SOSActiveScreen() {
   }, [phase]);
 
   const handleTriggerSos = async () => {
+    const idempotencyKey = `sos_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const location = await getLocation();
+    const data = {
+      latitude: location?.latitude ?? 0,
+      longitude: location?.longitude ?? 0,
+      location_accuracy_m: location?.accuracy ?? null,
+      trigger_source: 'button' as const,
+    };
+    const userName = user?.display_name || user?.email || 'Someone';
+
     try {
-      const idempotencyKey = `sos_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-      await triggerMutation.mutateAsync({
-        data: {
-          latitude: 0,
-          longitude: 0,
-          location_accuracy_m: null,
-          trigger_source: 'button',
-        },
-        idempotencyKey,
-      });
+      await triggerMutation.mutateAsync({ data, idempotencyKey });
       setPhase('active');
     } catch (err) {
-      logger.error('SOSActiveScreen.trigger.failed', err);
-      navigation.goBack();
+      await enqueueSos(data).catch(() => {});
+      if (contacts && contacts.length > 0) {
+        sendSmsFallback(
+          contacts.map(c => c.phone_number),
+          userName,
+          location ?? undefined,
+        );
+      }
+      Toast.show({
+        type: 'success',
+        text1: 'SOS sent via SMS to your emergency contacts',
+      });
+      setPhase('active');
     }
   };
 
@@ -101,20 +150,28 @@ export function SOSActiveScreen() {
       setPhase('resolved');
       setTimeout(() => navigation.goBack(), 1500);
     } catch (err) {
-      logger.error('SOSActiveScreen.resolve.failed', err);
+      await enqueueResolve(activeAlert.id).catch(() => {});
+      Toast.show({
+        type: 'info',
+        text1: "We'll sync when online. You're marked as safe locally.",
+      });
+      setPhase('resolved');
+      setTimeout(() => navigation.goBack(), 1500);
     }
   };
 
   const handleCancelSos = async () => {
     if (!activeAlert) return;
     try {
-      const result = await cancelMutation.mutateAsync(activeAlert.id);
-      if (result.contacts_notified_of_false_alarm) {
-        logger.info('SOSActiveScreen.false_alarm_notified');
-      }
+      await cancelMutation.mutateAsync(activeAlert.id);
       navigation.goBack();
     } catch (err) {
-      logger.error('SOSActiveScreen.cancel.failed', err);
+      await enqueueCancel(activeAlert.id).catch(() => {});
+      Toast.show({
+        type: 'info',
+        text1: 'Cancel will sync when online.',
+      });
+      navigation.goBack();
     }
   };
 

@@ -35,21 +35,11 @@ export function DatePickerField<T extends FieldValues>({ control, name, label, m
       render={({ field: { onChange, value }, fieldState: { error } }) => (
         <View style={styles.container}>
           <Txt variant="bodySmall" color="secondary" style={{ marginBottom: 6 }}>{label}</Txt>
-          <TouchableOpacity
-            onPress={() => setShow(true)}
-            style={[styles.button, { borderColor: error ? theme.colors.danger : theme.colors.border, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surface }]}
-            accessibilityLabel={label}
-          >
-            <Txt variant="body" color={value ? 'primary' : 'muted'}>
-              {value || 'Tap to select date'}
-            </Txt>
-          </TouchableOpacity>
-          {error ? <Text style={{ color: theme.colors.danger, fontSize: 12, marginTop: 4 }}>{error.message}</Text> : null}
           {Platform.OS === 'web' ? (
             <input
               type="date"
               value={value || ''}
-              onChange={(e) => { onChange(e.target.value); }}
+              onChange={(e: any) => { onChange(e.target.value); }}
               max={maximumDate?.toISOString().split('T')[0]}
               style={{
                 width: '100%',
@@ -59,26 +49,41 @@ export function DatePickerField<T extends FieldValues>({ control, name, label, m
                 borderColor: error ? theme.colors.danger : theme.colors.border,
                 borderRadius: theme.radius.lg,
                 backgroundColor: theme.colors.surface,
-                color: theme.colors.text,
+                color: theme.colors.textPrimary,
                 fontFamily: 'inherit',
+                boxSizing: 'border-box',
               }}
             />
-          ) : show && (
-            <View>
-              <DateTimePicker
-                value={value ? new Date(value) : new Date()}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                maximumDate={maximumDate}
-                onChange={handleChange(onChange)}
-              />
-              {Platform.OS === 'ios' && (
-                <TouchableOpacity onPress={() => setShow(false)} style={styles.doneButton} accessibilityLabel="Done">
-                  <Txt variant="body" color="primary" align="center">Done</Txt>
-                </TouchableOpacity>
+          ) : (
+            <>
+              <TouchableOpacity
+                onPress={() => setShow(true)}
+                style={[styles.button, { borderColor: error ? theme.colors.danger : theme.colors.border, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surface }]}
+                accessibilityLabel={label}
+              >
+                <Txt variant="body" color={value ? 'primary' : 'muted'}>
+                  {value || 'Tap to select date'}
+                </Txt>
+              </TouchableOpacity>
+              {show && (
+                <View>
+                  <DateTimePicker
+                    value={value ? new Date(value) : new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    maximumDate={maximumDate}
+                    onChange={handleChange(onChange)}
+                  />
+                  {Platform.OS === 'ios' && (
+                    <TouchableOpacity onPress={() => setShow(false)} style={styles.doneButton} accessibilityLabel="Done">
+                      <Txt variant="body" color="primary" align="center">Done</Txt>
+                    </TouchableOpacity>
+                  )}
+                </View>
               )}
-            </View>
+            </>
           )}
+          {error ? <Text style={{ color: theme.colors.danger, fontSize: 12, marginTop: 4 }}>{error.message}</Text> : null}
         </View>
       )}
     />

@@ -4,9 +4,12 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View, Pressable, Dimensions } from 'react-native';
+import { ScrollView, StyleSheet, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import {
@@ -15,14 +18,31 @@ import {
   addMonths, subMonths,
 } from 'date-fns';
 
-import { Text, Card, Button } from 'src/components/ui';
+import { Text, Button, BottomSheet, DatePickerField } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { cycleService } from 'src/services/api/cycle';
+import { useLogCorrection } from 'src/services/queries';
+
+const overrideSchema = z.object({
+  overrideDate: z.string().min(1, 'Please select a date'),
+});
+
+type OverrideForm = z.infer<typeof overrideSchema>;
+
+function toDateStr(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
 
 type Nav = any;
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 
 // Phase colors per UI_UX Calendar spec
 const PHASE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
@@ -123,17 +143,33 @@ export function CalendarScreen() {
   const navigation = useNavigation<Nav>();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showOverride, setShowOverride] = useState(false);
+
+  const { control, handleSubmit } = useForm<OverrideForm>({
+    resolver: zodResolver(overrideSchema),
+    defaultValues: { overrideDate: toDateStr(new Date()) },
+  });
+
+  const logCorrection = useLogCorrection();
+
+  const handlePermanentOverride = handleSubmit((data) => {
+    const endDate = addDays(new Date(data.overrideDate), 5);
+    logCorrection.mutate(
+      {
+        period_start_date: data.overrideDate,
+        period_end_date: toDateStr(endDate),
+        corrected_prediction_id: null,
+      },
+      { onSuccess: () => setShowOverride(false) },
+    );
+  });
   const [encodedDays, setEncodedDays] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
     try {
       const cal = await cycleService.getCalendar(3, 3);
       setEncodedDays(cal?.days ?? {});
-    } catch { /* ignore */ } finally {
-      setLoading(false);
-    }
+    } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
@@ -259,6 +295,11 @@ export function CalendarScreen() {
               </View>
             ))}
           </View>
+
+          <View style={{ gap: theme.spacing.sm, paddingVertical: theme.spacing.md }}>
+            <Button label="Cycle Dashboard" onPress={() => (navigation as any).navigate('CycleDashboard')} size="md" />
+            <Button label="Adjust Period Date" onPress={() => setShowOverride(true)} size="md" variant="outline" />
+          </View>
         </View>
 
         {/* Bottom sheet for selected day */}
@@ -270,6 +311,27 @@ export function CalendarScreen() {
             onViewPhase={(p) => (navigation as any).navigate('PhaseDetail', { phase: p })}
           />
         )}
+
+        {/* Adjust Period Date Override */}
+        <BottomSheet visible={showOverride} onClose={() => setShowOverride(false)}>
+          <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
+            <Text variant="h3">Adjust Period Date</Text>
+            <Text variant="bodySmall" color="secondary">
+              When did your last period start? We'll use this to recalculate your predictions.
+            </Text>
+            <DatePickerField
+              control={control}
+              name="overrideDate"
+              label="Period start date"
+            />
+            <Button
+              label="Save & Recalculate"
+              onPress={handlePermanentOverride}
+              size="lg"
+              loading={logCorrection.isPending}
+            />
+          </View>
+        </BottomSheet>
       </View>
     </SafeAreaView>
   );

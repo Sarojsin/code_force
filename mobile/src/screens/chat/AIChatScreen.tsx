@@ -7,7 +7,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { FlatList, StyleSheet, View, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import Svg, { Path, Circle as SvgCircle } from 'react-native-svg';
+import Svg, { Path, Line } from 'react-native-svg';
 
 import { Text, Card } from 'src/components/ui';
 import { useTheme } from 'src/theme';

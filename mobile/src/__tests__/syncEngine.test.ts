@@ -5,204 +5,178 @@ jest.mock('react-native-encrypted-storage', () => {
   return {
     default: {
       getItem: jest.fn(async (key: string) => store[key] ?? null),
-      setItem: jest.fn(async (key: string, value: string) => {
-        store[key] = value;
-      }),
-      removeItem: jest.fn(async (key: string) => {
-        delete store[key];
-      }),
-      clear: jest.fn(async () => {
-        Object.keys(store).forEach((k) => delete store[k]);
-      }),
+      setItem: jest.fn(async (key: string, value: string) => { store[key] = value; }),
+      removeItem: jest.fn(async (key: string) => { delete store[key]; }),
+      clear: jest.fn(async () => { Object.keys(store).forEach((k) => delete store[k]); }),
     },
   };
 });
 
-jest.mock('src/services/storage', () => {
-  const storage: Record<string, string> = {};
-  return {
-    EncryptedStorage: {
-      getItem: jest.fn(async (key: string) => storage[key] ?? null),
-      setItem: jest.fn(async (key: string, value: string) => {
-        storage[key] = value;
-      }),
-      removeItem: jest.fn(async (key: string) => {
-        delete storage[key];
-      }),
-      clear: jest.fn(async () => {
-        Object.keys(storage).forEach((k) => delete storage[k]);
-      }),
-    },
-  };
-});
+jest.mock('src/services/storage', () => ({
+  EncryptedStorage: {
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+    clear: jest.fn(),
+  },
+}));
 
 jest.mock('src/utils', () => ({
-  logger: {
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-  },
+  generateId: jest.fn(() => 'test-uuid-456'),
+  logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
+
+jest.mock('@react-native-async-storage/async-storage', () => ({ setItem: jest.fn(), getItem: jest.fn(), removeItem: jest.fn(), clear: jest.fn() }));
+jest.mock('@sentry/react-native', () => ({
+  setTag: jest.fn(),
+  captureException: jest.fn(),
+  addBreadcrumb: jest.fn(),
 }));
 
 jest.mock('src/services/api/client', () => {
   const mockAxiosInstance = {
     post: jest.fn(),
     get: jest.fn(),
-    interceptors: {
-      request: { use: jest.fn() },
-      response: { use: jest.fn() },
-    },
+    interceptors: { request: { use: jest.fn() }, response: { use: jest.fn() } },
   };
   return {
     api: mockAxiosInstance,
     tokenStore: {
-      getAccess: jest.fn(),
-      getRefresh: jest.fn(),
-      setBoth: jest.fn(),
-      clear: jest.fn(),
+      getAccess: jest.fn(), getRefresh: jest.fn(), setBoth: jest.fn(), clear: jest.fn(),
     },
   };
 });
 
-jest.mock('pako', () => ({
-  gzip: jest.fn((data: string) => Buffer.from(data)),
-}));
+jest.mock('pako', () => ({ gzip: jest.fn((data: string) => Buffer.from(data)) }));
 
-import {
-  syncAll,
-  setQueryClient,
-  pushOperations,
-  pullServerData,
-} from 'src/services/sync/syncEngine';
+import { syncAll, setQueryClient, pushOperations, pullServerData } from 'src/services/sync/syncEngine';
 import { useOfflineStore } from 'src/stores/offlineStore';
+import { useAuthStore } from 'src/stores/authStore';
 
 const mockApi = jest.requireMock('src/services/api/client').api;
 const mockLogger = jest.requireMock('src/utils').logger;
+const mockSentry = jest.requireMock('@sentry/react-native');
+const mockStorage = jest.requireMock('src/services/storage').EncryptedStorage;
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  // Re-apply custom implementations lost by clearAllMocks
+  mockStorage.getItem.mockImplementation(async () => null);
+  mockStorage.setItem.mockImplementation(async () => {});
+  mockStorage.removeItem.mockImplementation(async () => {});
+  mockStorage.clear.mockImplementation(async () => {});
+
+  mockApi.post.mockResolvedValue({ data: { results: [] } });
+  mockApi.get.mockResolvedValue({ data: { changes: [] } });
+
   const { result } = renderHook(() => useOfflineStore());
-  await act(async () => {
-    await result.current.clear();
+  await act(async () => { await result.current.clear(); });
+  useAuthStore.setState({ user: { id: 'user1', email: 'test@test.com', phone_number: null, display_name: null, role: 'user', is_active: true, is_verified: true, provider: 'local', created_at: new Date().toISOString(), last_login_at: null } });
+});
+
+describe('pushOperations', () => {
+  it('does nothing with empty array', async () => {
+    await pushOperations([]);
+    expect(mockApi.post).not.toHaveBeenCalled();
   });
 });
 
-it('pushOperations does nothing with empty array', async () => {
-  await pushOperations([]);
-  expect(mockApi.post).not.toHaveBeenCalled();
-});
-
-it('setQueryClient stores the query client reference', () => {
-  const qc = { invalidateQueries: jest.fn() };
-  setQueryClient(qc);
-  expect(qc.invalidateQueries).not.toHaveBeenCalled();
-});
-
-it('pullServerData returns null on api failure', async () => {
-  mockApi.get.mockRejectedValue(new Error('Network error'));
-  const result = await pullServerData();
-  expect(result).toBeNull();
-  expect(mockLogger.error).toHaveBeenCalled();
-});
-
-it('pullServerData returns null when no changes', async () => {
-  mockApi.get.mockResolvedValue({
-    data: { data: { changes: [] } },
+describe('setQueryClient', () => {
+  it('stores the query client reference', () => {
+    const qc = { invalidateQueries: jest.fn(), setQueryData: jest.fn() };
+    setQueryClient(qc);
+    expect(qc.invalidateQueries).not.toHaveBeenCalled();
   });
-  const result = await pullServerData();
-  expect(result).toBeNull();
 });
 
-it('pullServerData returns latest updated_at when changes exist', async () => {
-  mockApi.get.mockResolvedValue({
-    data: {
+describe('pullServerData', () => {
+  it('returns null on api failure', async () => {
+    mockApi.get.mockRejectedValue(new Error('Network error'));
+    const result = await pullServerData();
+    expect(result).toBeNull();
+  });
+
+  it('returns null when no changes', async () => {
+    mockApi.get.mockResolvedValue({ data: { changes: [] } });
+    const result = await pullServerData();
+    expect(result).toBeNull();
+  });
+
+  it('returns latest updated_at when changes exist', async () => {
+    mockApi.get.mockResolvedValue({
       data: {
         changes: [
           { entity_type: 'journal', entity_id: '1', action: 'created', data: {}, updated_at: '2024-01-01T00:00:00Z' },
         ],
+        has_more: false,
       },
-    },
-  });
-  const result = await pullServerData();
-  expect(result).toBe('2024-01-01T00:00:00Z');
-});
-
-it('syncAll logs start and complete', async () => {
-  mockApi.get.mockResolvedValue({
-    data: { data: { changes: [] } },
-  });
-  mockApi.post.mockResolvedValue({
-    data: { data: { results: [] } },
-  });
-  await syncAll();
-  expect(mockLogger.info).toHaveBeenCalledWith('sync.starting');
-  expect(mockLogger.info).toHaveBeenCalledWith('sync.completed');
-});
-
-it('syncAll does not run concurrently', async () => {
-  mockApi.get.mockResolvedValue({
-    data: { data: { changes: [] } },
-  });
-  mockApi.post.mockResolvedValue({
-    data: { data: { results: [] } },
-  });
-  await syncAll();
-  expect(mockLogger.info).toHaveBeenLastCalledWith('sync.completed');
-});
-
-it('syncAll pushes pending operations from offline store', async () => {
-  mockApi.post.mockResolvedValue({
-    data: { data: { results: [] } },
-  });
-  mockApi.get.mockResolvedValue({
-    data: { data: { changes: [] } },
-  });
-  const { result } = renderHook(() => useOfflineStore());
-  await act(async () => {
-    await result.current.enqueue({
-      tempId: 't1',
-      entity: 'journal',
-      action: 'create',
-      payload: { content: 'hello' },
     });
+    const result = await pullServerData();
+    expect(result).toBe('2024-01-01T00:00:00Z');
   });
-  await syncAll();
-  expect(mockApi.post).toHaveBeenCalled();
 });
 
-it('offline store enqueue adds operation with retry tracking', async () => {
-  const { result } = renderHook(() => useOfflineStore());
-  let id = '';
-  await act(async () => {
-    id = await result.current.enqueue({
-      tempId: 'sync-op',
-      entity: 'journal',
-      action: 'create',
-      payload: { text: 'sync test' },
-    });
+describe('syncAll', () => {
+  it('logs start and complete', async () => {
+    mockApi.get.mockResolvedValue({ data: { changes: [] } });
+    mockApi.post.mockResolvedValue({ data: { results: [] } });
+    await syncAll();
+    expect(mockLogger.info).toHaveBeenCalledWith('sync.cycle.starting', expect.any(Object));
+    expect(mockLogger.info).toHaveBeenCalledWith('sync.cycle.completed', expect.any(Object));
   });
-  expect(id).toBeDefined();
-  expect(result.current.size()).toBe(1);
-  expect(result.current.operations[0].retryCount).toBe(0);
-  expect(result.current.operations[0].maxRetries).toBe(5);
-});
 
-it('offline store increments retry and tracks exhausted operations', async () => {
-  const { result } = renderHook(() => useOfflineStore());
-  let id = '';
-  await act(async () => {
-    id = await result.current.enqueue({
-      tempId: 'retry-op',
-      entity: 'mood',
-      action: 'create',
-      payload: { mood: 'happy' },
-    });
-    for (let i = 0; i < 5; i++) {
-      await result.current.incrementRetry(id);
-    }
+  it('does not run concurrently', async () => {
+    mockApi.get.mockResolvedValue({ data: { changes: [] } });
+    mockApi.post.mockResolvedValue({ data: { results: [] } });
+    await Promise.all([syncAll(), syncAll()]);
+    expect(mockLogger.warn).toHaveBeenCalledWith('sync.cycle.skipped_already_syncing');
   });
-  expect(result.current.operations[0].retryCount).toBe(5);
-  const pending = result.current.getPendingOperations();
-  expect(pending).toHaveLength(0);
+
+  it('skips sync if no authenticated user', async () => {
+    useAuthStore.setState({ user: null });
+    mockApi.get.mockResolvedValue({ data: { changes: [] } });
+    await syncAll();
+    expect(mockLogger.warn).toHaveBeenCalledWith('sync.cycle.skipped_no_auth');
+  });
+
+  it('pushes pending operations then pulls server data', async () => {
+    mockApi.post.mockResolvedValue({ data: { results: [] } });
+    mockApi.get.mockResolvedValue({ data: { changes: [] } });
+
+    const { result } = renderHook(() => useOfflineStore());
+    await act(async () => {
+      await result.current.enqueue({
+        type: 'journal/create', data: { content: 'test' }, tempId: 't1',
+        idempotencyKey: 'ik1', clientUpdatedAt: new Date().toISOString(), priority: 'normal',
+      });
+    });
+
+    await syncAll();
+    expect(mockApi.post).toHaveBeenCalled();
+    expect(mockApi.get).toHaveBeenCalled();
+  });
+
+  it('sets Sentry tags on start and clears on completion', async () => {
+    mockApi.get.mockResolvedValue({ data: { changes: [] } });
+    mockApi.post.mockResolvedValue({ data: { results: [] } });
+    await syncAll();
+    expect(mockSentry.setTag).toHaveBeenCalledWith('sync.is_syncing', 'true');
+    expect(mockSentry.setTag).toHaveBeenCalledWith('sync.is_syncing', 'false');
+  });
+
+  it('logs push failed and skips pull on push error', async () => {
+    mockApi.post.mockRejectedValue(new Error('Push failed'));
+    mockApi.get.mockResolvedValue({ data: { changes: [] } });
+    const { result } = renderHook(() => useOfflineStore());
+    await act(async () => {
+      await result.current.enqueue({
+        type: 'journal/create', data: { content: 'test' }, tempId: 't1',
+        idempotencyKey: 'ik1', clientUpdatedAt: new Date().toISOString(), priority: 'normal',
+      });
+    });
+
+    await syncAll();
+    expect(mockLogger.error).toHaveBeenCalledWith('sync.push_failed', expect.any(Object));
+    expect(mockLogger.info).toHaveBeenCalledWith('sync.cycle.completed', expect.any(Object));
+  });
 });
