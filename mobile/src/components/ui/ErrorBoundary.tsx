@@ -13,7 +13,7 @@ interface State {
   error: Error | null;
 }
 
-function DefaultFallback({ error, onReset }: { error: Error | null; onReset: () => void }) {
+function DefaultFallback({ error: _error, onReset }: { error: Error | null; onReset: () => void }) {
   const { isConnected } = useNetworkStatus();
 
   const message = !isConnected

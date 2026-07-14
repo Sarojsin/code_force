@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 
@@ -54,7 +55,7 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer>
-      <Root.Navigator screenOptions={{ headerShown: false }}>
+      <Root.Navigator screenOptions={{ headerShown: false, cardStyle: Platform.OS === 'web' ? ({ overflow: 'auto' } as any) : undefined }}>
         {user ? (
           onboardingCompleted ? (
             <Root.Screen name="Main" component={MainTabs} />

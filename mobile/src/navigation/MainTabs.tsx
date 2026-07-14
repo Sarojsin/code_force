@@ -4,7 +4,6 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Svg, { Path, Circle as SvgCircle } from 'react-native-svg';
 
@@ -75,12 +74,22 @@ export function MainTabs() {
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarStyle: {
-          backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.border,
-          borderTopWidth: StyleSheet.hairlineWidth,
+          position: 'absolute',
+          bottom: 12,
+          left: 16,
+          right: 16,
+          backgroundColor: 'rgba(255, 255, 255, 0.85)',
+          borderTopColor: 'rgba(255, 255, 255, 0.3)',
+          borderTopWidth: 0,
+          borderRadius: 20,
           height: 60,
           paddingBottom: 6,
           paddingTop: 6,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 12,
+          elevation: 8,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         headerShown: false,

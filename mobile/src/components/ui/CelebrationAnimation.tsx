@@ -61,6 +61,6 @@ export function CelebrationAnimation() {
 }
 
 const styles = StyleSheet.create({
-  container: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+  container: { ...StyleSheet.absoluteFill, overflow: 'hidden' },
   particle: { position: 'absolute', top: 0 },
 });

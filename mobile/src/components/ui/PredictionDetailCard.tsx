@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
-import Svg, { Circle as SvgCircle, Path, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle as SvgCircle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 import { useTheme } from 'src/theme';
 import { Card } from './Card';
@@ -27,7 +27,6 @@ function CircularConfidence({ score }: { score: number }) {
   const circumference = 2 * Math.PI * radius;
   const pct = Math.round((score ?? 0.86) * 100);
   const progress = circumference * (1 - pct / 100);
-  const color = pct >= 80 ? theme.colors.success : pct >= 60 ? theme.colors.warning : theme.colors.danger;
 
   return (
     <View style={styles.circularWrap}>
@@ -62,7 +61,7 @@ function CircularConfidence({ score }: { score: number }) {
 
 function TimelineBar({ phase }: { phase: 'menstrual' | 'follicular' | 'ovulation' | 'luteal' | string }) {
   const theme = useTheme();
-  const colors = { menstrual: '#FF5252', follicular: '#FFD54F', ovulation: '#4CAF50', luteal: '#42A5F5' };
+  const colors = { menstrual: '#FF6B8A', follicular: '#FFDAB9', ovulation: '#D4F0E0', luteal: '#E8D5F5' };
   const phases = ['menstrual', 'follicular', 'ovulation', 'luteal'];
   const activeIdx = phases.indexOf(phase as any);
   const segW = (CARD_WIDTH - 48) / 4;

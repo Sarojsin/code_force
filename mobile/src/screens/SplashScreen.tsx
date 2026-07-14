@@ -4,7 +4,7 @@
  * Shown while auth state is determined.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing } from 'react-native-reanimated';
 import Svg, { Path, Circle as SvgCircle, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
@@ -74,7 +74,7 @@ export function SplashScreen({ onFinish }: { onFinish: () => void }) {
   const dots = [dot1, dot2, dot3, dot4, dot5];
 
   useEffect(() => {
-    dots.forEach((dot, i) => {
+    dots.forEach((dot) => {
       dot.value = withRepeat(
         withSequence(
           withTiming(1, { duration: 400, easing: Easing.ease }),
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   aurora: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   glassCircle: {
     position: 'absolute',

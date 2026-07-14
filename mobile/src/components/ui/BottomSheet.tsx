@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect, useCallback } from 'react';
+import React, { ReactNode, useEffect, useCallback, useMemo } from 'react';
 import { StyleSheet, View, Pressable, BackHandler, Dimensions } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -22,15 +22,28 @@ export interface BottomSheetProps {
   snapPoints?: number[];
 }
 
+const DEFAULT_SNAP_POINTS = [0.3, 0.65, 0.9];
+
 export function BottomSheet({
   visible,
   onClose,
   title,
   children,
+  snapPoints: snapPointsProp,
 }: BottomSheetProps) {
   const theme = useTheme();
+  const snapPoints = useMemo(() => snapPointsProp ?? DEFAULT_SNAP_POINTS, [snapPointsProp]);
+
+  const currentSnap = useSharedValue(snapPoints.length - 1);
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const opacity = useSharedValue(0);
+
+  const translateToSnap = useCallback((index: number) => {
+    'worklet';
+    const target = SCREEN_HEIGHT * (1 - snapPoints[index]);
+    translateY.value = withSpring(target, { damping: 25, stiffness: 250 });
+    currentSnap.value = index;
+  }, [snapPoints, translateY, currentSnap]);
 
   const closeSheet = useCallback(() => {
     'worklet';
@@ -41,13 +54,13 @@ export function BottomSheet({
 
   useEffect(() => {
     if (visible) {
-      translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
+      translateToSnap(snapPoints.length - 1);
       opacity.value = withTiming(1, { duration: 250 });
     } else {
       translateY.value = withTiming(SCREEN_HEIGHT, { duration: 250 });
       opacity.value = withTiming(0, { duration: 250 });
     }
-  }, [visible, translateY, opacity]);
+  }, [visible, translateY, opacity, translateToSnap, snapPoints.length]);
 
   useEffect(() => {
     const handler = () => { if (visible) { onClose(); return true; } return false; };
@@ -61,15 +74,25 @@ export function BottomSheet({
   const pan = Gesture.Pan()
     .minDistance(10)
     .onUpdate((e) => {
+      const sheetStart = SCREEN_HEIGHT * (1 - snapPoints[snapPoints.length - 1]);
       if (e.translationY > 0) {
-        translateY.value = e.translationY;
+        translateY.value = sheetStart + e.translationY;
+      } else if (e.translationY < 0 && currentSnap.value === snapPoints.length - 1) {
+        translateY.value = sheetStart + e.translationY * 0.3;
       }
     })
     .onEnd((e) => {
-      if (e.translationY > SCREEN_HEIGHT * 0.4) {
-        closeSheet();
+      const totalTravel = e.translationY;
+      if (totalTravel > SCREEN_HEIGHT * 0.2) {
+        if (currentSnap.value > 0) {
+          translateToSnap(currentSnap.value - 1);
+        } else {
+          closeSheet();
+        }
+      } else if (totalTravel < -SCREEN_HEIGHT * 0.1 && currentSnap.value < snapPoints.length - 1) {
+        translateToSnap(currentSnap.value + 1);
       } else {
-        translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
+        translateToSnap(currentSnap.value);
       }
     });
 

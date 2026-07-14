@@ -8,6 +8,7 @@
  */
 
 import React, { ReactNode } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -55,7 +56,7 @@ export { queryClient };
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, overflow: Platform.OS === 'web' ? ('auto' as any) : 'hidden' }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>{children}</ThemeProvider>

@@ -11,7 +11,7 @@ export function ConnectivityBanner() {
   const pendingCount = useOfflineStore((s) => s.operations.length);
   const theme = useTheme();
   const [visible, setVisible] = useState(!isConnected);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (isConnected) {

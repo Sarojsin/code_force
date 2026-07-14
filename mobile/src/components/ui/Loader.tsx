@@ -37,7 +37,7 @@ export function Loader({ fullScreen = false, color, size = 'large' }: LoaderProp
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 999,

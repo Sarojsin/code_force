@@ -30,7 +30,7 @@ export function StickyCard({
 }: StickyCardProps) {
   const theme = useTheme();
   const [showPicker, setShowPicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, _setSelectedDate] = useState(new Date());
 
   if (!visible) return null;
 

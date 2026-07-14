@@ -1,18 +1,17 @@
-/**
- * AnalyticsDashboardScreen — Bento layout with charts per UI_UX Analytics spec.
- * Line charts, circular progress, symptom bars, sleep/stress.
- */
-
-import React from 'react';
-import { ScrollView, StyleSheet, View, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, View, Dimensions, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Circle as SvgCircle, Line, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Circle as SvgCircle, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
 
-import { Card, Text } from 'src/components/ui';
+import { Card, Text, Skeleton } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_WIDTH = SCREEN_WIDTH - 64;
+
+type FilterRange = '3mo' | '6mo' | '1yr' | 'All';
+
+const FILTERS: FilterRange[] = ['3mo', '6mo', '1yr', 'All'];
 
 const MOCK_STATS = {
   avgCycleLength: 28,
@@ -109,14 +108,80 @@ function CircularProgress({ pct, size = 80, label, color }: { pct: number; size?
 
 export function AnalyticsDashboardScreen() {
   const theme = useTheme();
+  const [filter, setFilter] = useState<FilterRange>('6mo');
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const hasData = MOCK_STATS.loggedCycles >= 3;
+
+  if (!hasData) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: '#FFF8FB' }]}>
+        <View style={styles.emptyContainer}>
+          <Svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+            <SvgCircle cx="60" cy="60" r="50" fill={theme.colors.primaryMuted} />
+            <Path d="M40 55 Q50 45 60 55 Q70 65 80 55" stroke={theme.colors.primary} strokeWidth="3" fill="none" strokeLinecap="round" />
+            <SvgCircle cx="48" cy="48" r="4" fill={theme.colors.accent} />
+            <SvgCircle cx="72" cy="48" r="4" fill={theme.colors.accent} />
+            <Path d="M45 75 L60 70 L75 75" stroke={theme.colors.accent} strokeWidth="2" fill="none" strokeLinecap="round" />
+          </Svg>
+          <Text variant="h2" align="center" style={{ marginTop: 24 }}>Patience is beautiful</Text>
+          <Text variant="body" color="secondary" align="center" style={{ marginTop: 8, paddingHorizontal: 32 }}>
+            Log at least 3 cycles to unlock detailed insights and patterns
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: '#FFF8FB' }]}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <Skeleton width={120} height={12} style={{ marginBottom: 4 }} />
+          <Skeleton width={200} height={10} style={{ marginBottom: 24 }} />
+          <View style={styles.statRow}>
+            <Card style={{ flex: 1, marginRight: 6 }} padded><Skeleton width={40} height={24} style={{ alignSelf: 'center', marginBottom: 4 }} /><Skeleton width={80} height={10} style={{ alignSelf: 'center' }} /></Card>
+            <Card style={{ flex: 1, marginLeft: 6 }} padded><Skeleton width={40} height={24} style={{ alignSelf: 'center', marginBottom: 4 }} /><Skeleton width={80} height={10} style={{ alignSelf: 'center' }} /></Card>
+          </View>
+          <Skeleton height={140} style={{ marginTop: 12, borderRadius: 16 }} />
+          <View style={[styles.statRow, { marginTop: 12 }]}>
+            <Card style={{ flex: 1, marginRight: 6 }} padded><Skeleton width={60} height={60} radius={30} style={{ alignSelf: 'center' }} /><Skeleton width={80} height={10} style={{ alignSelf: 'center', marginTop: 4 }} /></Card>
+            <Card style={{ flex: 1, marginLeft: 6 }} padded><Skeleton width={40} height={24} style={{ alignSelf: 'center' }} /><Skeleton width={80} height={10} style={{ alignSelf: 'center', marginTop: 4 }} /></Card>
+          </View>
+          <Skeleton height={160} style={{ marginTop: 12, borderRadius: 16 }} />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: '#FFF8FB' }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text variant="h1" style={{ marginBottom: 4 }}>Analytics</Text>
-        <Text variant="body" color="secondary" style={{ marginBottom: 24 }}>Your cycle patterns at a glance</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text variant="h1" style={{ marginBottom: 4 }}>Analytics</Text>
+            <Text variant="body" color="secondary">Your cycle patterns at a glance</Text>
+          </View>
+          <View style={styles.filterRow}>
+            {FILTERS.map((f) => (
+              <Pressable
+                key={f}
+                onPress={() => setFilter(f)}
+                style={[styles.filterChip, { backgroundColor: filter === f ? theme.colors.primary : theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radius.pill }]}
+                accessibilityLabel={`Filter by ${f}`}
+                accessibilityRole="button"
+              >
+                <Text variant="caption" style={{ color: filter === f ? '#fff' : theme.colors.textPrimary }}>{f}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
 
-        {/* Stat cards */}
         <View style={styles.statRow}>
           <Card style={{ flex: 1, marginRight: 6 }} padded>
             <Text variant="h2" color="primary" align="center">{MOCK_STATS.avgCycleLength}</Text>
@@ -128,13 +193,11 @@ export function AnalyticsDashboardScreen() {
           </Card>
         </View>
 
-        {/* Cycle length chart */}
         <Card style={{ marginTop: 12, paddingVertical: 16 }}>
           <Text variant="h3" style={{ marginBottom: 12, paddingHorizontal: 16 }}>Cycle Length Over Time</Text>
           <MiniLineChart />
         </Card>
 
-        {/* Prediction accuracy + Mood */}
         <View style={[styles.statRow, { marginTop: 12 }]}>
           <Card style={{ flex: 1, marginRight: 6 }} padded>
             <CircularProgress pct={MOCK_STATS.predictionAccuracy} color={theme.colors.success} label="Prediction Accuracy" />
@@ -146,7 +209,6 @@ export function AnalyticsDashboardScreen() {
           </Card>
         </View>
 
-        {/* Symptom bars */}
         <Card style={{ marginTop: 12 }}>
           <Text variant="h3" style={{ marginBottom: 12 }}>Top Symptoms</Text>
           {MOCK_SYMPTOMS.map((s, i) => (
@@ -160,7 +222,6 @@ export function AnalyticsDashboardScreen() {
           ))}
         </Card>
 
-        {/* Sleep & Stress */}
         <Card style={{ marginTop: 12 }}>
           <Text variant="h3" style={{ marginBottom: 12 }}>Sleep & Stress</Text>
           <View style={styles.sleepRow}>
@@ -188,10 +249,14 @@ export function AnalyticsDashboardScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { paddingHorizontal: 24, paddingTop: 16 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
+  filterRow: { flexDirection: 'row', gap: 4 },
+  filterChip: { paddingHorizontal: 10, paddingVertical: 6, borderWidth: StyleSheet.hairlineWidth },
   statRow: { flexDirection: 'row' },
   circularContainer: { alignItems: 'center' },
   symptomRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
   barBg: { flex: 1, height: 20 },
   barFill: { height: '100%' },
   sleepRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
 });
