@@ -11,6 +11,10 @@ dist/
 # Dependencies
 node_modules/
 
+# Native directories (CNG — EAS Build regenerates)
+/android/
+/ios/
+
 # iOS
 ios/Pods/
 ios/build/
