@@ -9,14 +9,11 @@ export class WordPieceTokenizer {
   private readonly CLS_TOKEN = '[CLS]';
   private readonly SEP_TOKEN = '[SEP]';
   private readonly PAD_TOKEN = '[PAD]';
-  private readonly MASK_TOKEN = '[MASK]';
   private readonly MAX_LEN = 128;
 
   private vocab: Map<string, number>;
   private invVocab: Map<number, string>;
   private unkId: number;
-  private clsId: number;
-  private sepId: number;
   private padId: number;
 
   constructor() {
@@ -25,8 +22,6 @@ export class WordPieceTokenizer {
       Object.entries(VOCAB).map(([k, v]) => [v as unknown as number, k]),
     );
     this.unkId = this.vocab.get(this.UNK_TOKEN) ?? 100;
-    this.clsId = this.vocab.get(this.CLS_TOKEN) ?? 101;
-    this.sepId = this.vocab.get(this.SEP_TOKEN) ?? 102;
     this.padId = this.vocab.get(this.PAD_TOKEN) ?? 0;
   }
 

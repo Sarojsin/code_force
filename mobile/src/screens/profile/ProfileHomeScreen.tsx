@@ -24,7 +24,7 @@ export function ProfileHomeScreen() {
 
   const handleLogout = () => {
     if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to log out?')) {
+      if ((globalThis as any).confirm('Are you sure you want to log out?')) {
         void performLogout();
       }
     } else {

@@ -5,14 +5,11 @@ class WordPieceTokenizer {
   private readonly CLS_TOKEN = '[CLS]';
   private readonly SEP_TOKEN = '[SEP]';
   private readonly PAD_TOKEN = '[PAD]';
-  private readonly MASK_TOKEN = '[MASK]';
   private readonly MAX_LEN = 128;
 
   private vocab: Map<string, number>;
   private invVocab: Map<number, string>;
   private unkId: number;
-  private clsId: number;
-  private sepId: number;
   private padId: number;
 
   constructor() {
@@ -21,8 +18,6 @@ class WordPieceTokenizer {
       Object.entries(VOCAB_MINILM).map(([k, v]) => [v as unknown as number, k]),
     );
     this.unkId = this.vocab.get(this.UNK_TOKEN) ?? 100;
-    this.clsId = this.vocab.get(this.CLS_TOKEN) ?? 101;
-    this.sepId = this.vocab.get(this.SEP_TOKEN) ?? 102;
     this.padId = this.vocab.get(this.PAD_TOKEN) ?? 0;
   }
 
@@ -30,7 +25,6 @@ class WordPieceTokenizer {
     const chars = word.split('');
     const tokens: string[] = [];
     let start = 0;
-    let subToken = '';
     while (start < chars.length) {
       let end = chars.length;
       let found = false;

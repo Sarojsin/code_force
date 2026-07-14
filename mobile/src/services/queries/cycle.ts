@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
-import { cycleService, CalendarResponse, CycleEntry } from 'src/services/api';
+import { cycleService, CycleEntry } from 'src/services/api';
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { isNetworkError } from 'src/services/sync';
 import { generateId } from 'src/utils';
@@ -160,7 +160,7 @@ export function useLogSnooze() {
           data: variables,
           idempotencyKey: generateId(),
           clientUpdatedAt: new Date().toISOString(),
-          priority: 'low',
+          priority: 'normal',
         });
         Toast.show({ type: 'info', text1: 'Saved offline — will sync when online' });
         qc.setQueryData(cycleKeys.calendar, (old: any) => {

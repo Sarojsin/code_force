@@ -7,13 +7,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View, Pressable, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withDelay } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withDelay, withSequence } from 'react-native-reanimated';
 import Svg, { Path, Circle as SvgCircle } from 'react-native-svg';
 
 import { Text, Skeleton } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { cycleService } from 'src/services/api/cycle';
+import { useAuthStore } from 'src/stores/authStore';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type Nav = any;
 
@@ -79,7 +80,6 @@ function GlassCard({
 }
 
 function StatBadge({ value, label, color }: { value: string; label: string; color: string }) {
-  const theme = useTheme();
   return (
     <View style={styles.badge}>
       <Text variant="h2" style={{ color, textAlign: 'center' }}>{value}</Text>
@@ -93,13 +93,18 @@ export function HomeDashboardScreen() {
   const navigation = useNavigation<Nav>();
   const [calData, setCalData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const user = useAuthStore((s) => s.user);
+  const displayName = user?.display_name ?? '';
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const cal = await cycleService.getCalendar(3, 3);
       setCalData(cal);
     } catch (err) {
+      setError('Could not reload dashboard. Please check your connection.');
       console.warn('Failed to load home dashboard', err);
     } finally {
       setLoading(false);
@@ -114,25 +119,52 @@ export function HomeDashboardScreen() {
     ? new Date(Date.now() + calData.next_period_in_days * 86400000)
     : null;
 
+  const bellRotation = useSharedValue(0);
+  const bellAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${bellRotation.value}deg` }],
+  }));
+
+  const handleBellPress = useCallback(() => {
+    bellRotation.value = withSequence(
+      withSpring(-15, { damping: 4, stiffness: 200 }),
+      withSpring(15, { damping: 4, stiffness: 200 }),
+      withSpring(-10, { damping: 4, stiffness: 200 }),
+      withSpring(0, { damping: 10, stiffness: 200 }),
+    );
+  }, [bellRotation]);
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: '#FFF8FB' }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {error && (
+          <View style={[styles.errorBanner, { backgroundColor: theme.colors.danger + '15', borderColor: theme.colors.danger + '30', borderRadius: theme.radius.md }]}>
+            <Text variant="bodySmall" style={{ color: theme.colors.danger, flex: 1 }}>
+              {error}
+            </Text>
+            <Pressable onPress={fetchData} accessibilityLabel="Retry loading dashboard" accessibilityRole="button">
+              <Text variant="bodySmall" style={{ color: theme.colors.danger, fontWeight: '700' }}>Retry</Text>
+            </Pressable>
+          </View>
+        )}
+
         {/* Header */}
         <View style={styles.header}>
           <View>
             <Text variant="display" style={{ color: theme.colors.textPrimary }}>
-              Good morning
+              Good morning{displayName ? `, ${displayName}` : ''}
             </Text>
             <Text variant="body" color="secondary">
               Here's your wellness overview
             </Text>
           </View>
           <View style={styles.headerActions}>
-            <Pressable accessibilityLabel="Notifications" style={[styles.iconBtn, { borderRadius: theme.radius.pill }]}>
-              <Svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <Path d="M13.73 21a2 2 0 01-3.46 0" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </Svg>
+            <Pressable onPress={handleBellPress} accessibilityLabel="Notifications" style={[styles.iconBtn, { borderRadius: theme.radius.pill }]}>
+              <Animated.View style={bellAnimStyle}>
+                <Svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <Path d="M13.73 21a2 2 0 01-3.46 0" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
+              </Animated.View>
             </Pressable>
             <Pressable
               accessibilityLabel="Profile"
@@ -169,7 +201,7 @@ export function HomeDashboardScreen() {
             </GlassCard>
 
             <GlassCard delay={50} style={[styles.cardHalf, { minHeight: CARD_H_MD }]}>
-              <View style={[styles.cardContent, { backgroundColor: theme.colors.primary, borderRadius: theme.radius.xl, margin: -1, padding: 16, flex: 1 }]}>
+              <LinearGradient colors={[theme.colors.primary, '#B06AB3']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: theme.radius.xl, flex: 1, padding: 16, justifyContent: 'center' }}>
                 <Text variant="bodySmall" style={{ color: 'rgba(255,255,255,0.85)' }}>Next Period</Text>
                 <Text variant="display" style={{ color: '#fff', fontSize: 28, marginTop: 4 }}>
                   {calData?.next_period_in_days != null ? `${calData.next_period_in_days} days` : '--'}
@@ -177,7 +209,7 @@ export function HomeDashboardScreen() {
                 <Text variant="caption" style={{ color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>
                   {nextPeriodDate ? nextPeriodDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
                 </Text>
-              </View>
+              </LinearGradient>
             </GlassCard>
 
             {/* Row 2: AI Prediction (full width) */}
@@ -197,6 +229,12 @@ export function HomeDashboardScreen() {
                     <StatBadge value={calData?.predictions?.confidence ? `${Math.round(calData.predictions.confidence * 100)}%` : '86%'} label="Accuracy" color={theme.colors.success} />
                     <StatBadge value="75%" label="Fertility" color={theme.colors.accent} />
                     <StatBadge value="92%" label="Ovulation" color={theme.colors.primary} />
+                  </View>
+                  <View style={{ marginTop: 8, height: 24 }}>
+                    <Svg width="100%" height="24" viewBox="0 0 200 24" preserveAspectRatio="none">
+                      <Path d="M0 20 Q20 12 40 15 T80 10 T120 14 T160 6 T200 8" fill="none" stroke={theme.colors.accent} strokeWidth="1.5" opacity="0.6" />
+                      <Path d="M0 20 Q20 12 40 15 T80 10 T120 14 T160 6 T200 8" fill="none" stroke={theme.colors.accent} strokeWidth="2.5" strokeLinecap="round" />
+                    </Svg>
                   </View>
                 </View>
               </Pressable>
@@ -310,6 +348,7 @@ const styles = StyleSheet.create({
   },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', padding: 12, borderWidth: 1, marginBottom: 12 },
   avatar: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   loadingGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },

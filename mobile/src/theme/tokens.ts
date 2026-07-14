@@ -31,11 +31,11 @@ export const palette = {
   warning500: '#F4A93C',
   danger500: '#D63B3B',
   info500: '#3B82F6',
-  // Phase colors — Calendar & Menstrual_Phases spec
-  menstrual: '#FF5252',
-  follicular: '#FFD54F',
-  ovulation: '#4CAF50',
-  luteal: '#42A5F5',
+  // Phase colors — soft pastel palette per UI_UX spec
+  menstrual: '#FF6B8A',
+  follicular: '#FFDAB9',
+  ovulation: '#D4F0E0',
+  luteal: '#E8D5F5',
 } as const;
 
 export const colors = {
@@ -68,6 +68,7 @@ export const darkColors = {
   primary: palette.primary300,
   primaryMuted: palette.primary700,
   accent: palette.accent300,
+  accentMuted: palette.accent700,
   success: palette.success500,
   warning: palette.warning500,
   danger: palette.danger500,
@@ -93,19 +94,29 @@ export const radius = {
   pill: 999, // avatars, badges, toggle handles
 } as const;
 
+// Font families — load Playfair Display via expo-font in ThemeProvider
+export const fonts = {
+  heading: 'Playfair Display',
+  body: 'Inter',
+  mono: 'SF Mono',
+} as const;
+
 export const typography = {
-  display: { fontSize: 32, fontWeight: '700' as const, lineHeight: 38 },
-  h1: { fontSize: 24, fontWeight: '700' as const, lineHeight: 30 },
-  h2: { fontSize: 20, fontWeight: '600' as const, lineHeight: 26 },
-  h3: { fontSize: 18, fontWeight: '600' as const, lineHeight: 24 },
-  body: { fontSize: 16, fontWeight: '400' as const, lineHeight: 22 },
-  bodySmall: { fontSize: 14, fontWeight: '400' as const, lineHeight: 20 },
-  caption: { fontSize: 12, fontWeight: '400' as const, lineHeight: 16 },
-  button: { fontSize: 16, fontWeight: '600' as const, lineHeight: 20 },
+  display: { fontSize: 32, fontWeight: '700' as const, lineHeight: 38, fontFamily: fonts.heading },
+  h1: { fontSize: 24, fontWeight: '700' as const, lineHeight: 30, fontFamily: fonts.heading },
+  h2: { fontSize: 20, fontWeight: '600' as const, lineHeight: 26, fontFamily: fonts.body },
+  h3: { fontSize: 18, fontWeight: '600' as const, lineHeight: 24, fontFamily: fonts.body },
+  body: { fontSize: 16, fontWeight: '400' as const, lineHeight: 22, fontFamily: fonts.body },
+  bodySmall: { fontSize: 14, fontWeight: '400' as const, lineHeight: 20, fontFamily: fonts.body },
+  caption: { fontSize: 12, fontWeight: '400' as const, lineHeight: 16, fontFamily: fonts.body },
+  button: { fontSize: 16, fontWeight: '600' as const, lineHeight: 20, fontFamily: fonts.body },
+  // Extra variants per UI_UX spec
+  displayLogo: { fontSize: 28, fontWeight: '700' as const, lineHeight: 34, fontFamily: fonts.heading },
+  displayCountdown: { fontSize: 48, fontWeight: '700' as const, lineHeight: 52, fontFamily: fonts.heading },
+  tab: { fontSize: 11, fontWeight: '500' as const, lineHeight: 14, fontFamily: fonts.body },
 } as const;
 
 export const shadow = {
-  // iOS shadow + Android elevation combined
   sm: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -126,6 +137,28 @@ export const shadow = {
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 6,
+  },
+  // Semantic shadows per UI_UX spec
+  soft: {
+    shadowColor: '#FF6B8A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  primary: {
+    shadowColor: '#FF6B8A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  sos: {
+    shadowColor: '#FF0000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
   },
 } as const;
 

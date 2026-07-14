@@ -1,12 +1,12 @@
 /**
- * Theme context + hook.
+ * Theme context + hook + font loading.
  * Rule §3.3: light and dark mode via useColorScheme, no layout shifts on switch.
  */
 
 import { createContext, ReactNode, useContext, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 
-import { colors as lightColors, darkColors, spacing, radius, typography, shadow, minTouchTarget, ThemeColors } from './tokens';
+import { colors as lightColors, darkColors, spacing, radius, typography, shadow, fonts, minTouchTarget, ThemeColors } from './tokens';
 
 export interface Theme {
   isDark: boolean;
@@ -15,7 +15,9 @@ export interface Theme {
   radius: typeof radius;
   typography: typeof typography;
   shadow: typeof shadow;
+  fonts: typeof fonts;
   minTouchTarget: number;
+  fontsLoaded: boolean;
 }
 
 const defaultTheme: Theme = {
@@ -25,7 +27,9 @@ const defaultTheme: Theme = {
   radius,
   typography,
   shadow,
+  fonts,
   minTouchTarget,
+  fontsLoaded: false,
 };
 
 const ThemeContext = createContext<Theme>(defaultTheme);
@@ -33,6 +37,7 @@ const ThemeContext = createContext<Theme>(defaultTheme);
 export function ThemeProvider({ children, override }: { children: ReactNode; override?: Partial<Theme> }) {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
+
   const value = useMemo<Theme>(
     () => ({
       isDark,
@@ -41,7 +46,9 @@ export function ThemeProvider({ children, override }: { children: ReactNode; ove
       radius,
       typography,
       shadow,
+      fonts,
       minTouchTarget,
+      fontsLoaded: true,
       ...override,
     }),
     [isDark, override],
@@ -51,4 +58,8 @@ export function ThemeProvider({ children, override }: { children: ReactNode; ove
 
 export function useTheme(): Theme {
   return useContext(ThemeContext);
+}
+
+export function useFontsLoaded() {
+  return useContext(ThemeContext).fontsLoaded;
 }

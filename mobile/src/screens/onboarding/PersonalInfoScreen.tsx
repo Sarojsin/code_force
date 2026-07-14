@@ -9,6 +9,7 @@ import { logger } from 'src/utils';
 import { Button, FormField, PickerField, Text, ProgressDots } from 'src/components/ui';
 import { useTheme, shadow } from 'src/theme';
 import { personalInfoSchema, PersonalInfoForm } from 'src/validation';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useOnboardingStore } from 'src/stores';
 import type { OnboardingStackParamList } from 'src/navigation/types';
 

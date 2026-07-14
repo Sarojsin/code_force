@@ -10,13 +10,13 @@ import { useNavigation } from '@react-navigation/native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring,
-  scrollTo, useDerivedValue,
+  useAnimatedScrollHandler,
 } from 'react-native-reanimated';
-import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Svg, { Path, LinearGradient, Stop, Rect, Defs } from 'react-native-svg';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import Svg, { LinearGradient, Stop, Rect, Defs } from 'react-native-svg';
 
 import { Text } from 'src/components/ui';
-import { useTheme, palette } from 'src/theme';
+import { useTheme } from 'src/theme';
 import type { CalendarStackParamList } from 'src/navigation/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -45,7 +45,7 @@ const PHASES: PhaseData[] = [
     key: 'menstrual',
     title: 'Menstrual',
     subtitle: 'Day 1–5',
-    gradient: ['#D63B3B', '#FF5C8A'],
+    gradient: ['#FF6B8A', '#FF8FAA'],
     icon: '🩸',
     duration: 'Day 1 – Day 5',
     hormones: [
@@ -62,7 +62,7 @@ const PHASES: PhaseData[] = [
     key: 'follicular',
     title: 'Follicular',
     subtitle: 'Day 6–13',
-    gradient: ['#FFB74D', '#FFD54F'],
+    gradient: ['#FFDAB9', '#FFE8CC'],
     icon: '🌱',
     duration: 'Day 6 – Day 13',
     hormones: [
@@ -79,7 +79,7 @@ const PHASES: PhaseData[] = [
     key: 'ovulation',
     title: 'Ovulation',
     subtitle: 'Day 14–16',
-    gradient: ['#4CAF50', '#81C784'],
+    gradient: ['#D4F0E0', '#E2F5EA'],
     icon: '✨',
     duration: 'Day 14 – Day 16',
     hormones: [
@@ -96,7 +96,7 @@ const PHASES: PhaseData[] = [
     key: 'luteal',
     title: 'Luteal',
     subtitle: 'Day 17–28',
-    gradient: ['#7E57C2', '#9B7BFF'],
+    gradient: ['#E8D5F5', '#F0E3F8'],
     icon: '🌙',
     duration: 'Day 17 – Day 28',
     hormones: [
@@ -203,11 +203,19 @@ function PhaseCard({ phase, index }: { phase: PhaseData; index: number }) {
 }
 
 export function MenstrualPhasesScreen() {
-  const theme = useTheme();
   const route = useRoute<Rt>();
   const navigation = useNavigation();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<Animated.ScrollView>(null);
+  const scrollX = useSharedValue(0);
+
+  const scrollHandler = useAnimatedScrollHandler((e) => {
+    scrollX.value = e.contentOffset.x;
+  });
+
+  const parallaxBgStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -scrollX.value * 0.3 }],
+  }));
 
   const initialPhase = PHASES.findIndex(p => p.key === route.params?.phase);
   const startIndex = initialPhase >= 0 ? initialPhase : 0;
@@ -219,6 +227,21 @@ export function MenstrualPhasesScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: '#1A1D26' }]}>
       <GestureHandlerRootView style={{ flex: 1 }}>
+        {/* Parallax background — moves 30% slower than scroll */}
+        <Animated.View style={[styles.parallaxBg, parallaxBgStyle]}>
+          <Svg width={SCREEN_WIDTH * 3} height="100%" viewBox={`0 0 ${SCREEN_WIDTH * 3} 200`}>
+            <Defs>
+              <LinearGradient id="para1" x1="0" y1="0" x2="1" y2="1">
+                <Stop offset="0%" stopColor="#FF6B8A" stopOpacity="0.15" />
+                <Stop offset="33%" stopColor="#FFDAB9" stopOpacity="0.1" />
+                <Stop offset="66%" stopColor="#D4F0E0" stopOpacity="0.1" />
+                <Stop offset="100%" stopColor="#E8D5F5" stopOpacity="0.15" />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width={SCREEN_WIDTH * 3} height="200" fill="url(#para1)" />
+          </Svg>
+        </Animated.View>
+
         <Animated.ScrollView
           ref={scrollRef}
           horizontal
@@ -226,6 +249,8 @@ export function MenstrualPhasesScreen() {
           showsHorizontalScrollIndicator={false}
           snapToInterval={CARD_WIDTH + CARD_MARGIN}
           decelerationRate="fast"
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
           contentContainerStyle={{ paddingHorizontal: 24, gap: CARD_MARGIN }}
           onMomentumScrollEnd={(e) => {
             const idx = Math.round(e.nativeEvent.contentOffset.x / (CARD_WIDTH + CARD_MARGIN));
@@ -261,6 +286,7 @@ export function MenstrualPhasesScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  parallaxBg: { position: 'absolute', top: 0, left: 0, right: 0, height: 200 },
   cardWrapper: { width: CARD_WIDTH },
   card: { width: CARD_WIDTH, height: 480, overflow: 'hidden' },
   glassOverlay: {
