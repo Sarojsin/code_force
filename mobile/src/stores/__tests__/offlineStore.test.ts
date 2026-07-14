@@ -1,17 +1,5 @@
 import { act, renderHook } from '@testing-library/react-native';
 
-jest.mock('react-native-encrypted-storage', () => {
-  const store: Record<string, string> = {};
-  return {
-    default: {
-      getItem: jest.fn(async (key: string) => store[key] ?? null),
-      setItem: jest.fn(async (key: string, value: string) => { store[key] = value; }),
-      removeItem: jest.fn(async (key: string) => { delete store[key]; }),
-      clear: jest.fn(async () => { Object.keys(store).forEach((k) => delete store[k]); }),
-    },
-  };
-});
-
 jest.mock('src/services/storage', () => {
   const storage: Record<string, string> = {};
   return {

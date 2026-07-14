@@ -32,6 +32,11 @@
       "expo-notifications",
       "expo-dev-client"
     ],
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "listUnknownPackages": false
+      }
+    },
     "extra": {
       "eas": {
         "projectId": "8b099bcb-5141-4d25-8e95-13fe2fc47ce6"
