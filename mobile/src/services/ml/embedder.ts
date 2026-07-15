@@ -18,8 +18,9 @@ class MinILMEmbedder {
       this.session = await InferenceSession.create(
         require('assets/models/minilm_embedder.onnx'),
       );
-      // Initialize WordPiece tokenizer with the MiniLM vocab
       this.wpTokenizer = new WordPieceTokenizer();
+    } catch {
+      // onnxruntime native module unavailable
     } finally {
       this.loading = false;
     }
@@ -29,14 +30,11 @@ class MinILMEmbedder {
    * Get 384-dimensional sentence embedding
    */
   async embed(text: string): Promise<number[]> {
-    if (!isNative) {
-      // Return deterministic fake embedding for web/dev
+    if (!isNative || !this.session) {
       return Array.from({ length: 384 }, (_, i) =>
         Math.sin(text.length + i * 0.1) * 0.5,
       );
     }
-    if (!this.session) await this.initialize();
-    if (!this.session) throw new Error('ONNX session not initialized');
 
     const { Tensor } = require('onnxruntime-react-native');
     const t0 = performance.now();

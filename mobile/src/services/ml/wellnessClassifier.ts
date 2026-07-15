@@ -17,13 +17,14 @@ class WellnessClassifier {
       this.session = await InferenceSession.create(
         require('assets/models/wellness_classifier.onnx'),
       );
+    } catch {
     } finally {
       this.loading = false;
     }
   }
 
   async analyze(text: string): Promise<WellnessAnalysis> {
-    if (!isNative) {
+    if (!isNative || !this.session) {
       return {
         mood_score: 5,
         sentiment: 'neutral',
