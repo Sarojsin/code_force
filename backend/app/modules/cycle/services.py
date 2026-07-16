@@ -388,6 +388,11 @@ class CycleService:
         )
         predictions = (await self.db.execute(preds_stmt)).scalars().all()
 
+        if not predictions:
+            initial = await self.compute_initial_prediction(user_id)
+            if initial:
+                predictions = [initial]
+
         today_str = date.today().isoformat()
         days: dict[str, str] = {}
         current = start

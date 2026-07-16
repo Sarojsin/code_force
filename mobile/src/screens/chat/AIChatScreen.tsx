@@ -206,7 +206,17 @@ export function AIChatScreen() {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
   }, [inputText, appendMessage, simulateAIResponse]);
 
-  const renderItem = ({ item }: { item: ChatMessage }) => {
+  const renderItem = useCallback(({ item }: { item: ChatMessage }) => {
+    if (item.id === TYPING_INDICATOR_ID) {
+      return (
+        <View style={[styles.messageRow, styles.aiRow]}>
+          <AIIcon theme={theme} />
+          <View style={[styles.bubble, { backgroundColor: '#F5F5F5', borderRadius: 20, borderTopLeftRadius: 4 }]}>
+            <TypingDots />
+          </View>
+        </View>
+      );
+    }
     const isAI = item.sender === 'ai';
     const isStreamed = streamed[item.id] != null;
     return (
@@ -222,7 +232,7 @@ export function AIChatScreen() {
         </View>
       </View>
     );
-  };
+  }, [theme, streamed]);
 
   const displayedMessages = isTyping
     ? [...messages, { id: TYPING_INDICATOR_ID, text: '', sender: 'ai' as const, timestamp: '' }]
@@ -266,15 +276,12 @@ export function AIChatScreen() {
           ref={flatListRef}
           data={displayedMessages}
           keyExtractor={item => item.id}
-          renderItem={(props) => props.item.id === TYPING_INDICATOR_ID ? (
-            <View style={[styles.messageRow, styles.aiRow]}>
-              <AIIcon theme={theme} />
-              <View style={[styles.bubble, { backgroundColor: '#F5F5F5', borderRadius: 20, borderTopLeftRadius: 4 }]}>
-                <TypingDots />
-              </View>
-            </View>
-          ) : renderItem(props)}
+          renderItem={renderItem}
           contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
+          windowSize={10}
+          maxToRenderPerBatch={10}
+          removeClippedSubviews={true}
+          initialNumToRender={7}
           ListHeaderComponent={!disclaimerShown ? (
             <Pressable onPress={() => setDisclaimerShown(true)} style={[styles.disclaimerBanner, { backgroundColor: theme.colors.warning + '12', borderColor: theme.colors.warning + '30', borderRadius: theme.radius.md }]}>
               <Text variant="caption" style={{ color: theme.colors.warning, flex: 1 }}>

@@ -7,14 +7,24 @@ const isNative = Platform.OS !== 'web';
 class WellnessClassifier {
   private session: any = null;
   private loading = false;
+  private onnxruntime: any = null;
+
+  private _loadModule(): void {
+    if (this.onnxruntime) return;
+    try {
+      this.onnxruntime = require('onnxruntime-react-native');
+    } catch {
+      // onnxruntime native module unavailable
+    }
+  }
 
   async initialize(): Promise<void> {
     if (!isNative) return;
-    if (this.session || this.loading) return;
+    this._loadModule();
+    if (!this.onnxruntime || this.session || this.loading) return;
     this.loading = true;
     try {
-      const { InferenceSession } = require('onnxruntime-react-native');
-      this.session = await InferenceSession.create(
+      this.session = await onnxruntime.InferenceSession.create(
         require('assets/models/wellness_classifier.onnx'),
       );
     } catch {
@@ -34,7 +44,7 @@ class WellnessClassifier {
       };
     }
     const t0 = performance.now();
-    const { Tensor } = require('onnxruntime-react-native');
+    const { Tensor } = onnxruntime;
     const inputIds = tokenizer.encode(text);
 
     const results = await this.session!.run({

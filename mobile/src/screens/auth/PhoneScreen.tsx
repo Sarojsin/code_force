@@ -4,14 +4,14 @@
  */
 
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
-import { Button, FormField, Text as Txt } from 'src/components/ui';
+import { Button, FormField, Text as Txt, KeyboardAvoidingWrapper } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useRequestOtp } from 'src/services/queries';
 import { requestOtpFormSchema, RequestOtpForm } from 'src/validation';
@@ -45,15 +45,8 @@ export function PhoneScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={[styles.scroll, { padding: theme.spacing.lg }]}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Txt variant="display" style={{ marginBottom: theme.spacing.sm }}>
+      <KeyboardAvoidingWrapper contentContainerStyle={{ padding: theme.spacing.lg, justifyContent: 'center' }}>
+        <Txt variant="display" style={{ marginBottom: theme.spacing.sm }}>
             Welcome to SheCare
           </Txt>
           <Txt variant="body" color="secondary" style={{ marginBottom: theme.spacing.xl }}>
@@ -87,8 +80,7 @@ export function PhoneScreen() {
               We could not send your code. Please try again.
             </Txt>
           ) : null}
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAvoidingWrapper>
     </SafeAreaView>
   );
 }

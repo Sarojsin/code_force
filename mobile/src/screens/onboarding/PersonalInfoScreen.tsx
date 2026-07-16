@@ -1,12 +1,12 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { logger } from 'src/utils';
 
-import { Button, FormField, PickerField, Text, ProgressDots } from 'src/components/ui';
+import { Button, FormField, PickerField, Text, ProgressDots, KeyboardAvoidingWrapper } from 'src/components/ui';
 import { useTheme, shadow } from 'src/theme';
 import { personalInfoSchema, PersonalInfoForm } from 'src/validation';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -58,9 +58,8 @@ export function PersonalInfoScreen() {
   return (
     <ScreenErrorBoundary>
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <ProgressDots current={1} total={6} />
+      <KeyboardAvoidingWrapper contentContainerStyle={{ paddingBottom: 32 }}>
+        <ProgressDots current={1} total={6} />
           <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Go back">
               <Text variant="body" color="primary">← Back</Text>
@@ -76,8 +75,7 @@ export function PersonalInfoScreen() {
           <View style={styles.footer}>
             <Button label="Continue" onPress={handleSubmit(onSubmit)} disabled={!formState.isValid} fullWidth size="lg" />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAvoidingWrapper>
     </SafeAreaView>
     </ScreenErrorBoundary>
   );

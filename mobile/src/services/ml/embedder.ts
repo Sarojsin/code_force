@@ -8,19 +8,28 @@ class MinILMEmbedder {
   private session: any = null;
   private loading = false;
   private wpTokenizer: WordPieceTokenizer | null = null;
+  private onnxruntime: any = null;
+
+  private _loadModule(): void {
+    if (this.onnxruntime) return;
+    try {
+      this.onnxruntime = require('onnxruntime-react-native');
+    } catch {
+      // onnxruntime native module unavailable
+    }
+  }
 
   async initialize(): Promise<void> {
     if (!isNative) return;
-    if (this.session || this.loading) return;
+    this._loadModule();
+    if (!this.onnxruntime || this.session || this.loading) return;
     this.loading = true;
     try {
-      const { InferenceSession } = require('onnxruntime-react-native');
-      this.session = await InferenceSession.create(
+      this.session = await this.onnxruntime.InferenceSession.create(
         require('assets/models/minilm_embedder.onnx'),
       );
       this.wpTokenizer = new WordPieceTokenizer();
     } catch {
-      // onnxruntime native module unavailable
     } finally {
       this.loading = false;
     }
@@ -36,7 +45,7 @@ class MinILMEmbedder {
       );
     }
 
-    const { Tensor } = require('onnxruntime-react-native');
+    const { Tensor } = onnxruntime;
     const t0 = performance.now();
 
     // Use WordPiece tokenizer for proper BERT encoding

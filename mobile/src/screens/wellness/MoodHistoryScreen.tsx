@@ -69,6 +69,10 @@ export function MoodHistoryScreen() {
         contentContainerStyle={{ padding: theme.spacing.lg }}
         refreshing={isLoading}
         onRefresh={refetch}
+        windowSize={10}
+        maxToRenderPerBatch={10}
+        removeClippedSubviews={true}
+        initialNumToRender={7}
         ListHeaderComponent={
           <View style={{ marginBottom: theme.spacing.lg }}>
             <Txt variant="h1">Mood History</Txt>

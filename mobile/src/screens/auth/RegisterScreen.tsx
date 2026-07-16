@@ -1,9 +1,6 @@
 import React, { useMemo } from 'react';
 import {
   Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   View,
   Text,
@@ -15,7 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
-import { Button, FormField, Text as Txt } from 'src/components/ui';
+import { Button, FormField, Text as Txt, KeyboardAvoidingWrapper } from 'src/components/ui';
 import { useTheme, palette, shadow } from 'src/theme';
 import { useRegister } from 'src/services/queries';
 import { registerFormSchema, RegisterForm } from 'src/validation';
@@ -137,16 +134,8 @@ export function RegisterScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          bounces={false}
-        >
-          <DecorativeHeader />
+      <KeyboardAvoidingWrapper bounces={false}>
+        <DecorativeHeader />
 
           <View style={[styles.card, shadow.lg, { backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, marginHorizontal: theme.spacing.lg, padding: theme.spacing.xl, marginTop: -theme.spacing.xl }]}>
             <Txt variant="h2" style={{ marginBottom: theme.spacing.xs }}>
@@ -231,16 +220,13 @@ export function RegisterScreen() {
               </Txt>
             </Txt>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAvoidingWrapper>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  flex: { flex: 1 },
-  scroll: { flexGrow: 1 },
   headerContainer: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
   brandIcon: { position: 'absolute', top: CURVE_HEIGHT * 0.18 },
   headerText: { position: 'absolute', top: CURVE_HEIGHT * 0.42 },

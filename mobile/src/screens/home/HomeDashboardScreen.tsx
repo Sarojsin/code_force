@@ -18,12 +18,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 type Nav = any;
 
+function getTimeGreeting(): string {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return 'Good morning';
+  if (h >= 12 && h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_H_MD = 120;
 const CARD_H_LG = 160;
 const CARD_GAP = 12;
 
-function GlassCard({
+const GlassCard = React.memo(function GlassCard({
   children,
   style,
   onPress,
@@ -77,16 +84,16 @@ function GlassCard({
       </Pressable>
     </Wrapper>
   );
-}
+});
 
-function StatBadge({ value, label, color }: { value: string; label: string; color: string }) {
+const StatBadge = React.memo(function StatBadge({ value, label, color }: { value: string; label: string; color: string }) {
   return (
     <View style={styles.badge}>
       <Text variant="h2" style={{ color, textAlign: 'center' }}>{value}</Text>
       <Text variant="caption" color="muted" align="center">{label}</Text>
     </View>
   );
-}
+});
 
 export function HomeDashboardScreen() {
   const theme = useTheme();
@@ -151,7 +158,7 @@ export function HomeDashboardScreen() {
         <View style={styles.header}>
           <View>
             <Text variant="display" style={{ color: theme.colors.textPrimary }}>
-              Good morning{displayName ? `, ${displayName}` : ''}
+              {getTimeGreeting()}{displayName ? `, ${displayName}` : ''}
             </Text>
             <Text variant="body" color="secondary">
               Here's your wellness overview

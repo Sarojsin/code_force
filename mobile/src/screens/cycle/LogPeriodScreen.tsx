@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, Pressable } from 'react-native';
+import { StyleSheet, View, Pressable } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,7 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
-import { Button, FormField, Text as Txt } from 'src/components/ui';
+import { Button, FormField, Text as Txt, KeyboardAvoidingWrapper } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useCreateCycleEntry } from 'src/services/queries';
 import type { CycleStackParamList } from 'src/navigation/types';
@@ -92,9 +92,8 @@ export function LogPeriodScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={[styles.scroll, { padding: theme.spacing.lg }]} keyboardShouldPersistTaps="handled">
-          <Txt variant="h1" style={{ marginBottom: theme.spacing.sm }}>Log Period</Txt>
+      <KeyboardAvoidingWrapper contentContainerStyle={{ padding: theme.spacing.lg }}>
+        <Txt variant="h1" style={{ marginBottom: theme.spacing.sm }}>Log Period</Txt>
           <Txt variant="body" color="secondary" style={{ marginBottom: theme.spacing.xl }}>Track your cycle details.</Txt>
 
           <FormField control={control} name="startDate" label="Start date" placeholder="YYYY-MM-DD" accessibilityLabel="Period start date" />
@@ -144,16 +143,13 @@ export function LogPeriodScreen() {
 
           <View style={{ height: theme.spacing.lg }} />
           <Button label={isPending ? 'Saving...' : 'Save period log'} onPress={handleSubmit(onSubmit)} disabled={!formState.isValid || isPending} fullWidth />
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAvoidingWrapper>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  flex: { flex: 1 },
-  scroll: { flexGrow: 1 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, minHeight: 44, justifyContent: 'center' },
   sliderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 8 },

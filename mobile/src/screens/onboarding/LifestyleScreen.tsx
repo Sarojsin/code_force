@@ -1,13 +1,12 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import Slider from '@react-native-community/slider';
 
-import { Button, Text, ProgressDots } from 'src/components/ui';
+import { Button, Text, ProgressDots, KeyboardAvoidingWrapper } from 'src/components/ui';
 import { useTheme, shadow } from 'src/theme';
 import { lifestyleSchema, LifestyleForm } from 'src/validation';
 import { useOnboardingStore } from 'src/stores';
@@ -68,9 +67,8 @@ export function LifestyleScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <ProgressDots current={2} total={6} />
+      <KeyboardAvoidingWrapper contentContainerStyle={{ paddingBottom: 32 }}>
+        <ProgressDots current={2} total={6} />
           <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Go back">
               <Text variant="body" color="primary">← Back</Text>
@@ -127,8 +125,7 @@ export function LifestyleScreen() {
           <View style={styles.footer}>
             <Button label="Continue" onPress={handleSubmit(onSubmit)} disabled={!formState.isValid} fullWidth size="lg" />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAvoidingWrapper>
     </SafeAreaView>
   );
 }

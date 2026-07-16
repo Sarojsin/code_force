@@ -6,9 +6,6 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
@@ -18,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
-import { Button, FormField, Text as Txt } from 'src/components/ui';
+import { Button, FormField, Text as Txt, KeyboardAvoidingWrapper } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useVerifyOtp } from 'src/services/queries';
 import { useAuthStore } from 'src/stores';
@@ -65,16 +62,8 @@ export function OtpScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={64}
-      >
-        <ScrollView
-          contentContainerStyle={[styles.scroll, { padding: theme.spacing.lg }]}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Txt variant="h1" style={{ marginBottom: theme.spacing.sm }}>
+      <KeyboardAvoidingWrapper offset={64} contentContainerStyle={{ padding: theme.spacing.lg }}>
+        <Txt variant="h1" style={{ marginBottom: theme.spacing.sm }}>
             Enter the code
           </Txt>
           <Txt variant="body" color="secondary" style={{ marginBottom: theme.spacing.xl }}>
@@ -130,8 +119,7 @@ export function OtpScreen() {
               That code did not work. Please try again.
             </Txt>
           ) : null}
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAvoidingWrapper>
     </SafeAreaView>
   );
 }

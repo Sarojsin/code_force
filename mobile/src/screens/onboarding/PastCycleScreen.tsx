@@ -1,12 +1,12 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
-import { Button, DatePickerField, FormField, Text, ProgressDots } from 'src/components/ui';
+import { Button, DatePickerField, FormField, Text, ProgressDots, KeyboardAvoidingWrapper } from 'src/components/ui';
 import { useTheme, shadow } from 'src/theme';
 import { pastCycleSchema, PastCycleForm } from 'src/validation';
 import { useOnboardingStore } from 'src/stores';
@@ -37,7 +37,7 @@ export function PastCycleScreen() {
   const { control, handleSubmit, formState, setValue, watch } = useForm<PastCycleForm>({
     resolver: zodResolver(pastCycleSchema),
     defaultValues: { cycleStart: '', cycleLength: undefined, periodLength: undefined, symptoms: [] },
-    mode: 'onChange',
+    mode: 'onBlur',
   });
 
   const selectedSymptoms = watch('symptoms');
@@ -63,9 +63,8 @@ export function PastCycleScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <ProgressDots current={3 + cycleNum} total={6} />
+      <KeyboardAvoidingWrapper contentContainerStyle={{ paddingBottom: 32 }}>
+        <ProgressDots current={3 + cycleNum} total={6} />
           <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.navigate(prevScreen as any)} accessibilityLabel="Go back">
               <Text variant="body" color="primary">← Back</Text>
@@ -108,16 +107,13 @@ export function PastCycleScreen() {
               size="lg"
             />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAvoidingWrapper>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  flex: { flex: 1 },
-  scroll: { flexGrow: 1, paddingBottom: 32 },
   header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16 },
   card: { marginBottom: 24 },
   footer: { paddingHorizontal: 24 },

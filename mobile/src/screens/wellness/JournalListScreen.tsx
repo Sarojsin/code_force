@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { FlatList, StyleSheet, View, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useQuery } from '@tanstack/react-query';
 
 import { Button, Card, Text as Txt } from 'src/components/ui';
@@ -22,6 +23,8 @@ function sentimentColor(label: string | null): string {
 export function JournalListScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
+
+  const tabBarHeight = useBottomTabBarHeight();
 
   const { data: entries, isLoading, isError, refetch } = useQuery<JournalEntry[]>({
     queryKey: ['wellness', 'journal'],
@@ -71,34 +74,41 @@ export function JournalListScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <FlatList
-        data={entries ?? []}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={{ padding: theme.spacing.lg }}
-        refreshing={isLoading}
-        onRefresh={refetch}
-        ListHeaderComponent={
-          <View style={{ marginBottom: theme.spacing.lg }}>
-            <Txt variant="h1">Journal</Txt>
-            <Txt variant="body" color="secondary">Your personal thoughts and reflections.</Txt>
-          </View>
-        }
-        ListEmptyComponent={
-          <Card>
-            <Txt variant="body" color="secondary" align="center">
-              {isError ? 'Failed to load entries. Pull to retry.' : 'No journal entries yet. Start writing!'}
-            </Txt>
-          </Card>
-        }
-      />
-      <View style={styles.fab}>
-        <Button
-          label="+ New Entry"
-          onPress={() => navigation.navigate('JournalEntry', { id: 'new' })}
-          fullWidth
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]} edges={['top']}>
+      <View style={{ flex: 1, paddingBottom: tabBarHeight }}>
+        <FlatList
+          data={entries ?? []}
+          keyExtractor={item => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={{ padding: theme.spacing.lg }}
+          style={{ flex: 1 }}
+          refreshing={isLoading}
+          onRefresh={refetch}
+          windowSize={10}
+          maxToRenderPerBatch={10}
+          removeClippedSubviews={true}
+          initialNumToRender={7}
+          ListHeaderComponent={
+            <View style={{ marginBottom: theme.spacing.lg }}>
+              <Txt variant="h1">Journal</Txt>
+              <Txt variant="body" color="secondary">Your personal thoughts and reflections.</Txt>
+            </View>
+          }
+          ListEmptyComponent={
+            <Card>
+              <Txt variant="body" color="secondary" align="center">
+                {isError ? 'Failed to load entries. Pull to retry.' : 'No journal entries yet. Start writing!'}
+              </Txt>
+            </Card>
+          }
         />
+        <View style={styles.fab}>
+          <Button
+            label="+ New Entry"
+            onPress={() => navigation.navigate('JournalEntry', { id: 'new' })}
+            fullWidth
+          />
+        </View>
       </View>
     </SafeAreaView>
   );

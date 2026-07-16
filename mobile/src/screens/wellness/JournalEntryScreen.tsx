@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, TextInput, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, TextInput, ActivityIndicator } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import Toast from 'react-native-toast-message';
 import { formatDistanceToNow } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { Button, FormField, Text as Txt } from 'src/components/ui';
+import { Button, FormField, Text as Txt, KeyboardAvoidingWrapper } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { EncryptedStorage } from 'src/services/storage';
 import { logger } from 'src/utils';
@@ -134,9 +134,8 @@ export function JournalEntryScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={[styles.scroll, { padding: theme.spacing.lg }]} keyboardShouldPersistTaps="handled">
-          <Txt variant="h1" style={{ marginBottom: theme.spacing.lg }}>{isNew ? 'New Entry' : 'Edit Entry'}</Txt>
+      <KeyboardAvoidingWrapper contentContainerStyle={{ padding: theme.spacing.lg }}>
+        <Txt variant="h1" style={{ marginBottom: theme.spacing.lg }}>{isNew ? 'New Entry' : 'Edit Entry'}</Txt>
 
           {draftInfo && (
             <Txt variant="caption" color="secondary" style={{ marginBottom: theme.spacing.sm }}>
@@ -186,15 +185,12 @@ export function JournalEntryScreen() {
             disabled={!formState.isValid || createMutation.isPending}
             fullWidth
           />
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAvoidingWrapper>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  flex: { flex: 1 },
-  scroll: { flexGrow: 1 },
   textarea: { borderWidth: 1, marginTop: 4, fontSize: 16, textAlignVertical: 'top' },
 });
