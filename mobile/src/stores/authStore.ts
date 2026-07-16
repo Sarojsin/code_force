@@ -54,16 +54,21 @@ export const useAuthStore = create<AuthState>((set) => ({
       await setCachedUser(user);
       set({ user, isHydrated: true });
     } catch (err) {
-      if (isNetworkError(err)) {
-        const cached = await getCachedUser();
+      const status = (err as any)?.response?.status;
+      const cached = await getCachedUser();
+      if (isNetworkError(err) || (status && status >= 500) || status === 429) {
         if (cached) {
           set({ user: cached, isHydrated: true });
           return;
         }
       }
-      await tokenStore.clear();
-      await setCachedUser(null);
-      set({ user: null, isHydrated: true });
+      if (status === 401 || status === 403 || !cached) {
+        await tokenStore.clear();
+        await setCachedUser(null);
+        set({ user: null, isHydrated: true });
+      } else {
+        set({ user: cached, isHydrated: true });
+      }
     }
   },
   reset: async () => {

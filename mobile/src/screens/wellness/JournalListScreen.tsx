@@ -20,20 +20,10 @@ function sentimentColor(label: string | null): string {
   }
 }
 
-export function JournalListScreen() {
-  const theme = useTheme();
-  const navigation = useNavigation<Nav>();
-
-  const tabBarHeight = useBottomTabBarHeight();
-
-  const { data: entries, isLoading, isError, refetch } = useQuery<JournalEntry[]>({
-    queryKey: ['wellness', 'journal'],
-    queryFn: () => wellnessService.getJournalEntries(50, 0),
-  });
-
-  const renderItem = useCallback(({ item }: { item: JournalEntry }) => (
+const JournalItem = React.memo(function JournalItem({ item, onPress, theme }: { item: JournalEntry; onPress: () => void; theme: any }) {
+  return (
     <Pressable
-      onPress={() => navigation.navigate('JournalEntry', { id: item.id })}
+      onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Journal: ${item.title ?? 'untitled'}`}
     >
@@ -63,7 +53,27 @@ export function JournalListScreen() {
         </View>
       </Card>
     </Pressable>
-  ), [navigation, theme]);
+  );
+});
+
+export function JournalListScreen() {
+  const theme = useTheme();
+  const navigation = useNavigation<Nav>();
+
+  const tabBarHeight = useBottomTabBarHeight();
+
+  const { data: entries, isLoading, isError, refetch } = useQuery<JournalEntry[]>({
+    queryKey: ['wellness', 'journal'],
+    queryFn: () => wellnessService.getJournalEntries(50, 0),
+  });
+
+  const handleEntryPress = useCallback((id: string) => {
+    navigation.navigate('JournalEntry', { id });
+  }, [navigation]);
+
+  const renderItem = useCallback(({ item }: { item: JournalEntry }) => (
+    <JournalItem item={item} onPress={() => handleEntryPress(item.id)} theme={theme} />
+  ), [handleEntryPress, theme]);
 
   if (isLoading) {
     return (

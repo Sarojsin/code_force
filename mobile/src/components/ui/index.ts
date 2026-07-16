@@ -6,6 +6,7 @@ export * from './CelebrationAnimation';
 export * from './DatePickerField';
 export * from './EmptyState';
 export * from './FormField';
+export * from './KeyboardAvoidingWrapper';
 export * from './Loader';
 export * from './Modal';
 export * from './MoodPicker';

@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View, TouchableOpacity } from 'react-native';
+import React, { useRef } from 'react';
+import { StyleSheet, View, TouchableOpacity, TextInput } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +23,8 @@ export function CurrentCycleScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
   const setCurrentCycle = useOnboardingStore((s) => s.setCurrentCycle);
+  const cycleLengthRef = useRef<TextInput>(null);
+  const periodLengthRef = useRef<TextInput>(null);
   const currentCycleStart = useOnboardingStore((s) => s.currentCycleStart);
   const currentCycleLength = useOnboardingStore((s) => s.currentCycleLength);
   const currentPeriodLength = useOnboardingStore((s) => s.currentPeriodLength);
@@ -75,8 +77,8 @@ export function CurrentCycleScreen() {
 
           <View style={[styles.card, shadow.lg, { backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, marginHorizontal: theme.spacing.lg, padding: theme.spacing.xl }]}>
             <DatePickerField control={control} name="cycleStartDate" label="Period start date" maximumDate={new Date()} />
-            <FormField control={control} name="cycleLength" label="Cycle length (days)" placeholder="e.g. 28" keyboardType="numeric" />
-            <FormField control={control} name="periodLength" label="Period length (days)" placeholder="e.g. 5" keyboardType="numeric" />
+            <FormField inputRef={cycleLengthRef} control={control} name="cycleLength" label="Cycle length (days)" placeholder="e.g. 28" keyboardType="numeric" returnKeyType="next" onSubmitEditing={() => periodLengthRef.current?.focus()} />
+            <FormField inputRef={periodLengthRef} control={control} name="periodLength" label="Period length (days)" placeholder="e.g. 5" keyboardType="numeric" returnKeyType="done" />
 
             <Text variant="body" style={{ marginTop: 16, marginBottom: 8 }}>Symptoms (tap to select)</Text>
             <View style={styles.symptomGrid}>

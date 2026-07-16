@@ -20,6 +20,28 @@ function TrendArrow({ current, next }: { current: number; next?: number }) {
   return <Txt variant="caption" color="muted">→</Txt>;
 }
 
+const MoodItem = React.memo(function MoodItem({ item, nextIntensity, theme }: { item: MoodLog; nextIntensity?: number; theme: any }) {
+  const emoji = MOOD_EMOJIS[item.mood] ?? '😐';
+  return (
+    <Card elevated style={{ marginBottom: theme.spacing.md }} accessibilityLabel={`Mood: ${item.mood}, intensity ${item.intensity}`}>
+      <View style={styles.row}>
+        <Txt variant="h2" style={{ marginRight: theme.spacing.sm }}>{emoji}</Txt>
+        <View style={{ flex: 1 }}>
+          <View style={styles.topRow}>
+            <Txt variant="h3">{item.mood}</Txt>
+            <TrendArrow current={item.intensity} next={nextIntensity} />
+          </View>
+          <Txt variant="bodySmall" color="secondary">Intensity: {item.intensity}/10</Txt>
+          {item.notes && <Txt variant="caption" color="muted" style={{ marginTop: 2 }}>{item.notes}</Txt>}
+        </View>
+      </View>
+      <Txt variant="caption" color="muted" style={{ marginTop: 8 }}>
+        {new Date(item.logged_at).toLocaleString()}
+      </Txt>
+    </Card>
+  );
+});
+
 export function MoodHistoryScreen() {
   const theme = useTheme();
 
@@ -28,29 +50,9 @@ export function MoodHistoryScreen() {
     queryFn: () => wellnessService.getMoodLogs(30),
   });
 
-  const renderItem = useCallback(({ item, index }: { item: MoodLog; index: number }) => {
-    const emoji = MOOD_EMOJIS[item.mood] ?? '😐';
-    const nextIntensity = logs?.[index + 1]?.intensity;
-
-    return (
-      <Card elevated style={{ marginBottom: theme.spacing.md }} accessibilityLabel={`Mood: ${item.mood}, intensity ${item.intensity}`}>
-        <View style={styles.row}>
-          <Txt variant="h2" style={{ marginRight: theme.spacing.sm }}>{emoji}</Txt>
-          <View style={{ flex: 1 }}>
-            <View style={styles.topRow}>
-              <Txt variant="h3">{item.mood}</Txt>
-              <TrendArrow current={item.intensity} next={nextIntensity} />
-            </View>
-            <Txt variant="bodySmall" color="secondary">Intensity: {item.intensity}/10</Txt>
-            {item.notes && <Txt variant="caption" color="muted" style={{ marginTop: 2 }}>{item.notes}</Txt>}
-          </View>
-        </View>
-        <Txt variant="caption" color="muted" style={{ marginTop: 8 }}>
-          {new Date(item.logged_at).toLocaleString()}
-        </Txt>
-      </Card>
-    );
-  }, [logs, theme]);
+  const renderItem = useCallback(({ item, index }: { item: MoodLog; index: number }) => (
+    <MoodItem item={item} nextIntensity={logs?.[index + 1]?.intensity} theme={theme} />
+  ), [logs, theme]);
 
   if (isLoading) {
     return (
