@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 import { tokenizer } from './tokenizer';
 import { WordPieceTokenizer } from './wordpieceTokenizer';
 
@@ -12,6 +12,8 @@ class MinILMEmbedder {
 
   private _loadModule(): void {
     if (this.onnxruntime) return;
+    // Gate: don't require if native module isn't linked (prevents uncatchable JSI crash from binding.ts)
+    if (!NativeModules.Onnxruntime) return;
     try {
       this.onnxruntime = require('onnxruntime-react-native');
     } catch {
@@ -45,7 +47,7 @@ class MinILMEmbedder {
       );
     }
 
-    const { Tensor } = onnxruntime;
+    const { Tensor } = this.onnxruntime;
     const t0 = performance.now();
 
     // Use WordPiece tokenizer for proper BERT encoding

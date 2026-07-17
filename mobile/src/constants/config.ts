@@ -3,8 +3,9 @@
  * the shapes and the development defaults.
  */
 
-export const API_BASE_URL = 'http://192.168.0.103:8000/api/v1';
-export const SOCKET_URL = 'ws://192.168.0.103:8000/ws';
+const ROOT = (process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.0.101:8000').replace(/\/+$/, '');
+export const API_BASE_URL = `${ROOT}/api/v1`;
+export const SOCKET_URL = ROOT.replace(/^http/, 'ws') + '/ws';
 
 // Feature flags (plan 35). Mobile reads these on launch.
 export interface FeatureFlags {

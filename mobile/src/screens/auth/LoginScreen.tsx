@@ -1,10 +1,11 @@
 import React from 'react';
-import { StyleSheet, View, Pressable, Dimensions } from 'react-native';
+import { StyleSheet, View, Dimensions } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import Svg, { Path, Rect, Circle as SvgCircle, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import Svg, { Path, Rect, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 import { Button, FormField, Text as Txt, KeyboardAvoidingWrapper } from 'src/components/ui';
 import { useTheme, palette, shadow } from 'src/theme';

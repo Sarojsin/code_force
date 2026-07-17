@@ -3,7 +3,7 @@ import { StyleSheet, View, TouchableOpacity, TextInput } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
 import { Button, DatePickerField, FormField, Text, ProgressDots, KeyboardAvoidingWrapper } from 'src/components/ui';

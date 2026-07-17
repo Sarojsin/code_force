@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 import { tokenizer } from './tokenizer';
 import { WellnessAnalysis, CrisisFlags, SentimentLabel, SYMPTOM_LABELS } from './wellnessTypes';
 
@@ -11,6 +11,8 @@ class WellnessClassifier {
 
   private _loadModule(): void {
     if (this.onnxruntime) return;
+    // Gate: don't require if native module isn't linked (prevents uncatchable JSI crash from binding.ts)
+    if (!NativeModules.Onnxruntime) return;
     try {
       this.onnxruntime = require('onnxruntime-react-native');
     } catch {
@@ -24,7 +26,7 @@ class WellnessClassifier {
     if (!this.onnxruntime || this.session || this.loading) return;
     this.loading = true;
     try {
-      this.session = await onnxruntime.InferenceSession.create(
+      this.session = await this.onnxruntime.InferenceSession.create(
         require('assets/models/wellness_classifier.onnx'),
       );
     } catch {
@@ -44,7 +46,7 @@ class WellnessClassifier {
       };
     }
     const t0 = performance.now();
-    const { Tensor } = onnxruntime;
+    const { Tensor } = this.onnxruntime;
     const inputIds = tokenizer.encode(text);
 
     const results = await this.session!.run({

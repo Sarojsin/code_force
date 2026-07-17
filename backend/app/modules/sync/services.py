@@ -39,6 +39,8 @@ class SyncService:
             "cycle/create": self._cycle_create,
             "cycle/update": self._cycle_update,
             "cycle/delete": self._cycle_delete,
+            "cycle/correction": self._cycle_correction,
+            "cycle/snooze": self._cycle_snooze,
         }
 
     # ------------------------------------------------------------------
@@ -229,6 +231,53 @@ class SyncService:
         row.is_active = False
         await self.db.flush()
         return SyncResultItem(index=index, status="deleted", entity_id=str(entity_id), temp_id=op.temp_id)
+
+    async def _cycle_correction(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
+        from app.modules.cycle.services import CycleService
+
+        period_start = self._parse_date(op.data.get("period_start_date"))
+        if not period_start:
+            return SyncResultItem(
+                index=index, status="failed", temp_id=op.temp_id,
+                error="Missing or invalid period_start_date",
+            )
+
+        corrected_id = op.data.get("corrected_prediction_id")
+        parsed_id = uuid.UUID(corrected_id) if corrected_id else None
+
+        svc = CycleService(self.db)
+        entry = await svc.log_correction(
+            user_id=user_id,
+            period_start_date=period_start,
+            period_end_date=self._parse_date(op.data.get("period_end_date")),
+            symptoms=op.data.get("symptoms"),
+            corrected_prediction_id=parsed_id,
+        )
+        return SyncResultItem(
+            index=index, status="created", entity_id=str(entry.id), temp_id=op.temp_id,
+        )
+
+    async def _cycle_snooze(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
+        from app.modules.cycle.services import CycleService
+
+        predicted_cycle_id = op.data.get("predictedCycleId")
+        day_offset = op.data.get("dayOffset")
+
+        if not predicted_cycle_id or day_offset is None:
+            return SyncResultItem(
+                index=index, status="failed", temp_id=op.temp_id,
+                error="Missing predictedCycleId or dayOffset",
+            )
+
+        svc = CycleService(self.db)
+        snooze = await svc.log_snooze(
+            user_id=user_id,
+            predicted_cycle_id=uuid.UUID(predicted_cycle_id),
+            day_offset=int(day_offset),
+        )
+        return SyncResultItem(
+            index=index, status="created", entity_id=str(snooze.id), temp_id=op.temp_id,
+        )
 
     # ------------------------------------------------------------------
     # Conflict detection

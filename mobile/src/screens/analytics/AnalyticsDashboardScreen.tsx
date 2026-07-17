@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, View, Dimensions, Pressable } from 'react-native';
+import { ScrollView, StyleSheet, View, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle as SvgCircle, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
 
@@ -53,41 +53,11 @@ function MiniLineChart({ cycleData, months }: { cycleData: number[]; months: str
   );
 }
 
-function CircularProgress({ pct, size = 80, label, color }: { pct: number; size?: number; label: string; color: string }) {
-  const theme = useTheme();
-  const strokeWidth = 6;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const progress = circumference * (1 - pct / 100);
-
-  return (
-    <View style={styles.circularContainer}>
-      <Svg width={size} height={size}>
-        <SvgCircle cx={size / 2} cy={size / 2} r={radius} stroke={theme.colors.border} strokeWidth={strokeWidth} fill="none" />
-        <SvgCircle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeDasharray={circumference}
-          strokeDashoffset={progress}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-        <SvgText x={size / 2} y={size / 2 + 4} fontSize="16" fontWeight="bold" fill={theme.colors.textPrimary} textAnchor="middle">{Math.round(pct)}%</SvgText>
-      </Svg>
-      <Text variant="caption" color="muted" align="center" style={{ marginTop: 4 }}>{label}</Text>
-    </View>
-  );
-}
-
 export function AnalyticsDashboardScreen() {
   const theme = useTheme();
 
   const { data: entries, isLoading: entriesLoading } = useCycleEntries({ limit: 50, months_back: 12 });
-  const { data: analytics, isLoading: analyticsLoading, isError } = useCycleAnalytics();
+  const { data: analytics, isLoading: analyticsLoading } = useCycleAnalytics();
 
   const loading = entriesLoading || analyticsLoading;
 

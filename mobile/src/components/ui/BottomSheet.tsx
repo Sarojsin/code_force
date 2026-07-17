@@ -1,5 +1,6 @@
 import React, { ReactNode, useEffect, useCallback, useMemo } from 'react';
-import { StyleSheet, View, Pressable, BackHandler, Dimensions } from 'react-native';
+import { StyleSheet, View, Pressable, BackHandler, Dimensions, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -13,6 +14,7 @@ import { useTheme } from 'src/theme';
 import { Text } from './Text';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const TAB_BAR_HEIGHT = 72;
 
 export interface BottomSheetProps {
   visible: boolean;
@@ -32,6 +34,11 @@ export function BottomSheet({
   snapPoints: snapPointsProp,
 }: BottomSheetProps) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomPadding = useMemo(
+    () => theme.spacing.xxl + Math.max(0, TAB_BAR_HEIGHT - insets.bottom),
+    [theme.spacing.xxl, insets.bottom],
+  );
   const snapPoints = useMemo(() => snapPointsProp ?? DEFAULT_SNAP_POINTS, [snapPointsProp]);
 
   const currentSnap = useSharedValue(snapPoints.length - 1);
@@ -118,7 +125,7 @@ export function BottomSheet({
               borderTopLeftRadius: theme.radius.xl,
               borderTopRightRadius: theme.radius.xl,
               paddingHorizontal: theme.spacing.lg,
-              paddingBottom: theme.spacing.xxl,
+              paddingBottom: bottomPadding,
             },
             sheetStyle,
           ]}
@@ -131,7 +138,14 @@ export function BottomSheet({
               {title}
             </Text>
           )}
-          {children}
+          <ScrollView
+            style={{ maxHeight: SCREEN_HEIGHT * 0.75 }}
+            contentContainerStyle={{ paddingBottom: theme.spacing.lg }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+          </ScrollView>
         </Animated.View>
       </GestureDetector>
     </View>

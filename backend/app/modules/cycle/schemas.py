@@ -95,8 +95,8 @@ class AnalyticsResponse(BaseModel):
     average_cycle_length_days: float | None
     shortest_cycle_days: int | None
     longest_cycle_days: int | None
-    common_symptoms: list[dict[str, int]]
-    common_moods: list[dict[str, int]]
+    common_symptoms: list[dict[str, str | int]]
+    common_moods: list[dict[str, str | int]]
     total_entries: int
 
 

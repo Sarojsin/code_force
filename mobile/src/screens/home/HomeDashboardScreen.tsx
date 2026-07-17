@@ -22,7 +22,8 @@ function getTimeGreeting(): string {
   const h = new Date().getHours();
   if (h >= 5 && h < 12) return 'Good morning';
   if (h >= 12 && h < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (h >= 17 && h < 22) return 'Good evening';
+  return 'Good night';
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -154,18 +155,15 @@ export function HomeDashboardScreen() {
           </View>
         )}
 
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text variant="display" style={{ color: theme.colors.textPrimary }}>
-              {getTimeGreeting()}{displayName ? `, ${displayName}` : ''}
-            </Text>
-            <Text variant="body" color="secondary">
-              Here's your wellness overview
-            </Text>
-          </View>
-          <View style={styles.headerActions}>
-            <Pressable onPress={handleBellPress} accessibilityLabel="Notifications" style={[styles.iconBtn, { borderRadius: theme.radius.pill }]}>
+        {/* Header Card — 140px, avatar centered, bell top-right, greeting below */}
+        <View style={[styles.headerCard, { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, borderColor: theme.colors.border, minHeight: 140 }]}>
+          <View style={styles.headerCardTop}>
+            <View style={styles.headerAvatarWrapper}>
+              <View style={[styles.headerAvatar, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.pill }]}>
+                <Text variant="h2" color="primary">🌸</Text>
+              </View>
+            </View>
+            <Pressable onPress={handleBellPress} accessibilityLabel="Notifications" style={[styles.headerBell, { borderRadius: theme.radius.pill }]}>
               <Animated.View style={bellAnimStyle}>
                 <Svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                   <Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -173,13 +171,14 @@ export function HomeDashboardScreen() {
                 </Svg>
               </Animated.View>
             </Pressable>
-            <Pressable
-              accessibilityLabel="Profile"
-              style={[styles.avatar, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.pill }]}
-              onPress={() => (navigation as any).navigate('Profile')}
-            >
-              <Text variant="bodySmall" color="primary">SC</Text>
-            </Pressable>
+          </View>
+          <View style={styles.headerCardBottom}>
+            <Text variant="display" style={{ color: theme.colors.textPrimary, fontSize: 18 }}>
+              {getTimeGreeting()}{displayName ? `, ${displayName}` : ''}
+            </Text>
+            <Text variant="body" color="secondary" style={{ marginTop: 2 }}>
+              🌸 SheCare
+            </Text>
           </View>
         </View>
 
@@ -347,16 +346,44 @@ export function HomeDashboardScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  headerCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     marginBottom: 24,
+    justifyContent: 'space-between',
   },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerCardTop: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerAvatarWrapper: {
+    width: 80,
+    height: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerAvatar: {
+    width: 80,
+    height: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerBell: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  headerCardBottom: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
   errorBanner: { flexDirection: 'row', alignItems: 'center', padding: 12, borderWidth: 1, marginBottom: 12 },
-  avatar: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   loadingGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   glassCard: {

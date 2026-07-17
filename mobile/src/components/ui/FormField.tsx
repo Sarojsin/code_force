@@ -16,7 +16,7 @@ export interface FormFieldProps<T extends FieldValues>
   name: FieldPath<T>;
   label: string;
   hint?: string;
-  inputRef?: React.RefObject<TextInput>;
+  inputRef?: React.RefObject<TextInput | null>;
 }
 
 export function FormField<T extends FieldValues>(props: FormFieldProps<T>) {
