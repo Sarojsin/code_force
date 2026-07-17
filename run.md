@@ -189,3 +189,25 @@ curl http://localhost:8000/metrics
 | CORS error on mobile | API_BASE_URL wrong | Check `mobile/.env` matches backend URL |
 | 429 Too Many Requests | Rate limit hit | Wait for window to expire (check `Retry-After`) |
 | SOS not sending SMS | Twilio credentials missing | Set `TWILIO__*` env vars |
+
+
+# my way
+cd backend
+poetry shell
+poetry install
+poetry run alembic upgrade head
+poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 
+or poetry run python run.py or directly python run.py
+  and 
+  cd mobile
+  npx expo start 
+  npx expo run:android
+  eas build --profile development
+
+  for eas used use this  npx expo start --dev-client
+
+  or npx expo start --clear 
+  or npx react-native run-ios 
+  or npx react-native run-android 
+
+my log file location #C:/User/U S E R/AppData/Roaming/Code/User/workspaceStorage/c95bbe9dc516bdbe7656911793b956b8/redhat.java/jdt_ws/.metadata/.log

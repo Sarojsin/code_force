@@ -69,7 +69,7 @@ npm run android
 Check for TypeScript errors first:
 
 ```bash
-npm run tsc
+npm run typecheck
 ```
 
 ### Clean node_modules
@@ -88,6 +88,6 @@ npm install --legacy-peer-deps
 | `npm run start` | Start Expo dev server |
 | `npm run android` | Build + run on Android |
 | `npm run ios` | Build + run on iOS (macOS only) |
-| `npm run tsc` | TypeScript type check |
+| `npm run typecheck` | TypeScript type check |
 | `npm run lint` | ESLint |
 | `npm run format` | Prettier format |
