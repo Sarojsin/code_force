@@ -1,144 +1,100 @@
-# AI Prediction Screen — Glassmorphism + Charts
+# AI Prediction Screen — Glassmorphic Dashboards & Timelines
 
-> Route: `MainTabs` → `Home` → `Predictions` (or accessible from Cycle stack / Home dashboard)
+> Route: `MainTabs` → `Home` → `Predictions` (also accessible from Cycle stack / dashboard cards)
 
-## Layout
+## Layout & Aesthetics
 
-Premium prediction dashboard with glass card, circular progress, timeline, and charts.
-
-```
-┌─────────────────────────────────────┐
-│  ◀ Predictions              [Share] │
-├─────────────────────────────────────┤
-│  ┌───────────────────────────────┐  │
-│  │  📊 Prediction Confidence     │  │  <- Large glass card
-│  │                               │  │
-│  │  ┌─────────────────────────┐  │  │
-│  │  │     ┌──────┐            │  │  │
-│  │  │     │ 86%  │            │  │  │  <- Large circular progress
-│  │  │     │Accuracy            │  │  │
-│  │  │     └──────┘            │  │  │
-│  │  │ Based on 4 logged cycles │  │  │
-│  │  └─────────────────────────┘  │  │
-│  │                               │  │
-│  │  Data Quality: ●●●●○○ Good   │  │  <- 5-dot quality indicator
-│  └───────────────────────────────┘  │
-│                                     │
-│  Next Events                        │
-│  ┌───────────────────────────────┐  │
-│  │ 🔴 Next Period                │  │
-│  │   Sep 15 - Sep 20             │  │
-│  │   in 4 days                   │  │
-│  │   ───────────────────────     │  │
-│  │ 🟢 Fertility Window           │  │
-│  │   Sep 25 - Sep 30             │  │
-│  │   in 14 days                  │  │
-│  │   ───────────────────────     │  │
-│  │ ⭐ Ovulation Day              │  │
-│  │   Sep 28                      │  │
-│  │   in 17 days                  │  │
-│  └───────────────────────────────┘  │
-│                                     │
-│  Cycle Timeline                     │
-│  ┌───────────────────────────────┐  │
-│  │ 🔴────🟡────🟢────🔵───►     │  │  <- Horizontal timeline bar
-│  │   D1     D8    D14    D21     │  │
-│  │           ▲ You are here       │  │
-│  └───────────────────────────────┘  │
-│                                     │
-│  AI Insight                         │
-│  ┌───────────────────────────────┐  │
-│  │ 🤖 Your cycle has been        │  │
-│  │ consistent within 2 days      │  │
-│  │ over the last 4 cycles.       │  │
-│  │ Predictions will improve as   │  │
-│  │ you log more data.            │  │
-│  └───────────────────────────────┘  │
-│                                     │
-│  Prediction History (accuracy)      │
-│  ┌──────────┬──────────┬──────────┐ │
-│  │ Month    │ Predicted│ Actual   │ │
-│  ├──────────┼──────────┼──────────┤ │
-│  │ August   │ Sep 12   │ Sep 14   │ │  <- Table showing accuracy
-│  │ July     │ Aug 10   │ Aug 10   │ │
-│  │ June     │ Jul 8    │ Jul 11   │ │
-│  └──────────┴──────────┴──────────┘ │
-└─────────────────────────────────────┘
-```
-
-## Large Glass Card (Top)
+A premium, informative dashboard offering advanced forecasts of menstrual cycles, fertile windows, and ovulation days. Built on a soft Off-White (`#FDF8F5`) background, it features a prominent gradient glass card at the top, a horizontal cycle timeline, and formatted historical logs.
 
 ```
-backdrop-filter: blur(20px)
-background: linear-gradient(135deg, rgba(255, 92, 138, 0.1), rgba(155, 123, 255, 0.1))
-border: 1px solid rgba(255, 255, 255, 0.4)
-border-radius: 28px
+┌──────────────────────────────────────────┐
+│  ◀ Predictions                   [Share] │  <- Header: EB Garamond, share icon
+├──────────────────────────────────────────┤
+│  ┌────────────────────────────────────┐  │
+│  │  📊 Prediction Accuracy Info       │  │  <- Premium Glass Card (Soft Blush/Lavender glow)
+│  │  ┌──────────┐                      │  │
+│  │  │   86%    │ Based on 4 logged    │  │  <- Circular progress indicator
+│  │  │ Accuracy │ cycles               │  │
+│  │  └──────────┘                      │  │
+│  │  Data Quality: ●●●●○ Good          │  │  <- 5-dot quality meter
+│  └────────────────────────────────────┘  │
+│                                          │
+│  Next Cycle Events                       │  <- Heading: Inter, 18px
+│  ┌────────────────────────────────────┐  │
+│  │  🔴 Next Period                    │  │  <- Event list (color coded dots)
+│  │     Sep 15 - Sep 20 (in 4 days)     │  │
+│  │  ────────────────────────────────  │  │
+│  │  🟢 Fertile Window                 │  │
+│  │     Sep 25 - Sep 30 (in 14 days)   │  │
+│  └────────────────────────────────────┘  │
+│                                          │
+│  Cycle Phase Timeline                    │
+│  ┌────────────────────────────────────┐  │
+│  │ [🔴Menstrual][🟡Follicular][🟢Ovul]│  │  <- Horizontal multi-segment phase bar
+│  │               ▲ You are here       │  │
+│  └────────────────────────────────────┘  │
+│                                          │
+│  Prediction History                      │
+│  ┌────────────┬───────────┬───────────┐  │
+│  │ Month      │ Predicted │ Actual    │  │  <- Scrollable comparison table
+│  ├────────────┼───────────┼───────────┤  │
+│  │ August     │ Sep 12    │ Sep 14    │  │
+│  └────────────┴───────────┴───────────┘  │
+└──────────────────────────────────────────┘
 ```
 
-### Circular Progress
-- SVG arc with animated fill
-- Color: gradient from yellow → green based on percentage
-- Center text: percentage large (bold 36px), "Accuracy" label below
-- Subtext: "Based on X logged cycles"
+## Component Details
 
-### Data Quality Indicator
-- 5 dots, filled proportionally
-- Labels: Insufficient (1), Minimal (2), Good (3), Great (4), Excellent (5)
-- Color: red → orange → yellow → green → deep green
+### 1. Large Glass Card (Top Header)
+- **Style**:
+  ```css
+  backdrop-filter: blur(24px);
+  background: linear-gradient(135deg, rgba(255, 107, 138, 0.12), rgba(232, 213, 245, 0.12));
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 28px;
+  ```
+- **Circular Progress**: SVG path. Active track is Soft Blush (`#FF6B8A`), inactive is Lavender (`#E8D5F5`). Center text displays the percentage in Inter (24px, Bold, Charcoal `#2D2D2D`).
+- **Data Quality Meter**: 5 horizontal dots. Dot colors follow cycle progress:
+  - 1 dot active: Red (`#FF0000`)
+  - 2 dots active: Soft Peach (`#FFDAB9`)
+  - 3 dots active: Lavender (`#E8D5F5`)
+  - 4 dots active: Mint (`#D4F0E0`)
+  - 5 dots active: Mint (`#D4F0E0` with a subtle glow)
 
-## Next Events List
+### 2. Next Events List
+Each event is marked with a 10px circular color dot representing its category:
+- **Next Period**: Soft Blush (`#FF6B8A`)
+- **Fertility Window**: Mint (`#D4F0E0`)
+- **Ovulation Day**: Soft Peach (`#FFDAB9`)
+- **Typography**: Event titles in Inter (15px, Bold, Charcoal), countdown details in Warm Gray (`#8A8A8A`).
 
-Three event rows with:
-- **Color dot** (red=period, green=fertile, gold=ovulation)
-- **Event name** + date range
-- **Countdown** ("in X days")
-- **Divider** between events
-- Spring entrance animation (staggered, 100ms delay)
+### 3. Cycle Phase Timeline
+- **Timeline Bar**: A horizontal container divided into 4 colored segments representing the cycle phases:
+  - Menstrual: Soft Blush (`#FF6B8A`)
+  - Follicular: Soft Peach (`#FFDAB9`)
+  - Ovulation: Mint (`#D4F0E0`)
+  - Luteal: Lavender (`#E8D5F5`)
+- **Marker**: A small Soft Blush leaf icon overlays the timeline bar showing the current day position, labeled *"You are here"* in Inter (12px, Charcoal).
 
-## Cycle Timeline
+### 4. Prediction History Table
+Comparison list of predicted versus actual starting dates, color-coded by accuracy:
+- **Accurate (<=1 day deviation)**: Row background tinted Mint (`#D4F0E0` at 0.2 opacity).
+- **Close (2 days deviation)**: Row background tinted Soft Peach (`#FFDAB9` at 0.2 opacity).
+- **Off (>=3 days deviation)**: Row background tinted Blush Light (`#FFB3C6` at 0.2 opacity).
 
-- Horizontal colored bar divided into 4 phase segments
-- Current position marker with "You are here" label
-- Phase labels below the bar (Day 1, Day 8, Day 14, Day 21)
-- Colors match phase colors (Red → Yellow → Green → Blue)
-- Animated marker movement on transition
+---
 
-## AI Insight
-
-- Glassmorphism card (lighter style)
-- AI sparkle icon (accent purple)
-- Personalized text about cycle consistency
-- Updated monthly or when new data is available
-- "Powered by AI" badge
-
-## Prediction Accuracy Table
-
-- 3 columns: Month, Predicted date, Actual date
-- Color coding: green row (accurate within 1 day), yellow (within 2 days), red (off by 3+)
-- Scrollable if many rows
-- Summary line at bottom: "Average accuracy: ±1.5 days"
-
-## States
+## Screen States
 
 | State | Behavior |
 |-------|----------|
-| **Loading** | Full-screen skeleton with glass card + list placeholders |
-| **No cycles logged** | Emotional empty state: "Start tracking to see predictions" with CTA |
-| **1 cycle logged** | Prediction shown with low confidence warning |
-| **3+ cycles** | Good confidence, full prediction detail |
-| **Error** | Toast error, cached data stale-while-revalidate |
-| **Share** | Export as image (iOS share sheet / Android sharing intent) |
+| **Loading** | Full-screen glass card and list items shimmer in a staggered loop. |
+| **Error** | Shows local prediction data, overlays a Warm Gray warning bar: *"Tap to refresh predictions."* |
 
-## Empty State
+## Empty State (No Logs Recorded)
 
-```
-┌──────────────────────────────┐
-│      🔮                      │
-│   No predictions yet         │
-│   Log your first period to   │
-│   start receiving AI-        │
-│   powered predictions.       │
-│                              │
-│   [Log My Period]            │
-└──────────────────────────────┘
-```
+If the user has not logged any cycle, the screen shows:
+- **Illustration**: A cozy hand-drawn graphic of an open calendar book decorated with flowers (Blush and Lavender colors).
+- **Header**: Playfair Display (20px, Charcoal): *"Your cycle story begins here"*
+- **Subtext**: Inter (15px, Warm Gray): *"Log your first period start date, and let our AI companion calculate your upcoming cycles and fertile window."*
+- **Action**: Primary Soft Blush pill button: *"Log Period Start"*

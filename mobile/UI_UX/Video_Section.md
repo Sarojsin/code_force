@@ -1,100 +1,64 @@
-# Educational Video Library — YouTube-inspired Card UI
+# Educational Video Library — Modern Card UI
 
-> Route: `MainTabs` → `Home` → `Videos` (or accessible from Home dashboard card)
+> Route: `MainTabs` → `Home` → `Videos` (also accessible from dashboard link)
 
-## Layout
+## Layout & Aesthetics
 
-Health education video library with search, categories, and personalized recommendations.
+An intuitive video resource library styled on an Off-White (`#FDF8F5`) canvas. It contains horizontal scroll filters, highlighted continue-watching banners, and a two-column grid layout for video thumbnails, utilizing Soft Blush and Mauve accents.
 
 ```
-┌─────────────────────────────────────┐
-│  Videos                    🔍      │  <- Search icon (toggles search bar)
-│  Learn & grow with expert content   │
-├─────────────────────────────────────┤
-│  [All] [Yoga] [Nutrition] [PCOS]    │  <- Horizontal scrollable chips
-│  [Mental Health] [Exercise] [Sleep] │
-├─────────────────────────────────────┤
-│  ┌───────────────────────────────┐  │
-│  │ ┌───────┐                     │  │
-│  │ │ ▶️    │  Yoga for Period    │  │  <- Continue Watching (large, with
-│  │ │       │  Cramps Relief      │  │     progress bar overlay)
-│  │ │ 12:34 │  Channel Name        │  │
-│  │ └───────┘                      │  │
-│  │ ████████████░░░░░░░ 60%        │  │  <- Progress bar
-│  └───────────────────────────────┘  │
-│                                     │
-│  Recommended For You                │  <- Section header
-│  ┌────┐ ┌────┐ ┌────┐ ┌────┐      │
-│  │ ▶️  │ │ ▶️  │ │ ▶️  │ │ ▶️  │      │  <- 2-column grid thumbnails
-│  │ Thm │ │ Thm │ │ Thm │ │ Thm │      │
-│  │ Title│ │Title│ │Title│ │Title│      │
-│  │ Views│ │Views│ │Views│ │Views│      │
-│  └────┘ └────┘ └────┘ └────┘      │
-│                                     │
-│  Popular This Week                  │
-│  ┌────┐ ┌────┐ ┌────┐ ┌────┐      │
-│  │ ▶️  │ │ ▶️  │ │ ▶️  │ │ ▶️  │      │
-│  └────┘ └────┘ └────┘ └────┘      │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│  Videos                          [Search]│  <- Header: EB Garamond, search icon button
+│  Learn & grow with expert content        │
+├──────────────────────────────────────────┤
+│  [ All ] [ Yoga ] [ Nutrition ] [ PCOS ] │  <- Category chips (Soft Blush active chips)
+├──────────────────────────────────────────┤
+│  ┌─ Continue Watching ────────────────┐  │
+│  │  ┌───────────┐ Yoga for Period     │  │  <- Single item large card, Soft Blush progress bar
+│  │  │  [Play]   │ Cramps Relief       │  │
+│  │  │   12:34   │ Channel Name        │  │
+│  │  └───────────┘                     │  │
+│  │  ████████████░░░░░░░░░░ 60%        │  │  <- Progress indicator
+│  └────────────────────────────────────┘  │
+│                                          │
+│  Recommended For You                     │  <- Heading: Inter, 18px
+│  ┌──────────────┐  ┌───────────────┐     │
+│  │ [Thumbnail]  │  │ [Thumbnail]   │     │  <- Two-column grid (rounded 16px thumbnails)
+│  │ Title        │  │ Title         │     │
+│  │ Views • Date │  │ Views • Date  │     │
+│  └──────────────┘  └───────────────┘     │
+└──────────────────────────────────────────┘
 ```
 
-## Video Card Spec
+## Component Details
 
-| Property | Value |
-|----------|-------|
-| Width | 2-column grid (`48%` each) |
-| Thumbnail ratio | 16:9 |
-| Border radius | 16px |
-| Play button overlay | Icon centered on thumbnail |
-| Duration badge | Bottom-right of thumbnail: `12:34` |
-| Title | 2 lines max, `bodySmall` semibold |
-| Channel | 1 line, `caption` muted |
-| Views + date | 1 line, `caption` muted |
+### 1. Category Chips
+- **Aesthetic**: Horizontal scrollable FlatList.
+- **Active State**: Solid Soft Blush (`#FF6B8A`) background with White text, `12px` rounded corners.
+- **Inactive State**: Transparent background, 1.5px solid Mauve (`#D4A5B5`) border, and Charcoal (`#2D2D2D`) text.
+- **Transition**: Soft spring scale bounce on tap.
 
-## Category Chips
+### 2. Continue Watching Banner (Top row)
+- **Background**: Warm Cream (`#FFF8F0`) panel, `16px` radius, `shadow.soft`.
+- **Progress Track**: Active bar fill uses the Soft Blush gradient (`#FF6B8A → #FF5277`), while the empty track is Lavender (`#E8D5F5`).
+- **Dismiss Interaction**: Users can swipe left on the card to dismiss/archive the watch state.
 
-- Horizontal `FlatList` with snap
-- Active chip: filled brand primary, white text
-- Inactive chip: outlined border, muted text
-- Spring animation on selection
-- Chips: All (default), Yoga, Nutrition, PCOS, Mental Health, Exercise, Sleep, Pregnancy
+### 3. Video Thumbnail Card (Two-column Grid)
+- **Aspect Ratio**: 16:9 widescreen format, with `16px` corner radius.
+- **Play Indicator Overlay**: Centered translucent glass play circle (`background: rgba(255,255,255,0.4)` with 12px blur).
+- **Duration Badge**: Floating on the bottom-right. Background is Blush Light (`#FFB3C6`) with Charcoal (`#2D2D2D`) text.
+- **Text Styling**: Video title in Inter (14px, Bold, Charcoal `#2D2D2D`), views/date metadata in Inter (11px, Warm Gray `#8A8A8A`).
 
-## Search
+### 4. Search Bar
+- **Border**: 1px solid Mauve (`#D4A5B5`) on an Off-White (`#FDF8F5`) text bar.
+- **Corners**: Rounded `16px` (radius.lg).
+- **Focus Glow**: Changes border to Soft Blush (`#FF6B8A`) and displays recent search recommendations in Blush Light chips.
 
-- Animated search bar that expands on tap
-- Debounced search (300ms)
-- Results: filtered video grid with "No results" empty state
-- Recent searches displayed below search bar
+---
 
-## Continue Watching
-
-- Top section, single large card
-- Shows progress bar overlay on thumbnail
-- 1-3 items max (horizontal scroll if >1)
-- "Resume" CTA
-- Dismissible (swipe to remove)
-
-## Sections
-
-1. **Continue Watching** (if any videos in progress)
-2. **Recommended For You** (AI-personalized based on cycle phase + interests)
-3. **Popular This Week** (community-wide trending)
-4. **New Releases** (most recently added)
-5. **By Category** (when a specific chip is selected)
-
-## Video Detail (on tap)
-
-Navigates to a detail screen with:
-- Full-screen video player (Expo Video)
-- Title, description, channel info
-- Related videos below
-
-## States
+## Screen States
 
 | State | Behavior |
 |-------|----------|
-| **Loading** | Skeleton grid with 6 thumbnail placeholders |
-| **Empty search** | "No videos found" illustration + suggestion to try different keywords |
-| **No category matches** | Empty section with "More coming soon" |
-| **Error** | Toast + retry; cached data shown |
-| **Offline** | Previously watched videos shown; new videos grayed with "Available online" |
+| **Loading** | Widescreen skeleton blocks shimmering in grid formation. |
+| **Offline** | Previously watched/downloaded educational items remain active; online-only streams are grayed out with a small Mauve lock icon overlay. |

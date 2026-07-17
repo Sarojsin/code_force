@@ -1,103 +1,69 @@
-# Splash Screen — Aurora Gradient
+# Splash Screen & Onboarding Layouts
 
-> Route: Root (shown on cold start while auth state is determined)
+> Route: Root (shown on cold start while determining auth and onboarding state)
 
-## Layout
+## Splash Screen Layout
 
-Full-screen animated aurora gradient with app logo and minimal loading. Shown for 800ms–1500ms, then transitions to Auth or Main based on login state.
-
-```
-┌─────────────────────────────────────┐
-│                                     │
-│                                     │
-│         ┌───────────────┐           │
-│         │  ┌─────────┐  │           │  <- Glowing glass circle
-│         │  │  🌸      │  │           │     (60% of screen width)
-│         │  │  Logo    │  │           │
-│         │  │  Mark    │  │           │
-│         │  └─────────┘  │           │
-│         │  Glassmorphic │           │
-│         │  Circle       │           │
-│         └───────────────┘           │
-│                                     │
-│         SheCare                     │  <- App name below logo
-│        Your wellness journey        │
-│                                     │
-│                                     │
-│         ● ● ● ● ●                  │  <- 5-dot loading animation
-│         (pulsing dots)              │
-│                                     │
-│                                     │
-└─────────────────────────────────────┘
-```
-
-## Aurora Gradient Background
+A full-screen animated aurora gradient with a central glassmorphic app emblem and minimal loading indicators. Displays for 1000ms–1500ms before routing to Auth, Onboarding, or MainStacks.
 
 ```
-Animated gradient cycling between:
-- #FF5C8A (pink, 0%)
-- #9B7BFF (purple, 25%)
-- #FFB7C8 (light pink, 50%)
-- #E8D5FF (lavender, 75%)
-- #FFD5B8 (peach, 100%)
-
-Colors shift positions in a slow 6-second loop using animated SVG or
-react-native-linear-gradient with animated stops.
+┌──────────────────────────────────────────┐
+│                                          │
+│                                          │
+│           ┌──────────────────┐           │
+│           │   ┌──────────┐   │           │  <- Centered glowing glass circle
+│           │   │  🌸      │   │           │     (60% of screen width)
+│           │   │  Logo    │   │           │
+│           │   └──────────┘   │           │
+│           │   Glassmorphic   │           │
+│           └──────────────────┘           │
+│                                          │
+│                 SheCare                  │  <- App name: EB Garamond (White, 28px)
+│          Your wellness journey           │  <- Tagline: Inter (White, 12px)
+│                                          │
+│                                          │
+│               ●  ●  ●  ●  ●              │  <- 5-dot loading sequence (active dot: white)
+│                                          │
+└──────────────────────────────────────────┘
 ```
 
-### Implementation approach
+## Aurora Background & Animation Spec
 
-Use `react-native-svg` with `<Defs><LinearGradient>` and `react-native-reanimated` to animate the stop positions, or use `expo-linear-gradient` with `Animated` API to interpolate between color arrays.
+The background is a dynamic linear gradient cycling slowly (6-second cycle) between the brand colors to establish a calm, welcoming entrance:
+- **Color Stops**: Soft Blush (`#FF6B8A`), Blush Light (`#FFB3C6`), Rose Quartz (`#F7C5CC`), Mauve (`#D4A5B5`), and Lavender (`#E8D5F5`).
+- **Animation Details**: Gradient angles rotate slowly (`0s to 3s`: 135deg to 180deg; `3s to 6s`: 180deg back to 135deg) using reanimated state properties to create a moving, liquid appearance.
 
-**Animation timeline:**
-- `0s-3s`: colors shift left-to-right
-- `3s-6s`: colors shift right-to-left
-- Loop infinitely
+## Central Glassmorphic Logo Container
 
-## Glowing Glass Circle
+- **Sizing**: 60% of device width, 1:1 aspect ratio.
+- **Glass Spec**:
+  ```css
+  backdrop-filter: blur(24px);
+  background: rgba(255, 255, 255, 0.22);
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  ```
+- **Pulse Animation**: Scales up to `1.03` and back to `1.0` in a smooth 3-second breathing rhythm.
 
-```
-position: center 38% from top
-width: 60% of screen width
-aspect-ratio: 1:1 (perfect circle)
+## Loading Sequence
 
-backdrop-filter: blur(24px)
-background: rgba(255, 255, 255, 0.2)
-border: 1.5px solid rgba(255, 255, 255, 0.4)
-border-radius: 50%
-```
+- **Indicator**: 5 horizontal dots, each `8px` diameter.
+- **Active State**: White (`#FFFFFF`) with 1.0 opacity.
+- **Inactive State**: White with 0.5 opacity.
+- **Sequence**: Staggered bounce wave from left to right (duration: 1.5s total loop).
 
-### Glow animation
-- Outer glow: pulsing box-shadow (iOS) / elevation (Android)
-- Scale animation: 1.0 → 1.03 → 1.0 over 3 seconds (loop)
-- Inner logo icon centered in the circle
+---
 
-### App Icon (inside glass circle)
-- Custom SheCare icon: stylized flower/leaf in white
-- SVG path with smooth curves
-- Size: approximately 40% of the circle diameter
+## Onboarding Screen Layouts (Onboarding Stack)
 
-## Loading Animation
+Once the splash screen transitions, first-time users land on the Onboarding flow.
 
-5 dots at the bottom of the screen, horizontally spaced:
-- Dots animate in sequence: scale up → scale down → next dot
-- Dot size: 8px diameter, 12px spacing
-- Color: white with 0.6 opacity (inactive), 1.0 (active)
-- Looping animation cycle: 2 seconds total
-
-## Transition
-
-- After auth check completes:
-  - **Authenticated + onboarded**: fade out splash → MainTabs (cross-fade, 400ms)
-  - **Authenticated, not onboarded**: fade out splash → Onboarding stack
-  - **Not authenticated**: fade out splash → Auth stack (Login screen)
-- Splash screen is NOT a route in the navigator — it overlays the root view
-
-## States
-
-| State | Behavior |
-|-------|----------|
-| **Cold start** | Show full splash with animation |
-| **Auth check in progress** | Splash persists (max 2 seconds) |
-| **Auth resolved** | Transition to appropriate stack |
-| **Minimal time** | Splash shown for at least 800ms to avoid flash |
+- **Background**: Solid soft gradient from Blush Light to Warm Cream (`#FFB3C6 → #FFF8F0`).
+- **Header**: Playfair Display (24px, Charcoal `#2D2D2D`): *"Tell us about your cycle"*
+- **Body**: Inter (15px, Warm Gray `#8A8A8A`) for instructions and input explanations.
+- **Illustration**: Large hand-drawn graphic representing a woman meditating or journaling in soft peach/blush tones.
+- **Inputs**: Text fields use standard borders (`#D4A5B5` Mauve) with Off-White backgrounds.
+- **Navigation Controls**:
+  - *Next Button*: Primary pill button (`#FF6B8A` gradient) at full width.
+  - *Progress Indicator Dots*: Located at the bottom. Filled Soft Blush (`#FF6B8A`) for the current step, Blush Light (`#FFB3C6`) for completed, and Mauve (`#D4A5B5`) for upcoming steps.
+- **Transitions**: Horizontal slide-in from right to left (`300ms`, easeOut).

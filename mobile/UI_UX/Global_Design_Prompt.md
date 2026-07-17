@@ -1,125 +1,108 @@
-# Global Design System — SheCare
+# Global Design System — SheCare (Modern Girlish Design)
 
 > Use this as the single source of truth for every screen. Any screen-level override must reference this doc explicitly.
 
 ## Brand Identity
 
-Modern, elegant, calming, and trustworthy — a premium healthcare application for women's health and menstrual cycle tracking. Soft feminine aesthetic without appearing childish. Minimal clutter, maximum clarity.
+Transform SheCare into a modern, feminine, emotionally warm design language that resonates with women aged 16–40. The design must feel soft, empowering, trustworthy, and delightful — like a cozy café with warm lighting and a best friend who always has your back. "You are safe, understood, and celebrated here."
 
-## Color Palette (Semantic Tokens)
+## Color Palette (Soft & Warm)
 
 | Token | HEX | Usage |
 |-------|-----|-------|
-| `brand.primary` | `#FF5C8A` | Primary buttons, active tabs, key accents |
-| `brand.primaryMuted` | `#FFB7C8` | Light fills, selected states, calendar highlights |
-| `brand.accent` | `#9B7BFF` | Secondary CTAs, AI features, pregnancy highlights |
-| `brand.success` | `#4CAF50` | Positive health indicators, ovulation, fertile window |
-| `brand.warning` | `#F4A93C` | Warnings, luteal phase markers |
-| `brand.danger` | `#D63B3B` | SOS, alerts, menstrual phase |
-| `bg.primary` | `#FFF8FB` | Main screen backgrounds |
-| `bg.surface` | `#FFFFFF` | Cards, modals, elevated surfaces |
-| `text.primary` | `#1A1D26` | Headings, primary content |
-| `text.secondary` | `#3B4151` | Body text, descriptions |
-| `text.muted` | `#7B8194` | Captions, timestamps, hints |
+| `brand.primary` | `#FF6B8A` | Soft Blush: Primary buttons, active tabs, headers, active states |
+| `brand.primaryMuted` | `#FFB3C6` | Blush Light: Secondary buttons, badges, selection highlights |
+| `brand.accent` | `#D4A5B5` | Mauve: Accents, dividers, subtle highlights |
+| `brand.success` | `#D4F0E0` | Mint: Cycle tracking, positive health stats |
+| `brand.warning` | `#FFDAB9` | Soft Peach: Onboarding elements, welcome screens |
+| `brand.danger` | `#FF0000` | SOS: Emergency alert primary states |
+| `brand.wellness` | `#E8D5F5` | Lavender: Wellness/sentiment cards, calming elements |
+| `bg.primary` | `#FDF8F5` | Off-White: Main screen background |
+| `bg.surface` | `#FFF8F0` | Warm Cream: Cards, panels, input fields (alternative background) |
+| `text.primary` | `#2D2D2D` | Charcoal: Primary text |
+| `text.secondary` | `#8A8A8A` | Warm Gray: Secondary text, placeholders |
+| `text.muted` | `#8A8A8A` | Warm Gray: Captions, timestamps, hints |
 | `text.inverse` | `#FFFFFF` | Text on brand-colored backgrounds |
 
 ## Gradients
 
-- **Aurora background** (splash): `linear-gradient(135deg, #FF5C8A, #9B7BFF, #FFB7C8, #E8D5FF)`
-- **Menstrual card**: `linear-gradient(180deg, #D63B3B, #FF5C8A)`
-- **Follicular card**: `linear-gradient(180deg, #FFB74D, #FFD54F)`
-- **Ovulation card**: `linear-gradient(180deg, #4CAF50, #81C784)`
-- **Luteal card**: `linear-gradient(180deg, #7E57C2, #9B7BFF)`
+- **Onboarding/Splash Aurora**: `linear-gradient(135deg, #FFB3C6, #FFF8F0)` (Fades from light blush to warm cream)
+- **Primary Action Gradient**: `linear-gradient(135deg, #FF6B8A, #FF5277)` (Soft blush to vivid rose)
+- **SOS Emergency**: `linear-gradient(135deg, #FF0000, #CC0000)` (Vivid red to deep dark red)
+- **Wellness Pulse**: `linear-gradient(135deg, #E8D5F5, #FFF8F0)` (Lavender to warm cream)
 
 ## Typography
 
-| Style | Size | Weight | Line Height | Usage |
-|-------|------|--------|-------------|-------|
-| `display` | 32px | Bold (700) | 38px | Greeting, splash title |
-| `h1` | 24px | Bold (700) | 30px | Screen titles |
-| `h2` | 20px | Semi-bold (600) | 26px | Section headers, card titles |
-| `h3` | 18px | Semi-bold (600) | 24px | Card subtitles |
-| `body` | 16px | Regular (400) | 22px | Primary reading text |
-| `bodySmall` | 14px | Regular (400) | 20px | Secondary text, labels |
-| `caption` | 12px | Regular (400) | 16px | Metadata, timestamps |
-| `button` | 16px | Semi-bold (600) | 20px | All button labels |
+Playfair Display (or EB Garamond) is used sparingly for headers and logos to add a touch of elegance. Inter is used for body, labels, and all metadata to maintain high readability.
 
-Font stack: `SF Pro Display` (iOS), `Inter` (Android), system sans-serif fallback.
+| Token | Font Family | Size | Weight | Line Height | Usage |
+|-------|-------------|------|--------|-------------|-------|
+| `display.logo` | Playfair Display (EB Garamond) | 28px | Bold (700) | 34px | App Logo / Mark |
+| `display.title` | Playfair Display (EB Garamond) | 24px | Semi-bold (600) | 30px | Screen Titles |
+| `h2` | Inter | 18px | Semi-bold (600) | 24px | Section headers |
+| `body` | Inter | 15px | Regular (400) | 22px | Primary reading, body text |
+| `bodySmall` | Inter | 12px | Regular (400) | 16px | Small text, metadata, captions |
+| `button` | Inter | 15px | Semi-bold (600) | 20px | Button labels |
+| `tab` | Inter | 11px | Medium (500) | 14px | Tab bar labels |
+| `display.countdown`| Inter | 48px | Bold (700) | 56px | Haptic countdown numbers |
 
 ## Spacing (4px Grid)
 
-`xs: 4`, `sm: 8`, `md: 12`, `lg: 16`, `xl: 24`, `xxl: 32`, `xxxl: 48`
+`xs: 4`, `sm: 8`, `md: 12`, `lg: 16`, `xl: 20`, `xxl: 24`, `xxxl: 32`, `container-margin: 20`
 
 ## Border Radius
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `radius.sm` | 8px | Inputs, small elements |
-| `radius.md` | 12px | Buttons, chips |
-| `radius.lg` | 16px | Standard cards |
-| `radius.xl` | 20–28px | Feature cards, modals, bottom sheets |
-| `radius.pill` | 999px | Avatars, badges, toggle handles |
+- `radius.sm`: 8px (Toggles, checkboxes, small indicators)
+- `radius.md`: 12px (Symptom selector chips)
+- `radius.lg`: 16px (Text inputs, date pickers)
+- `radius.xl`: 20px (Standard bento cards, wellness panels)
+- `radius.pill`: 24px (Buttons, active status pills)
+- `radius.circle`: 999px (Avatars, floating action buttons)
 
 ## Shadows
 
-| Token | iOS | Android (elevation) | Usage |
-|-------|-----|---------------------|-------|
-| `shadow.sm` | `0 1px 2px rgba(0,0,0,0.05)` | 1 | Subtle, card stacks |
-| `shadow.md` | `0 2px 6px rgba(0,0,0,0.08)` | 3 | Default card elevation |
-| `shadow.lg` | `0 4px 12px rgba(0,0,0,0.12)` | 6 | Modals, FABs, prediction cards |
+- `shadow.soft`: `0 4px 16px rgba(0,0,0,0.06)` (Used for standard elevated cards)
+- `shadow.primary`: `0 4px 12px rgba(255,107,138,0.4)` (For primary Soft Blush buttons)
+- `shadow.secondary`: `0 2px 8px rgba(255,179,198,0.3)` (For secondary Blush Light buttons)
+- `shadow.sos`: `0 6px 20px rgba(255,0,0,0.5)` (For SOS emergency controls)
+- `shadow.wellness`: `0 4px 16px rgba(232,213,245,0.4)` (For Lavender wellness cards)
 
-## Glassmorphism (Cards & Overlays)
+## Card & Panels Design
 
-```
-backdrop-filter: blur(12px)
-background: rgba(255, 255, 255, 0.7)
-border: 1px solid rgba(255, 255, 255, 0.3)
-border-radius: 24px
-```
+- **Standard Card**: Background: White or Warm Cream (`#FFF8F0`), Radius: 20px, Shadow: `shadow.soft`, Padding: 20px. Used for: predictions, stats, insights.
+- **Highlight Card**: Background: Blush Light (`#FFB3C6`), Radius: 20px, Shadow: `shadow.secondary`, Padding: 20px. Used for: daily focus, promotions, mood log prompts.
+- **SOS Card**: Background: SOS Emergency Gradient, Radius: 20px, Shadow: `shadow.sos`, Padding: 24px. Used for: critical safety actions.
+- **Wellness Card**: Background: Lavender (`#E8D5F5`), Radius: 20px, Shadow: `shadow.wellness`, Padding: 20px. Used for: breathing guides, sentiment summaries.
 
-Use only where appropriate (dashboards, prediction cards). Not on every card.
+## Input & Form Elements
 
-## Animations & Micro-interactions
+- **Text Fields**: Border: 1px solid `#D4A5B5` (Mauve), Radius: 16px, Background: `#FDF8F5`, Height: 56px.
+  - *Focus state*: Border transition to `#FF6B8A`, Shadow glow: `0 0 0 3px rgba(255,107,138,0.2)`.
+- **Checkbox / Toggle**: Outline color `#D4A5B5`, Background when active `#FF6B8A`. Trigger light haptic vibration on state change.
+- **Symptom Selectors (Multi-select)**: Border: 1px solid `#D4A5B5` (Mauve), Radius: 12px. Background: `#FFF` when selected (tinted to `#FFB3C6` Blush Light), `#FDF8F5` when inactive.
 
-- Button press: scale to **0.96** with spring (`damping: 15, stiffness: 200`)
-- Card tap: scale to **0.98** with spring
-- Tab switch: cross-fade with opacity
-- Selected day: spring scale bounce
-- Bottom sheet: smooth slide-up with drag handle
-- Skeleton loading: shimmer gradient animation
-- Pull-to-refresh: haptic feedback
-- Phase cards: horizontal swipe with snap
-- Splash: aurora gradient animation, logo glow pulse (3s cycle)
+## Icons & Illustrations
 
-## Icons
+- **Icons**: Outlined stroke-style icons (stroke width 1.5) using Feather or Phosphor sets. Touch target size min **44×44pt**.
+  - *Active icon*: `#FF6B8A`
+  - *Inactive icon*: `#D4A5B5`
+  - *SOS icon*: `#FF0000`
+  - *Wellness icon*: `#8A6E9B` (muted lavender)
+- **Illustrations**: Hand-drawn style (e.g. Blush or Open Peeps library) on onboarding, empty states, and dashboard welcome cards.
+- **Emojis**: Native emojis allowed for mood selectors, symptom tags, and custom notes to add warmth.
+- **Floral Accents**: Subtle decorative floral SVG vectors overlaid in corners of page headers, splash, and transition screens.
 
-Rounded outline style (e.g., Feather or Phosphor icon set). Minimum 24×24pt.
-Touch targets minimum **44×44pt** (Apple HIG).
+## Micro-Interactions & Animations
 
-## Navigation (Bottom Tabs)
+- **Button Press**: Scale down to `0.96` on touch start, spring back to `1.0` on release (duration: 150ms).
+- **Card Entrance**: Staggered fade-up with translation (+4px Y-axis) to keep layout responsive (duration: 300ms, easeOut).
+- **Tab Switch**: Cross-fade transition with 8px horizontal slide (duration: 250ms, easeInOut).
+- **SOS Countdown**: Continuous circular progress animation (duration: 2000ms, linear).
+- **Save Success**: Scale bounce spring animation with a checkmark reveal (duration: 400ms).
 
-```
-Home | Calendar | Analytics | AI Chat | Profile
-```
+## Accessibility (WCAG 2.1 AA)
 
-Each tab icon should be outlined when inactive, filled when active. Active tint: `brand.primary`.
-
-## Accessibility
-
-- `accessibilityLabel` on every interactive element
-- `accessibilityRole` set appropriately (button, tab, header, text)
-- Dynamic type / font scaling supported
-- Contrast ratio ≥ 4.5:1 normal text, 3:1 large text
-- `accessibilityLiveRegion="polite"` for dynamic updates (SOS, predictions)
-- Honor `useReducedMotion()` — disable non-essential animations
-
-## Dark Mode
-
-Dark mode variants for every color token. No layout shifts when switching modes.
-Use `useColorScheme()` from React Native.
-
-## Platform Guidelines
-
-- **iOS**: Large titles, rounded corners, spring animations, safe area insets
-- **Android**: Material Design elevation, ripple effects, back navigation, status bar theming
-- Both platforms share the same component library; platform-specific code only where necessary (date pickers, haptics, SafeAreaView)
+- Minimum contrast ratio: **4.5:1** for body text (using Charcoal on Off-White), **3:1** for large title text.
+- Use native accessibility elements: `accessibilityLabel`, `accessibilityRole`, and `accessibilityHint`.
+- Ensure font sizes scale dynamically using `allowFontScaling`.
+- Color is never the sole conveyor of information (always supplement cycle status with icon or text descriptor).

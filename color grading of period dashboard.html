@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Menstrual Cycle Calendar</title>
+    <style>
+        :root {
+            --menstrual: #FF5A5F;
+            --menstrual-light: #FFE0E1;
+            --follicular: #E8D7FF;
+            --follicular-text: #4A3A6B;
+            --ovulation: #00A896;
+            --ovulation-light: #B8F0E6;
+            --luteal: #FFC857;
+            --luteal-light: #FFF3D6;
+            --bg: #faf9f7;
+            --card-bg: #ffffff;
+            --text: #2d2d2d;
+            --text-secondary: #5c5c5c;
+            --border: #e5e5e5;
+            --today-ring: #3b6df0;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.10);
+            --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.14);
+            --radius-sm: 8px;
+            --radius: 14px;
+            --radius-lg: 20px;
+            --transition: 0.2s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f3f0ed;
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 780px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        /* Header */
+        .app-header {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            box-shadow: var(--shadow-sm);
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .app-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #1a1a1a;
+            margin: 0;
+        }
+        .app-header .subtitle {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            letter-spacing: 0.01em;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 22px 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 100px;
+            flex: 1 1 auto;
+        }
+        .control-group label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .control-group input[type="date"],
+        .control-group input[type="number"],
+        .control-group select {
+            padding: 10px 12px;
+            border: 2px solid #e8e5e1;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            font-family: inherit;
+            background: #fcfbf9;
+            transition: border-color var(--transition), box-shadow var(--transition);
+            color: var(--text);
+            width: 100%;
+            min-width: 110px;
+        }
+        .control-group input:focus,
+        .control-group select:focus {
+            outline: none;
+            border-color: var(--ovulation);
+            box-shadow: 0 0 0 3px rgba(0, 168, 150, 0.1);
+        }
+        .mode-toggle-container {
+            display: flex;
+            gap: 4px;
+            background: #f0edf5;
+            border-radius: 25px;
+            padding: 4px;
+            align-self: flex-end;
+        }
+        .mode-btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 22px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.82rem;
+            font-family: inherit;
+            letter-spacing: 0.02em;
+            transition: all var(--transition);
+            background: transparent;
+            color: #6b5e7e;
+            white-space: nowrap;
+        }
+        .mode-btn.active {
+            background: #ffffff;
+            color: #3a2f50;
+            box-shadow: var(--shadow-sm);
+        }
+        .mode-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .irregular-inputs {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            width: 100%;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .irregular-inputs .control-group {
+            min-width: 90px;
+            flex: 1 1 120px;
+        }
+
+        /* Calendar Card */
+        .calendar-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 20px 18px 22px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+        }
+        .calendar-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            gap: 12px;
+        }
+        .calendar-nav button {
+            background: #f5f3f0;
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+            color: #555;
+            flex-shrink: 0;
+        }
+        .calendar-nav button:hover {
+            background: #eae7e2;
+            color: #1a1a1a;
+        }
+        .calendar-nav .month-label {
+            font-weight: 700;
+            font-size: 1.1rem;
+            letter-spacing: -0.01em;
+            text-align: center;
+            flex: 1;
+            color: #1a1a1a;
+        }
+        .today-btn {
+            background: #ffffff !important;
+            border: 2px solid var(--today-ring) !important;
+            border-radius: 20px !important;
+            width: auto !important;
+            padding: 8px 16px !important;
+            font-weight: 600;
+            font-size: 0.8rem !important;
+            color: var(--today-ring) !important;
+            letter-spacing: 0.02em;
+        }
+        .today-btn:hover {
+            background: #eef2ff !important;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+            text-align: center;
+        }
+        .day-header {
+            font-weight: 700;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: #999;
+            padding: 8px 0;
+        }
+        .day-cell {
+            aspect-ratio: 1 / 1;
+            border-radius: var(--radius-sm);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            font-weight: 500;
+            font-size: 0.85rem;
+            transition: all var(--transition);
+            border: 2px solid transparent;
+            user-select: none;
+            color: #3a3a3a;
+            background: #fdfcfb;
+            min-width: 36px;
+            min-height: 36px;
+        }
+        .day-cell:hover {
+            border-color: #c5bfd6;
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-1px);
+            z-index: 2;
+        }
+        .day-cell.other-month {
+            color: #c5c0b8;
+            background: #f9f8f6;
+            cursor: default;
+            opacity: 0.55;
+        }
+        .day-cell.other-month:hover {
+            border-color: transparent;
+            box-shadow: none;
+            transform: none;
+        }
+        .day-cell.today {
+            border: 2.5px solid var(--today-ring) !important;
+            box-shadow: 0 0 0 4px rgba(59, 109, 240, 0.12);
+            font-weight: 700;
+            z-index: 1;
+        }
+        .day-cell.selected-day {
+            border: 2.5px solid #555 !important;
+            box-shadow: 0 0 0 5px rgba(0, 0, 0, 0.07);
+            z-index: 3;
+        }
+
+        /* Phase colors */
+        .phase-menstrual {
+            background: #FF5A5F !important;
+            color: #fff !important;
+            font-weight: 600;
+        }
+        .phase-menstrual:hover {
+            border-color: #e04a4f !important;
+        }
+        .phase-follicular {
+            background: #E8D7FF !important;
+            color: #4A3A6B !important;
+        }
+        .phase-ovulation {
+            background: #00A896 !important;
+            color: #fff !important;
+            font-weight: 700;
+            box-shadow: 0 0 0 4px rgba(0, 168, 150, 0.2);
+        }
+        .phase-luteal {
+            background: #FFC857 !important;
+            color: #5c3d10 !important;
+        }
+
+        /* Striped fertile window for irregular mode */
+        .phase-fertile-window {
+            background: repeating-linear-gradient(-45deg,
+                    rgba(0, 168, 150, 0.5) 0px,
+                    rgba(0, 168, 150, 0.5) 5px,
+                    rgba(255, 255, 255, 0.85) 5px,
+                    rgba(255, 255, 255, 0.85) 10px),
+                #e6f9f6 !important;
+            color: #1a3d36 !important;
+            font-weight: 500;
+            position: relative;
+        }
+        .phase-fertile-window::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            border: 1px dashed rgba(0, 168, 150, 0.35);
+        }
+
+        /* Symptom indicator dots */
+        .symptom-dots {
+            display: flex;
+            gap: 2px;
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+        .symptom-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #3b6df0;
+        }
+        .symptom-dot.ovulation-dot {
+            background: #fff;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+        }
+        .symptom-dot.luteal-dot {
+            background: #e07b30;
+        }
+
+        /* Symptom Panel */
+        .symptom-panel {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 18px 22px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            transition: all var(--transition);
+        }
+        .symptom-panel .panel-label {
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .symptom-panel .selected-date-display {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #1a1a1a;
+            background: #f5f3f0;
+            padding: 6px 12px;
+            border-radius: 16px;
+            white-space: nowrap;
+        }
+        .symptom-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            flex: 1 1 auto;
+        }
+        .symptom-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 500;
+            border: 2px solid #e5e5e5;
+            background: #fcfbf9;
+            transition: all var(--transition);
+            white-space: nowrap;
+            user-select: none;
+            letter-spacing: 0.01em;
+        }
+        .symptom-chip:hover {
+            border-color: #bbb;
+            background: #f8f7f5;
+        }
+        .symptom-chip.active {
+            border-color: var(--ovulation);
+            background: #e6f9f6;
+            color: #006b5e;
+            font-weight: 600;
+            box-shadow: 0 0 0 3px rgba(0, 168, 150, 0.1);
+        }
+        .symptom-chip.luteal-chip.active {
+            border-color: #e07b30;
+            background: #fff3e6;
+            color: #8b4a1a;
+            box-shadow: 0 0 0 3px rgba(224, 123, 48, 0.1);
+        }
+        .symptom-chip input {
+            display: none;
+        }
+
+        .clear-symptoms-btn {
+            background: none;
+            border: 1px solid #ddd;
+            padding: 8px 14px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            color: #888;
+            font-family: inherit;
+            transition: all var(--transition);
+            white-space: nowrap;
+        }
+        .clear-symptoms-btn:hover {
+            border-color: #c00;
+            color: #c00;
+            background: #fff5f5;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+        .legend-swatch {
+            width: 18px;
+            height: 18px;
+            border-radius: 5px;
+            flex-shrink: 0;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+        .legend-swatch.striped-swatch {
+            background: repeating-linear-gradient(-45deg,
+                    rgba(0, 168, 150, 0.55) 0px,
+                    rgba(0, 168, 150, 0.55) 3px,
+                    rgba(255, 255, 255, 0.9) 3px,
+                    rgba(255, 255, 255, 0.9) 6px),
+                #e6f9f6;
+            border: 1px dashed rgba(0, 168, 150, 0.4);
+        }
+
+        /* Disclaimer */
+        .disclaimer-banner {
+            background: #fff8f0;
+            border: 1.5px solid #f0d5a8;
+            border-radius: var(--radius);
+            padding: 12px 18px;
+            text-align: center;
+            font-size: 0.74rem;
+            color: #8b6914;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            line-height: 1.5;
+        }
+        .disclaimer-banner strong {
+            color: #b85c10;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .control-panel {
+                padding: 14px 12px;
+                gap: 10px;
+            }
+            .control-group {
+                min-width: 70px;
+                flex: 1 1 80px;
+            }
+            .control-group input,
+            .control-group select {
+                font-size: 0.8rem;
+                padding: 8px 10px;
+            }
+            .day-cell {
+                font-size: 0.72rem;
+                border-radius: 6px;
+                min-width: 28px;
+                min-height: 28px;
+            }
+            .calendar-grid {
+                gap: 1px;
+            }
+            .app-header h1 {
+                font-size: 1.2rem;
+            }
+            .symptom-chip {
+                font-size: 0.7rem;
+                padding: 6px 10px;
+            }
+            .mode-btn {
+                font-size: 0.7rem;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>🩸 Dynamic Menstrual Cycle Calendar</h1>
+            <p class="subtitle">Track your cycle phases with precision &amp; biological insights</p>
+        </header>
+
+        <!-- Control Panel -->
+        <div class="control-panel" id="controlPanel">
+            <div class="control-group">
+                <label for="dStart">Period Start Date</label>
+                <input type="date" id="dStart" value="2026-06-15">
+            </div>
+            <div class="control-group">
+                <label for="pLen">Period Length (days)</label>
+                <select id="pLen">
+                    <option value="5">5 days</option>
+                    <option value="6" selected>6 days</option>
+                </select>
+            </div>
+            <div class="mode-toggle-container" id="modeToggle">
+                <button class="mode-btn active" data-mode="regular" id="regularModeBtn">🔄 Regular</button>
+                <button class="mode-btn" data-mode="irregular" id="irregularModeBtn">🌊 Irregular</button>
+            </div>
+            <div class="control-group" id="cLenGroup">
+                <label for="cLen">Cycle Length (28–35 days)</label>
+                <input type="number" id="cLen" min="28" max="35" value="30" step="1">
+            </div>
+            <!-- Irregular inputs (hidden by default) -->
+            <div class="irregular-inputs" id="irregularInputs" style="display: none;">
+                <div class="control-group">
+                    <label for="shortestCycle">Shortest Cycle (past 3–6 mo)</label>
+                    <input type="number" id="shortestCycle" min="21" max="40" value="26" step="1">
+                </div>
+                <div class="control-group">
+                    <label for="longestCycle">Longest Cycle (past 3–6 mo)</label>
+                    <input type="number" id="longestCycle" min="21" max="45" value="34" step="1">
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar -->
+        <div class="calendar-card" id="calendarCard">
+            <div class="calendar-nav">
+                <button id="prevMonth" title="Previous Month">◀</button>
+                <span class="month-label" id="monthLabel">July 2026</span>
+                <button id="nextMonth" title="Next Month">▶</button>
+                <button class="today-btn" id="todayBtn">Today</button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid">
+                <!-- Dynamically filled -->
+            </div>
+            <div class="legend">
+                <span class="legend-item"><span class="legend-swatch" style="background:#FF5A5F;"></span> Menstrual</span>
+                <span class="legend-item"><span class="legend-swatch" style="background:#E8D7FF;"></span> Follicular</span>
+                <span class="legend-item"><span class="legend-swatch" style="background:#00A896;"></span> Ovulation</span>
+                <span class="legend-item"><span class="legend-swatch" style="background:#FFC857;"></span> Luteal</span>
+                <span class="legend-item"><span class="legend-swatch striped-swatch"></span> Est. Fertile Window (Irregular)</span>
+            </div>
+        </div>
+
+        <!-- Symptom Logging Panel -->
+        <div class="symptom-panel" id="symptomPanel">
+            <span class="panel-label">📋 Log Symptoms for:</span>
+            <span class="selected-date-display" id="selectedDateDisplay">Click a day on the calendar</span>
+            <div class="symptom-chips" id="symptomChips">
+                <label class="symptom-chip ovulation-chip" data-symptom="opk">
+                    <input type="checkbox">🧪 Positive OPK
+                </label>
+                <label class="symptom-chip ovulation-chip" data-symptom="ewcm">
+                    <input type="checkbox">🥚 Egg-white Mucus
+                </label>
+                <label class="symptom-chip ovulation-chip" data-symptom="ovPain">
+                    <input type="checkbox">⚡ Ovulation Pain
+                </label>
+                <label class="symptom-chip luteal-chip" data-symptom="soreBreasts">
+                    <input type="checkbox">💗 Sore Breasts
+                </label>
+                <label class="symptom-chip luteal-chip" data-symptom="dryDischarge">
+                    <input type="checkbox">🏜️ Sudden Dry Discharge
+                </label>
+            </div>
+            <button class="clear-symptoms-btn" id="clearSymptomsBtn">Clear for this day</button>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="disclaimer-banner">
+            ⚠️ <strong>Predictions are estimates only.</strong> Do not use this application for birth control or contraception planning. Always consult a qualified healthcare provider for medical advice.
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ──────────────────────────────────────
+            // DOM References
+            // ──────────────────────────────────────
+            const dStartInput = document.getElementById('dStart');
+            const pLenSelect = document.getElementById('pLen');
+            const cLenInput = document.getElementById('cLen');
+            const cLenGroup = document.getElementById('cLenGroup');
+            const regularModeBtn = document.getElementById('regularModeBtn');
+            const irregularModeBtn = document.getElementById('irregularModeBtn');
+            const irregularInputs = document.getElementById('irregularInputs');
+            const shortestCycleInput = document.getElementById('shortestCycle');
+            const longestCycleInput = document.getElementById('longestCycle');
+            const calendarGrid = document.getElementById('calendarGrid');
+            const monthLabel = document.getElementById('monthLabel');
+            const prevMonthBtn = document.getElementById('prevMonth');
+            const nextMonthBtn = document.getElementById('nextMonth');
+            const todayBtn = document.getElementById('todayBtn');
+            const selectedDateDisplay = document.getElementById('selectedDateDisplay');
+            const symptomChips = document.getElementById('symptomChips');
+            const clearSymptomsBtn = document.getElementById('clearSymptomsBtn');
+
+            // ──────────────────────────────────────
+            // State
+            // ──────────────────────────────────────
+            let currentMode = 'regular'; // 'regular' | 'irregular'
+            let displayYear, displayMonth; // For calendar navigation
+            let selectedDateStr = null; // 'YYYY-MM-DD' of clicked day
+            // Symptom log: { 'YYYY-MM-DD': Set of symptom keys }
+            let symptomLog = {};
+
+            // Initialize display to today's month
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            displayYear = today.getFullYear();
+            displayMonth = today.getMonth(); // 0-indexed
+
+            // ──────────────────────────────────────
+            // Helpers
+            // ──────────────────────────────────────
+            function dateStr(year, month, day) {
+                const m = String(month + 1).padStart(2, '0');
+                const d = String(day).padStart(2, '0');
+                return `${year}-${m}-${d}`;
+            }
+
+            function parseDateStr(str) {
+                const [y, m, d] = str.split('-').map(Number);
+                return new Date(y, m - 1, d);
+            }
+
+            function daysBetween(d1, d2) {
+                return Math.floor((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+            }
+
+            function getCycleDayForDate(dateObj, dStart, cycleLen) {
+                const diff = daysBetween(dStart, dateObj);
+                return ((diff % cycleLen) + cycleLen) % cycleLen + 1;
+            }
+
+            // ──────────────────────────────────────
+            // Symptom Override Logic
+            // ──────────────────────────────────────
+            function getOvulationOverrideRanges() {
+                // Returns array of {ovulationDate: Date, lutealStart: Date, lutealEnd: Date}
+                const ranges = [];
+                const ovulationSymptoms = ['opk', 'ewcm', 'ovPain'];
+                for (const [dateStrVal, symptoms] of Object.entries(symptomLog)) {
+                    const hasOvulation = ovulationSymptoms.some(s => symptoms.has(s));
+                    if (hasOvulation) {
+                        const ovDate = parseDateStr(dateStrVal);
+                        const lutealStart = new Date(ovDate);
+                        lutealStart.setDate(lutealStart.getDate() + 1);
+                        const lutealEnd = new Date(ovDate);
+                        lutealEnd.setDate(lutealEnd.getDate() + 14);
+                        ranges.push({
+                            ovulationDate: ovDate,
+                            lutealStart: lutealStart,
+                            lutealEnd: lutealEnd,
+                        });
+                    }
+                }
+                // Sort by ovulation date
+                ranges.sort((a, b) => a.ovulationDate.getTime() - b.ovulationDate.getTime());
+                return ranges;
+            }
+
+            function isInLockedLutealPhase(dateObj) {
+                const ranges = getOvulationOverrideRanges();
+                for (const r of ranges) {
+                    if (dateObj >= r.lutealStart && dateObj <= r.lutealEnd) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            function isOvulationOverrideDay(dateObj) {
+                const dateStrVal = dateStr(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+                const symptoms = symptomLog[dateStrVal];
+                if (!symptoms) return false;
+                return symptoms.has('opk') || symptoms.has('ewcm') || symptoms.has('ovPain');
+            }
+
+            function hasLutealSymptoms(dateObj) {
+                const dateStrVal = dateStr(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+                const symptoms = symptomLog[dateStrVal];
+                if (!symptoms) return false;
+                return symptoms.has('soreBreasts') || symptoms.has('dryDischarge');
+            }
+
+            // ──────────────────────────────────────
+            // Phase Determination
+            // ──────────────────────────────────────
+            function getPhaseForDate(dateObj) {
+                /*
+                  Returns: {
+                    phase: 'menstrual' | 'follicular' | 'ovulation' | 'luteal' | 'fertile-window' | 'unknown',
+                    cssClass: string,
+                    isOverride: boolean
+                  }
+                */
+                const dStart = parseDateStr(dStartInput.value);
+                const pLen = parseInt(pLenSelect.value);
+
+                // Check symptom overrides first
+                if (isOvulationOverrideDay(dateObj)) {
+                    return { phase: 'ovulation', cssClass: 'phase-ovulation', isOverride: true };
+                }
+                if (isInLockedLutealPhase(dateObj)) {
+                    return { phase: 'luteal', cssClass: 'phase-luteal', isOverride: true };
+                }
+                if (hasLutealSymptoms(dateObj)) {
+                    return { phase: 'luteal', cssClass: 'phase-luteal', isOverride: true };
+                }
+
+                // Calendar math
+                if (currentMode === 'regular') {
+                    const cLen = parseInt(cLenInput.value);
+                    const cycleDay = getCycleDayForDate(dateObj, dStart, cLen);
+
+                    if (cycleDay >= 1 && cycleDay <= pLen) {
+                        return { phase: 'menstrual', cssClass: 'phase-menstrual', isOverride: false };
+                    }
+                    if (cycleDay === cLen - 14) {
+                        return { phase: 'ovulation', cssClass: 'phase-ovulation', isOverride: false };
+                    }
+                    if (cycleDay >= cLen - 13 && cycleDay <= cLen) {
+                        return { phase: 'luteal', cssClass: 'phase-luteal', isOverride: false };
+                    }
+                    if (cycleDay >= pLen + 1 && cycleDay <= cLen - 15) {
+                        return { phase: 'follicular', cssClass: 'phase-follicular', isOverride: false };
+                    }
+                    // Fallback
+                    return { phase: 'follicular', cssClass: 'phase-follicular', isOverride: false };
+                } else {
+                    // Irregular mode
+                    const shortest = parseInt(shortestCycleInput.value);
+                    const longest = parseInt(longestCycleInput.value);
+                    const cAvg = Math.round((shortest + longest) / 2);
+                    const cycleDay = getCycleDayForDate(dateObj, dStart, cAvg);
+                    const fertileStart = shortest - 18;
+                    const fertileEnd = longest - 11;
+
+                    if (cycleDay >= 1 && cycleDay <= pLen) {
+                        return { phase: 'menstrual', cssClass: 'phase-menstrual', isOverride: false };
+                    }
+                    if (cycleDay >= fertileStart && cycleDay <= fertileEnd) {
+                        return { phase: 'fertile-window', cssClass: 'phase-fertile-window', isOverride: false };
+                    }
+                    if (cycleDay > fertileEnd && cycleDay <= cAvg) {
+                        return { phase: 'luteal', cssClass: 'phase-luteal', isOverride: false };
+                    }
+                    if (cycleDay >= pLen + 1 && cycleDay < fertileStart) {
+                        return { phase: 'follicular', cssClass: 'phase-follicular', isOverride: false };
+                    }
+                    // Fallback
+                    return { phase: 'follicular', cssClass: 'phase-follicular', isOverride: false };
+                }
+            }
+
+            // ──────────────────────────────────────
+            // Render Calendar
+            // ──────────────────────────────────────
+            function renderCalendar() {
+                calendarGrid.innerHTML = '';
+
+                const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                dayHeaders.forEach(dh => {
+                    const headerEl = document.createElement('div');
+                    headerEl.className = 'day-header';
+                    headerEl.textContent = dh;
+                    calendarGrid.appendChild(headerEl);
+                });
+
+                const firstOfMonth = new Date(displayYear, displayMonth, 1);
+                const lastOfMonth = new Date(displayYear, displayMonth + 1, 0);
+                const startDayOfWeek = firstOfMonth.getDay(); // 0=Sun
+                const daysInMonth = lastOfMonth.getDate();
+
+                // Update month label
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'
+                ];
+                monthLabel.textContent = `${monthNames[displayMonth]} ${displayYear}`;
+
+                // Calculate grid: backfill from previous month, current month, forward fill
+                const prevMonthLastDay = new Date(displayYear, displayMonth, 0).getDate();
+                const totalCells = Math.ceil((startDayOfWeek + daysInMonth) / 7) * 7;
+
+                for (let i = 0; i < totalCells; i++) {
+                    const cellEl = document.createElement('div');
+                    cellEl.className = 'day-cell';
+
+                    let cellDate;
+                    let isOtherMonth = false;
+
+                    if (i < startDayOfWeek) {
+                        // Previous month
+                        const dayNum = prevMonthLastDay - startDayOfWeek + i + 1;
+                        const prevMonth = displayMonth === 0 ? 11 : displayMonth - 1;
+                        const prevYear = displayMonth === 0 ? displayYear - 1 : displayYear;
+                        cellDate = new Date(prevYear, prevMonth, dayNum);
+                        isOtherMonth = true;
+                    } else if (i - startDayOfWeek >= daysInMonth) {
+                        // Next month
+                        const dayNum = i - startDayOfWeek - daysInMonth + 1;
+                        const nextMonth = displayMonth === 11 ? 0 : displayMonth + 1;
+                        const nextYear = displayMonth === 11 ? displayYear + 1 : displayYear;
+                        cellDate = new Date(nextYear, nextMonth, dayNum);
+                        isOtherMonth = true;
+                    } else {
+                        // Current month
+                        const dayNum = i - startDayOfWeek + 1;
+                        cellDate = new Date(displayYear, displayMonth, dayNum);
+                    }
+
+                    cellDate.setHours(0, 0, 0, 0);
+                    const cellDateStr = dateStr(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
+
+                    cellEl.textContent = cellDate.getDate();
+                    cellEl.title = cellDate.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                    cellEl.dataset.dateStr = cellDateStr;
+
+                    if (isOtherMonth) {
+                        cellEl.classList.add('other-month');
+                    }
+
+                    // Today indicator
+                    if (cellDate.getTime() === today.getTime()) {
+                        cellEl.classList.add('today');
+                    }
+
+                    // Selected day indicator
+                    if (cellDateStr === selectedDateStr) {
+                        cellEl.classList.add('selected-day');
+                    }
+
+                    // Phase coloring (only for current month or if not too distant)
+                    if (!isOtherMonth || cellDate >= parseDateStr('2025-01-01')) {
+                        const phaseInfo = getPhaseForDate(cellDate);
+                        cellEl.classList.add(phaseInfo.cssClass);
+                        if (phaseInfo.isOverride) {
+                            cellEl.title += ' [Symptom Override]';
+                        }
+                    }
+
+                    // Symptom indicator dots
+                    const loggedSymptoms = symptomLog[cellDateStr];
+                    if (loggedSymptoms && loggedSymptoms.size > 0) {
+                        const dotsContainer = document.createElement('div');
+                        dotsContainer.className = 'symptom-dots';
+                        const hasOv = loggedSymptoms.has('opk') || loggedSymptoms.has('ewcm') || loggedSymptoms.has(
+                            'ovPain');
+                        const hasLut = loggedSymptoms.has('soreBreasts') || loggedSymptoms.has('dryDischarge');
+                        if (hasOv) {
+                            const dot = document.createElement('span');
+                            dot.className = 'symptom-dot ovulation-dot';
+                            dotsContainer.appendChild(dot);
+                        }
+                        if (hasLut) {
+                            const dot = document.createElement('span');
+                            dot.className = 'symptom-dot luteal-dot';
+                            dotsContainer.appendChild(dot);
+                        }
+                        if (!hasOv && !hasLut) {
+                            const dot = document.createElement('span');
+                            dot.className = 'symptom-dot';
+                            dotsContainer.appendChild(dot);
+                        }
+                        cellEl.appendChild(dotsContainer);
+                    }
+
+                    // Click handler
+                    cellEl.addEventListener('click', () => {
+                        if (isOtherMonth) {
+                            // Navigate to that month instead
+                            displayYear = cellDate.getFullYear();
+                            displayMonth = cellDate.getMonth();
+                            selectedDateStr = cellDateStr;
+                            renderCalendar();
+                            updateSymptomPanel();
+                            return;
+                        }
+                        selectedDateStr = cellDateStr;
+                        renderCalendar();
+                        updateSymptomPanel();
+                    });
+
+                    calendarGrid.appendChild(cellEl);
+                }
+            }
+
+            // ──────────────────────────────────────
+            // Symptom Panel
+            // ──────────────────────────────────────
+            function updateSymptomPanel() {
+                if (!selectedDateStr) {
+                    selectedDateDisplay.textContent = 'Click a day on the calendar';
+                    // Uncheck all chips
+                    document.querySelectorAll('#symptomChips .symptom-chip').forEach(chip => {
+                        chip.classList.remove('active');
+                        chip.querySelector('input').checked = false;
+                    });
+                    return;
+                }
+                const parsed = parseDateStr(selectedDateStr);
+                selectedDateDisplay.textContent = parsed.toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+
+                const symptoms = symptomLog[selectedDateStr] || new Set();
+                document.querySelectorAll('#symptomChips .symptom-chip').forEach(chip => {
+                    const sym = chip.dataset.symptom;
+                    const input = chip.querySelector('input');
+                    if (symptoms.has(sym)) {
+                        chip.classList.add('active');
+                        input.checked = true;
+                    } else {
+                        chip.classList.remove('active');
+                        input.checked = false;
+                    }
+                });
+            }
+
+            function toggleSymptom(symptomKey) {
+                if (!selectedDateStr) return;
+                if (!symptomLog[selectedDateStr]) {
+                    symptomLog[selectedDateStr] = new Set();
+                }
+                const symptoms = symptomLog[selectedDateStr];
+                if (symptoms.has(symptomKey)) {
+                    symptoms.delete(symptomKey);
+                    if (symptoms.size === 0) {
+                        delete symptomLog[selectedDateStr];
+                    }
+                } else {
+                    symptoms.add(symptomKey);
+                }
+                renderCalendar();
+                updateSymptomPanel();
+            }
+
+            function clearSymptomsForDay() {
+                if (!selectedDateStr) return;
+                delete symptomLog[selectedDateStr];
+                renderCalendar();
+                updateSymptomPanel();
+            }
+
+            // ──────────────────────────────────────
+            // Event Listeners
+            // ──────────────────────────────────────
+            prevMonthBtn.addEventListener('click', () => {
+                displayMonth--;
+                if (displayMonth < 0) {
+                    displayMonth = 11;
+                    displayYear--;
+                }
+                renderCalendar();
+            });
+
+            nextMonthBtn.addEventListener('click', () => {
+                displayMonth++;
+                if (displayMonth > 11) {
+                    displayMonth = 0;
+                    displayYear++;
+                }
+                renderCalendar();
+            });
+
+            todayBtn.addEventListener('click', () => {
+                displayYear = today.getFullYear();
+                displayMonth = today.getMonth();
+                selectedDateStr = dateStr(today.getFullYear(), today.getMonth(), today.getDate());
+                renderCalendar();
+                updateSymptomPanel();
+            });
+
+            // Mode toggle
+            regularModeBtn.addEventListener('click', () => {
+                if (currentMode === 'regular') return;
+                currentMode = 'regular';
+                regularModeBtn.classList.add('active');
+                irregularModeBtn.classList.remove('active');
+                cLenGroup.style.display = '';
+                irregularInputs.style.display = 'none';
+                renderCalendar();
+            });
+
+            irregularModeBtn.addEventListener('click', () => {
+                if (currentMode === 'irregular') return;
+                currentMode = 'irregular';
+                irregularModeBtn.classList.add('active');
+                regularModeBtn.classList.remove('active');
+                cLenGroup.style.display = 'none';
+                irregularInputs.style.display = 'flex';
+                renderCalendar();
+            });
+
+            // Input changes trigger re-render
+            [dStartInput, pLenSelect, cLenInput, shortestCycleInput, longestCycleInput].forEach(el => {
+                el.addEventListener('input', () => {
+                    renderCalendar();
+                    updateSymptomPanel();
+                });
+                el.addEventListener('change', () => {
+                    renderCalendar();
+                    updateSymptomPanel();
+                });
+            });
+
+            // Symptom chip clicks
+            symptomChips.addEventListener('click', (e) => {
+                const chip = e.target.closest('.symptom-chip');
+                if (!chip) return;
+                const symptomKey = chip.dataset.symptom;
+                if (symptomKey) {
+                    toggleSymptom(symptomKey);
+                }
+            });
+
+            clearSymptomsBtn.addEventListener('click', clearSymptomsForDay);
+
+            // Keyboard navigation
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft' && !e.target.closest('input, select')) {
+                    prevMonthBtn.click();
+                } else if (e.key === 'ArrowRight' && !e.target.closest('input, select')) {
+                    nextMonthBtn.click();
+                } else if (e.key === 't' && e.ctrlKey && !e.target.closest('input, select')) {
+                    e.preventDefault();
+                    todayBtn.click();
+                }
+            });
+
+            // ──────────────────────────────────────
+            // Initialize
+            // ──────────────────────────────────────
+            function initialize() {
+                // Set default date to a recent plausible start
+                const defaultStart = new Date(today);
+                defaultStart.setDate(defaultStart.getDate() - 10);
+                dStartInput.value = dateStr(defaultStart.getFullYear(), defaultStart.getMonth(), defaultStart.getDate());
+
+                // Initial render
+                renderCalendar();
+                updateSymptomPanel();
+
+                // Set initial mode UI state
+                if (currentMode === 'regular') {
+                    cLenGroup.style.display = '';
+                    irregularInputs.style.display = 'none';
+                } else {
+                    cLenGroup.style.display = 'none';
+                    irregularInputs.style.display = 'flex';
+                }
+            }
+
+            initialize();
+
+            console.log('🩸 Dynamic Menstrual Cycle Calendar ready.');
+            console.log('   - Regular mode: Algorithmic phase calculation');
+            console.log('   - Irregular mode: Hybrid range algorithm with striped fertile window');
+            console.log('   - Symptom overrides: OPK+, EWCM, ovulation pain → lock ovulation + 14-day luteal');
+            console.log('   - Click any day to log symptoms. Use arrow keys to navigate months.');
+            console.log('   - ⚠️ Predictions are estimates only. Not for birth control.');
+        })();
+    </script>
+</body>
+</html>

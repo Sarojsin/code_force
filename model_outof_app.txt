@@ -1,0 +1,68 @@
+Don't bundle the model — download it on first launch:
+Host on S3/CDN → download to app's document directory
+Use expo-file-system to fetch + cache
+Saves 86 MB from the upload
+Or use EAS Build cache — store it in ~/.eas/build/cache/ so it's not re-uploaded every build
+Add to .easignore if you can download at runtime:
+src/assets/models/
+Check for other bloat:
+coverage/ (3 MB) — add to .easignore
+start.log in .expo/dev/logs (7 MB) — already excluded by .expo/
+
+Here's the pattern to move the ONNX model (86 MB) out of your build:
+
+Step 1: Install expo-file-system
+npx expo install expo-file-system
+Step 2: Create a model downloader
+src/services/ml/modelDownloader.ts:
+
+import * as FileSystem from 'expo-file-system';
+
+const MODEL_DIR = `${FileSystem.documentDirectory}models/`;
+
+export const modelDownloader = {
+  async getPath(modelName: string, remoteUrl: string): Promise<string> {
+    const localPath = `${MODEL_DIR}${modelName}.onnx`;
+
+    // Already cached?
+    const info = await FileSystem.getInfoAsync(localPath);
+    if (info.exists) return localPath;
+
+    // Download and cache
+    await FileSystem.makeDirectoryAsync(MODEL_DIR, { intermediates: true });
+    const result = await FileSystem.downloadAsync(remoteUrl, localPath);
+    return result.uri;
+  },
+
+  async remove(modelName: string): Promise<void> {
+    const path = `${MODEL_DIR}${modelName}.onnx`;
+    const info = await FileSystem.getInfoAsync(path);
+    if (info.exists) await FileSystem.deleteAsync(path);
+  },
+};
+Step 3: Change embedder.ts (line 28-29)
+Before:
+
+this.session = await this.onnxruntime.InferenceSession.create(
+  require('assets/models/minilm_embedder.onnx'),
+);
+After:
+
+const modelPath = await modelDownloader.getPath(
+  'minilm_embedder',
+  `${API_URL}/api/v1/models/minilm-embedder/latest.onnx`,
+);
+this.session = await this.onnxruntime.InferenceSession.create(modelPath);
+Same change in minilmEmbedder.ts (line 22-24) and wellnessClassifier.ts (line 27-29).
+
+Step 4: Add to .easignore
+src/assets/models/
+Step 5: Host the model somewhere accessible at runtime
+Options:
+
+Your own backend — serve from /api/v1/models/minilm-embedder/latest.onnx (which your modelUpdater.ts already expects!)
+S3 / Cloudflare R2 — public bucket with CDN
+GitHub Releases — attach as asset, download from release URL
+The first launch will download the 86 MB over WiFi — so show a loading/progress indicator. After that, it's cached locally and loads instantly.
+
+Result: EAS build drops from 732 MB → ~50 MB, and users download the model once in the background.

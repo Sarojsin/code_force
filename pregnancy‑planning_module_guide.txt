@@ -1,0 +1,144 @@
+🧬 The core principle for pregnancy planning
+The fertile window is the 6‑day interval ending on ovulation day (the 5 days before ovulation + ovulation day itself). Sperm can survive up to 5 days in fertile cervical mucus; the egg lives only 12–24 hours. Timing intercourse within this window dramatically increases the chance of conception. Your system’s job is to identify that window as accurately as possible, using either:
+
+Path A: Physical signs – mucus, ovulation pain, breast changes.
+
+Path B: Cycle history only – period start dates, cycle lengths, and regularity.
+
+🧭 User flow: Choose your path
+Present a clean choice when the user sets up or opens the pregnancy guide:
+
+How would you like us to identify your fertile days?
+🔬 I track body signs (cervical mucus, ovulation pain, etc.)
+📅 I only know my cycle dates (period start, cycle length)
+
+Based on their selection, the app uses a different algorithm, but the visual output is the same: a color‑coded calendar with a clearly marked fertile window and predicted ovulation day, plus the existing phase overlays.
+
+🔬 Path A: Physical signs (High accuracy, no tools needed)
+This path uses the cervical mucus pattern (and optionally ovulation pain) to pinpoint the fertile window and ovulation day in real time. It’s the same logic you already implemented as symptom overrides—now expanded for pregnancy planning.
+
+What the user observes and logs
+Dry sensation → No visible mucus, no override.
+
+Sticky / pasty / creamy mucus → Log as “Creamy mucus” (or a custom note). This opens the fertile window.
+
+Egg‑white, stretchy, slippery mucus → Log “Egg‑white cervical mucus” – marks peak fertility.
+
+Sudden dry‑up after wet days → Log “Sudden dry discharge” – closes the fertile window, luteal phase begins.
+
+One‑sided ovulation pain → Log “Ovulation pain” – pinpoints ovulation day.
+
+How the algorithm translates these logs
+Fertile window opens → The first day any non‑dry mucus is logged (creamy or better). The app colors that day and all subsequent days up to ovulation with a fertility highlight (e.g., a cross‑hatch pattern in teal).
+
+Peak day → The last day of egg‑white mucus or the day ovulation pain is logged. This is taken as the most likely ovulation day.
+
+Fertile window closes → The day after peak day + 3 days to be safe, OR immediately after a “sudden dry” log, whichever comes first. The luteal phase lock then applies.
+
+Because ovulation can occur within ±1 day of the peak day, the app can show a “target” zone: ovulation day ± 1 day as the highest conception probability.
+
+Example logic in pseudocode
+javascript
+if (loggedEggWhite || loggedOvPain) {
+    ovulationDay = dateOfLog;
+} else if (loggedDryAfterWet) {
+    ovulationDay = dateOfDry - 1; // ovulation likely occurred the day before dry-up
+}
+// Fertile window start: first day of any non-dry mucus in this cycle
+fertileStart = earliestDayWithCreamyOrWetter;
+fertileEnd = ovulationDay + 1; // conservative
+Important: This method is natural and has been validated by the Billings Ovulation Method. It requires no thermometer, no OPK, and still achieves >95% accuracy for identifying the fertile window when used correctly.
+
+📅 Path B: Cycle history only (Moderate accuracy, calendar math)
+When the user chooses not to log physical signs, the system falls back to the hybrid algorithm you’ve already built, now enhanced with a proper fertile window.
+
+Inputs collected
+Last period start date.
+
+Period length (5 or 6 days).
+
+For regular cycles: one fixed cycle length (e.g., 30 days).
+
+For irregular cycles: shortest and longest cycle lengths from the past 3–6 months.
+
+Fertile window calculation
+Regular mode:
+Ovulation day = cycleLength - 14 (assuming a 14‑day luteal phase).
+Fertile window = cycleLength - 18 to cycleLength - 14.
+Example: 30‑day cycle → fertile window day 12–16 (with day 16 being ovulation).
+
+Irregular mode:
+Fertile window start = shortestCycle - 18
+Fertile window end = longestCycle - 11
+This covers the entire possible ovulation range across all recorded cycles.
+The app already draws this as the striped fertile window.
+
+For a pregnancy guide, you could also:
+
+Predict the single best estimated ovulation day as the midpoint of the fertile window (useful for planning timed intercourse in irregular cycles).
+
+Show a “fertility score” per day: highest on the predicted ovulation day, tapering off before and after.
+
+Visual distinction
+Path B’s fertile window is shown with the diagonal striped pattern, clearly indicating it’s an estimate. A small info icon can explain: “Based on cycle history alone. Actual ovulation may vary.”
+
+🤰 Integrating pregnancy planning features
+Whichever path the user takes, the app can now offer:
+
+“Try to conceive” highlight – a special gold ring or star on the calendar days within the fertile window.
+
+Intercourse timing suggestions – “Best days to try: [dates]” with a peak day highlighted.
+
+Cycle‑by‑cycle logging – the user can mark days they had intercourse, and the app can overlay them with the fertile window.
+
+Luteal phase lock confirmation – when the user logs “sore breasts” or “dry discharge” in Path A, the app can display a small “Ovulation confirmed” badge, and a pregnancy test could be suggested in 12–14 days.
+
+Missed period alert – if the next period doesn’t start by cycleLength + 2 days, prompt a pregnancy test.
+
+🧪 Combining both paths seamlessly
+The system doesn’t have to be exclusive. A user on Path B can at any time start logging physical signs—when they do, the app automatically promotes their accuracy and shifts to Path A’s logic for that cycle. The UI can gently nudge:
+
+“Noticed any slippery mucus today? Log it to increase accuracy.”
+
+If they log a sign, the calendar instantly redraws with the higher‑confidence fertile window, and the old prediction is overridden.
+
+⚠️ Safety & guidance
+Persistent disclaimer: “This app is an educational guide, not a medical device. For difficulties conceiving, consult a fertility specialist.”
+
+Educational content: A small library of articles explaining how to check cervical mucus, the role of BBT (optional), and how stress/diet affect the cycle.
+
+Warn that Path B (cycle history) is less reliable and may miss the fertile window, especially if cycles are irregular.
+
+🎨 Suggested UI sketch
+On the main calendar:
+
+Toggle button: 🔬 Body Signs | 📅 Dates Only
+
+A header dynamically shows: “Your fertile window is Apr 5 – Apr 10” (or “Estimated fertile window” for Path B).
+
+Each day shows a small icon if intercourse was logged, and a peak fertility icon on the predicted ovulation day.
+
+A simple log button: “+ Add observation” with the quick‑select chips you already built.
+
+🚀 What’s ready and what to build next
+Your existing HTML app already:
+
+Handles both regular and irregular cycles.
+
+Applies symptom overrides for ovulation and luteal phase.
+
+Shows striped fertile window for irregular mode.
+
+To turn it into a pregnancy‑planning guide, you can:
+
+Add a mode selector at the top: “Guide me with body signs” vs. “Use my cycle dates only”.
+
+Extend the fertile window highlight to regular mode (not just irregular).
+
+Add intercourse tracking and overlay it on the calendar.
+
+Show a “probability of conception” gradient across the fertile window.
+
+Include a “peak fertility” star on the predicted ovulation day (or last day of egg‑white if logged).
+
+

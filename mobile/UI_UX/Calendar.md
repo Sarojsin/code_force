@@ -1,81 +1,70 @@
-# Calendar Screen — Minimal Material Design
+# Calendar Screen — Modern Girlish Style
 
 > Route: `MainTabs` → `Calendar` tab (2nd tab)
 
-## Layout
+## Layout & Structure
+
+The calendar screen uses an elegant, uncluttered grid set on an Off-White (`#FDF8F5`) canvas. Phase days are represented using organic pastel circles. A draggable Warm Cream (`#FFF8F0`) bottom sheet holds logging controls and cycle insights.
 
 ```
-┌─────────────────────────────────────┐
-│  < September 2026 >          [Today] │
-├─────────────────────────────────────┤
-│  Su  Mo  Tu  We  Th  Fr  Sa        │
-│             1   2   3   4   5       │
-│   6   7   8   9  10  11  12       │
-│  13  14  15  16  17  18  19       │  <- Color-coded phase days
-│  20  21  22  23  24  25  26       │
-│  27  28  29  30                    │
-├─────────────────────────────────────┤
-│  ┌─── Selected Day Details ──────┐  │  <- Bottom sheet (draggable)
-│  │  Sep 15, 2026 — Day 3          │  │
-│  │  ● Menstrual Phase             │  │
-│  │  ┌──────────────────────────┐  │  │
-│  │  │ 😊 Happy  │ 😴 Tired     │  │  │  <- Tappable chips
-│  │  │ 😰 Anxious│ 💪 Motivated │  │  │
-│  │  └──────────────────────────┘  │  │
-│  │  Symptoms: Cramps, Bloating    │  │
-│  │  Notes: "Feeling a bit low..." │  │
-│  │  Prediction: Next period Oct 12│  │
-│  └────────────────────────────────┘  │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│  ◀  September 2026  ▶            [Today] │  <- Header: EB Garamond month navigation, today button
+├──────────────────────────────────────────┤
+│  Su   Mo   Tu   We   Th   Fr   Sa        │
+│             1    2    3    4    5        │
+│   6    7    8    9   10   11   12        │
+│  13   14  [15]  16   17   18   19        │  <- Selected day (15) highlighted with spring border
+│  20   21   22   23   24   25   26        │  <- Color-coded phase circles and dots
+│  27   28   29   30                       │
+├──────────────────────────────────────────┤
+│  ┌─── Log Details ─────────────────────┐  │  <- Bottom Sheet (draggable, 20px radius)
+│  │   Sep 15, 2026 — Cycle Day 3        │  │
+│  │   🔴 Menstrual Phase                │  │
+│  │   Mood: 😊 [Add Note]               │  │
+│  │   Symptoms logged: Cramps, Fatigue  │  │
+│  │   ┌──────────────────────────────┐  │  │
+│  │   │  [ Save Daily Log ]          │  │  │  <- Primary button (Soft Blush)
+│  │   └──────────────────────────────┘  │  │
+│  └─────────────────────────────────────┘  │
+└──────────────────────────────────────────┘
 ```
 
-## Phase Color Coding
+## Phase Color Coding & Day Styles
 
-| Phase | Color | HEX | Calendar Day Style |
-|-------|-------|-----|-------------------|
-| Menstrual | Red | `#FF5252` | Solid fill, white text |
-| Follicular | Yellow | `#FFD54F` | Light fill, dark text |
-| Ovulation | Green | `#4CAF50` | Solid fill, white text, subtle glow |
-| Luteal | Blue | `#42A5F5` | Light fill, white text |
+Logged phase days are color-coded using the soft/warm color system:
 
-## Calendar Component Spec
+| Phase | Color Name | HEX | Day Cell Style |
+|-------|------------|-----|----------------|
+| **Menstrual** | Soft Blush | `#FF6B8A` | Solid circle fill, white text |
+| **Follicular** | Soft Peach | `#FFDAB9` | Soft peach background circle, Charcoal text |
+| **Ovulation** | Mint | `#D4F0E0` | Mint background circle with soft shadow, Charcoal text |
+| **Luteal** | Lavender | `#E8D5F5` | Lavender background circle, Charcoal text |
+| **Predicted Period** | Blush Light | `#FFB3C6` | Outlined or striped diagonal pattern, Charcoal text |
 
-- **Large monthly calendar** filling the screen width (with horizontal padding)
-- **Month navigation**: left/right arrows + `MMMM yyyy` header title
-- **Weekday headers**: 3-letter abbreviated (Mon, Tue, Wed...)
-- **Selected day**: spring bounce animation on tap (scale 1.0 → 1.15 → 1.0)
-- **Today**: outlined circle with primary color
-- **Phase days**: background color per phase coding above
-- **Predicted days**: striped/hatched pattern (or lighter opacity) to distinguish from logged
-- **Markers**: small dot for logged symptoms, different dot for logged moods
+- **Selected Day**: Highlighted with a 2px solid Soft Blush (`#FF6B8A`) border and a spring bounce animation (scales up to 1.15, then snaps to 1.0).
+- **Today Indicator**: Muted gray background circle with a Soft Blush (`#FF6B8A`) text number.
+- **Log Indicators**:
+  - Logged Symptoms: Small Mauve (`#D4A5B5`) dot placed directly beneath the day's text number.
+  - Logged Mood: Tiny native emoji symbol printed under the day's cell.
 
-## Bottom Sheet (Details Panel)
+## Draggable Details Panel (Bottom Sheet)
 
-- Drag gesture to pull up (snap points: 30%, 60%, 90%)
-- Handle bar at top (30px wide, 4px tall, rounded pill)
-- Smooth spring animation on reveal
+- **Style**: Background is Warm Cream (`#FFF8F0`) with a `20px` corner radius. The drag handle is a Mauve (`#D4A5B5`) pill (`32px` wide, `4px` tall).
+- **Snap Points**: Snaps at 30% (summary preview), 65% (standard logs), and 90% (full-screen input).
 
-### Bottom Sheet Sections
+### Bottom Sheet Form Controls
 
-1. **Date & Phase Header**: Full date + phase name with color indicator
-2. **Mood Chips**: Quick mood selector (same as Mood Log emojis) — tappable to log
-3. **Symptom Tags**: Common symptoms as tappable chips, selected ones highlighted
-4. **Notes**: Expandable text area, existing notes shown, tap to edit
-5. **Prediction**: "Next period in X days" with mini timeline
-6. **Actions**: "Log Period", "Add Note", "View Phase Details" buttons
+1. **Phase Summary**: Heading uses Playfair Display (18px, Charcoal) showing the date and current phase with a colored status dot.
+2. **Mood Selector Chips**: Horizontal rows of emoji chips. Selected emoji gets a Blush Light (`#FFB3C6`) background, unselected chips remain transparent with a thin Mauve (`#D4A5B5`) border.
+3. **Symptom Tag Grid**: Tappable symptom badges. Background is Blush Light (`#FFB3C6`) with Charcoal text when active, and Off-White (`#FDF8F5`) with a Mauve border when inactive.
+4. **Notes Field**: Expansive text area. Border is 1px solid `#D4A5B5` (Mauve) on an Off-White input canvas.
+5. **Action Buttons**:
+  - *Primary (Save)*: Pill-shaped (`24px` radius) with Soft Blush gradient background and white text.
+  - *Secondary (Delete/Cancel)*: Ghost style with a Soft Blush border and Soft Blush text.
 
-## States
+## Screen States
 
 | State | Behavior |
 |-------|----------|
-| **Loading** | Calendar skeleton with 28 day cells shimmering |
-| **No data** | Empty month, "Start logging your cycle" CTA |
-| **Partial data** | Some days colored (logged), others blank |
-| **Error** | Toast error, offline data shown stale-while-revalidate |
-
-## Interactions
-
-- Day tap: select that day, animate, show bottom sheet with that day's data
-- Long-press on a day: quick log period start/end toggle
-- Swipe left/right on header: change month
-- "Today" button: scroll back to current month and select today
+| **Loading** | 28 shimmering circular grids representing blank day cells. |
+| **Offline** | Users can log locally. Changes are saved to encrypted storage and synchronized with the backend on reconnect (showing a toast: *"Saved offline"*). |
