@@ -1,0 +1,281 @@
+## auth and onboarding
+🔴 Gap 1: 5xx Error Handling in Hydration (Too Aggressive)
+The Problem:
+
+typescript
+// Current behavior
+if (GET /auth/me fails with 500) {
+  clear tokens, clear cached user, set user: null // ← Forces logout
+}
+A 500 error from the server (e.g., database timeout, API crash) does not mean the token is invalid. Force-logging the user out on a temporary server error is hostile UX. The user will lose all offline progress and be forced to log in again, even though the server is just temporarily unavailable.
+
+The Fix:
+
+typescript
+// In authStore.hydrate()
+try {
+  const user = await authService.getMe();
+  setCachedUser(user);
+  set({ user, isHydrated: true });
+} catch (error) {
+  if (isNetworkError(error)) {
+    // Offline → fallback to cached user
+    const cached = await getCachedUser();
+    set({ user: cached, isHydrated: true });
+  } else if (error.response?.status === 401 || error.response?.status === 403) {
+    // Auth error → clear everything
+    await tokenStore.clear();
+    await clearCachedUser();
+    set({ user: null, isHydrated: true });
+  } else {
+    // 5xx, 429, etc. → keep cached user, but flag as "stale"
+    // Do NOT clear tokens or user. The app stays logged in.
+    // A background refresh will retry later.
+    const cached = await getCachedUser();
+    set({ user: cached, isHydrated: true });
+    // Optionally: show a subtle "Server unavailable" toast
+    Toast.show({ type: 'warning', text1: 'Server unavailable. Using cached data.' });
+  }
+}
+Why this matters: A temporary server outage should not forcibly log out thousands of users. This is a critical UX and trust issue.
+
+🔴 Gap 2: Refresh Token Rotation in 401 Interceptor (Missing)
+The Problem:
+Your interceptor handles refresh, but if the refresh endpoint returns a new refresh token (as per your Phase 0 architecture with jti rotation), your interceptor must store it. Currently, it only appears to store the new access token:
+
+typescript
+// Current (likely)
+const { data } = await axios.post('/auth/refresh', { refresh_token: refreshToken });
+await tokenStore.setAccess(data.access_token);
+// ❌ Missing: tokenStore.setRefresh(data.refresh_token) 
+The Fix:
+
+typescript
+// In client.ts, refresh interceptor
+const { data } = await axios.post('/auth/refresh', { refresh_token: refreshToken });
+await tokenStore.setBoth(data.access_token, data.refresh_token); // ← Store BOTH
+Why this matters: If you rotate refresh tokens (which you should—your user_sessions table uses jti), the old refresh token becomes invalid after rotation. If the interceptor doesn't store the new refresh token, the next refresh attempt will fail, and the user will be logged out.
+
+🟡 Minor Observations (Non-Blocking)
+Observation	Suggestion
+Onboarding Status Check	If GET /onboarding/status fails (network error), the user may be stuck on Splash. Ensure onboardingChecked is set to true even on failure, with a default onboardingCompleted = false (so the user sees onboarding, which they can complete).
+Logout vs Session Expired	Auth store has reset() (logout). The interceptor uses triggerSessionExpired() which does the same. Ensure they are the same function to avoid duplication.
+Splash Screen Duration	If hydration + onboarding check takes > 2 seconds (slow network), the splash screen stays visible. Consider adding a minimumDisplayTime (e.g., 500ms) to prevent flickering on fast connections.
+Deep Linking	Future: password reset, invitation links. Ensure the navigation stack supports deep links (not required now, but good to note).
+
+##Performance Props
+.
+🔴 Critical Gap 1: useCallback + React.memo Combination (Missing from Audit)
+The Problem:
+You noted useCallback is used on renderItem in 2 of 17 FlatLists (JournalListScreen and MoodHistoryScreen). However, even those are useless because the child component (JournalItem, MoodItem) is not wrapped in React.memo.
+
+typescript
+// ❌ Wasted effort — child re-renders anyway
+const renderItem = useCallback(({ item }) => <JournalItem item={item} />, []);
+// JournalItem is NOT memoized → re-renders on every parent render
+The Fix:
+
+Wrap all FlatList child components in React.memo.
+
+Ensure props are stable (use useCallback for handlers passed to child).
+
+typescript
+// ✅ Correct
+const JournalItem = React.memo(({ item, onPress }) => {
+  // ... component
+});
+
+// In parent:
+const renderItem = useCallback(({ item }) => (
+  <JournalItem item={item} onPress={handlePress} />
+), [handlePress]);
+Why this matters: Without React.memo, the useCallback on renderItem is completely wasted. The child re-renders on every parent re-render, defeating the purpose of memoization.
+
+🔴 Critical Gap 2: getItemLayout for Fixed-Height Items (Missing from Audit)
+The Problem:
+Your 17 FlatLists all use variable-height items (or at least React Native assumes they do). Without getItemLayout, React Native must measure every single item to calculate the scrollable area. This is expensive, especially on first render.
+
+The Fix: Add getItemLayout for all FlatLists that have fixed-height items:
+
+typescript
+// For items with fixed height (e.g., 72px)
+const getItemLayout = (data: any, index: number) => ({
+  length: 72, // height of each item
+  offset: 72 * index,
+  index,
+});
+
+// Use in FlatList:
+<FlatList
+  data={data}
+  renderItem={renderItem}
+  getItemLayout={getItemLayout} // ← Optimizes scroll measurements
+  // ... other props
+/>
+Why this matters: Without getItemLayout, React Native measures each item individually on scroll, causing jank. With it, the scroll engine calculates offsets instantly.
+
+🟡 Minor Missing Observation: removeClippedSubviews on FlatLists
+The Problem:
+removeClippedSubviews is default false in React Native. Without it, all rendered items remain in the view hierarchy, even those far offscreen. This increases memory usage and layout cost.
+
+The Fix: Set removeClippedSubviews={true} on all FlatLists:
+
+typescript
+<FlatList
+  data={data}
+  renderItem={renderItem}
+  removeClippedSubviews={true} // ← Essential for memory
+  // ...
+/>
+🟡 Minor Missing Observation: FlashList Alternative
+The Problem:
+You noted zero usage of @shopify/flash-list. This is the recommended replacement for FlatList in React Native, offering significantly better performance (especially for large lists) due to its windowing and recycling algorithm.
+
+The Fix (Optional for V1):
+
+For lists with > 50 items, consider migrating to FlashList.
+
+For V1, the FlatList optimizations below are sufficient. FlashList migration can be a Phase 6 task.
+
+📊 Prioritized Fix Plan
+Phase	Task	Effort	Impact
+Phase 1 (Critical)	Add windowSize={5}, maxToRenderPerBatch={10}, initialNumToRender={8}, removeClippedSubviews={true} to all 17 FlatLists	2 hours	High — immediate scroll performance improvement
+Phase 2 (Critical)	Add getItemLayout to all FlatLists with fixed-height items	2 hours	High — reduces measurement overhead
+Phase 3 (Critical)	Wrap FlatList child components in React.memo + ensure stable props	4 hours	High — reduces unnecessary re-renders
+Phase 4 (High)	Move onPress handlers outside renderItem using useCallback + stable dependencies	2 hours	High — stabilizes props for memoized children
+Phase 5 (High)	Refactor HomeDashboardScreen GlassCards to reduce shared values (e.g., use useMemo for static cards, lazy-load animations)	3 hours	Medium — reduces render overhead
+Phase 6 (High)	Move require('onnxruntime-react-native') inside initialize() (lazy load) for all ML files	1 hour	Medium — reduces startup latency
+Phase 7 (Medium)	Replace CelebrationAnimation with Lottie or static SVG (particles are expensive)	2 hours	Low — only impacts milestone screens
+Phase 8 (Medium)	Move eager imports to lazy (React.lazy + Suspense) for 48 screens	4 hours	Medium — reduces initial bundle load
+Phase 9 (Optional)	Migrate large lists to FlashList	4 hours	Low — nice-to-have for V2
+ What Could Cause Lag / Slowness
+🔴 Critical Issues
+Zero FlatList performance props — 17 FlatLists all use defaults. No windowSize, maxToRenderPerBatch, getItemLayout, removeClippedSubviews, or FlashList. This is the single biggest performance gap. Lists will render many off-screen items and force the layout engine to measure every row.
+No React.memo anywhere — Every component re-renders unconditionally. The useCallback on 2 FlatLists' renderItem provides no benefit since child components aren't memoized.
+HomeDashboardScreen creates 25 shared values + 17 animated styles per render — 8 GlassCard components each create 3 shared values and 2 animated styles, all animated with withSpring on mount. On low-end devices this causes a visible animation frame storm.
+Top-level require('onnxruntime-react-native') in 2 of 3 ML files — Forces native module loading at import time, even if the ML classifier/embedder is never used. Adds measurable startup cost.
+🟡 Medium Issues
+CelebrationAnimation mounts 20 particles simultaneously, each with 4 shared values + withRepeat infinite loops. If this runs while other animations are active (e.g., after completing a milestone), it doubles animation workload.
+48 screens eagerly imported at startup — No React.lazy() or dynamic imports anywhere. The entire app bundle is loaded upfront.
+Every Button, MoodItem, and Skeleton creates individual shared values — If many are on screen (e.g., MoodPicker with 8 items + skeleton loading states), shared values proliferate. Each Skeleton runs a withRepeat animation loop.
+Reanimated is used for trivial micro-interactions — Scale-to-0.96 on press for every item in BreathingListScreen, ChatHomeScreen, ChatRoomScreen, EmergencyContactsScreen, FamilyHomeScreen, PregnancyDailyLogScreen, ContentListScreen, VoiceHistoryScreen, UserManagementScreen, and WellnessHomeScreen. Each creates a useSharedValue(1) + useAnimatedStyle + withSpring. The Animated.View wrapping reduces layout performance.
+🟢 Minor / Observations
+No Lottie or FastImage in use — avoids those common bottlenecks.
+Good use of useMemo for derived data (Calendar days, theme value, analytics data).
+useCallback is used thoughtfully for event handlers, though the benefit is muted without React.memo.
+Navigation typing is thorough (typed param lists for all stacks).
+Offline banner, toast messages, and error boundaries are present.
+SplashScreen creates 8 shared values (1 aurora, 2 logo, 5 dots) — acceptable for a splash.
+
+##Keyboard Handling in Onboarding Screens 
+
+
+ Critical Gap 1: Focus Ref Chain & onSubmitEditing (The UX Nightmare)
+The Problem:
+You correctly noted that returnKeyType and onSubmitEditing are missing. But you didn't highlight the specific sequence that must be implemented for this 4-screen flow.
+
+The Onboarding Flow Keyboard Logic:
+
+Screen	Field	Return Key	Action on Submit
+PersonalInfo	Age	"next"	Move focus to Height
+PersonalInfo	Height	"next"	Move focus to Weight
+PersonalInfo	Weight	"done"	Dismiss keyboard, enable "Continue" button
+CurrentCycle	Cycle Length	"next"	Move focus to Period Length
+CurrentCycle	Period Length	"done"	Dismiss keyboard
+PastCycle	Cycle Length	"next"	Move focus to Period Length
+PastCycle	Period Length	"done"	Dismiss keyboard
+The Fix (Implementation Pattern):
+
+typescript
+// In PersonalInfoScreen.tsx:
+const ageRef = useRef<TextInput>(null);
+const heightRef = useRef<TextInput>(null);
+const weightRef = useRef<TextInput>(null);
+
+<FormField
+  ref={ageRef}
+  label="Age"
+  returnKeyType="next"
+  onSubmitEditing={() => heightRef.current?.focus()}
+/>
+<FormField
+  ref={heightRef}
+  label="Height (cm)"
+  returnKeyType="next"
+  onSubmitEditing={() => weightRef.current?.focus()}
+/>
+<FormField
+  ref={weightRef}
+  label="Weight (kg)"
+  returnKeyType="done"
+  onSubmitEditing={() => {
+    weightRef.current?.blur();
+    // Optionally auto-trigger continue
+  }}
+/>
+Why this matters:
+Without focus chaining, a user entering 7 fields manually feels tedious and poorly optimized. This is a top 3 UX friction point in form-heavy onboarding flows.
+
+🔴 Critical Gap 2: Android windowSoftInputMode & KeyboardAvoidingView Nuance
+The Problem:
+You noted that Android uses undefined behavior for KeyboardAvoidingView, which is typical. However, this is actually a trap in React Native.
+
+On Android, KeyboardAvoidingView with behavior="padding" does not work reliably unless you explicitly set android:windowSoftInputMode="adjustResize" in AndroidManifest.xml.
+
+Without this, the keyboard overlays the input instead of pushing the layout up.
+
+The Fix (Add to android/app/src/main/AndroidManifest.xml):
+
+xml
+<activity
+  android:name=".MainActivity"
+  android:windowSoftInputMode="adjustResize"  <!-- ← CRITICAL -->
+  android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode"
+  android:launchMode="singleTask"
+  android:exported="true">
+Why this matters:
+If adjustResize is missing, your KeyboardAvoidingView does nothing on Android, and the keyboard will cover the input field. This is a common crash-inducing bug for QA.
+
+🟡 Minor Missing Observation: ScreenLayout Reuse & Consistency
+The Problem:
+You noted the boilerplate duplication. However, the real risk here is that future developers will add new fields to one screen but forget to update the others, leading to inconsistent keyboard behavior across onboarding.
+
+The Fix:
+Refactor all 4 form screens to use ScreenLayout immediately.
+
+typescript
+// BEFORE (Duplicated boilerplate)
+<SafeAreaView>
+  <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={flex}>
+    <ScrollView keyboardShouldPersistTaps="handled">
+      {/* ... content */}
+    </ScrollView>
+  </KeyboardAvoidingView>
+</SafeAreaView>
+
+// AFTER (Reusable component)
+<ScreenLayout>
+  {/* ... content */}
+</ScreenLayout>
+🧪 Updated Validation Criteria
+Add these to your keyboard handling validation:
+
+Focus Chaining: Tapping "Next" on Age moves focus to Height. Tapping "Next" on Height moves to Weight. Tapping "Done" on Weight dismisses the keyboard.
+
+keyboardVerticalOffset: Set to headerHeight + safeAreaTop (e.g., 88 for iOS, 0 for Android) to prevent content from being pushed too far up.
+
+Android Manifest: Verify windowSoftInputMode="adjustResize" is set in AndroidManifest.xml.
+
+ScreenLayout: All 4 form screens use the shared ScreenLayout component (no duplicate boilerplate).
+
+Dismiss on Tap-Outside: Tap on the background (non-input area) dismisses the keyboard.
+
+Numeric Keyboard: keyboardType="numeric" is correctly applied to age, cycle length, period length.
+
+📊 Summary of Keyboard Fixes (Priority Order)
+Priority	Task	Effort
+P0 (Critical)	Add windowSoftInputMode="adjustResize" to AndroidManifest.xml	5 min
+P0 (Critical)	Add keyboardVerticalOffset to all 4 screens	10 min
+P1 (High)	Implement focus refs + returnKeyType + onSubmitEditing chain	1 hour
+P2 (Medium)	Refactor all 4 screens to use shared ScreenLayout	30 min
+P2 (Medium)	Add onPressOutside gesture to dismiss keyboard on tap	10 min
