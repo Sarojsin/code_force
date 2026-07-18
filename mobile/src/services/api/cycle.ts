@@ -17,6 +17,7 @@ export interface CalendarResponse {
   days: Record<string, string>;
   predictions?: PredictionDetail | null;
   next_period_in_days?: number | null;
+  needs_checkin?: boolean;
 }
 
 export interface PredictionDetail {
@@ -46,6 +47,15 @@ export interface CycleAnalytics {
   common_symptoms: Array<{ symptom: string; count: number }>;
   common_moods: Array<{ mood: string; count: number }>;
   total_entries: number;
+}
+
+export interface PredictionHistoryItem {
+  id: string;
+  month: string;
+  predicted_date: string;
+  actual_date: string | null;
+  delta_days: number | null;
+  on_time: boolean;
 }
 
 export interface ModelStatusResponse {
@@ -91,6 +101,11 @@ export const cycleService = {
     return unwrap(res.data);
   },
 
+  async getPredictionHistory(limit = 12): Promise<PredictionHistoryItem[]> {
+    const res = await api.get('/cycle/predictions/history', { params: { limit } });
+    return unwrap(res.data).items;
+  },
+
   async getCalendar(monthsBack = 3, monthsForward = 3): Promise<CalendarResponse> {
     const res = await api.get('/cycle/calendar', {
       params: { months_back: monthsBack, months_forward: monthsForward },
@@ -113,13 +128,20 @@ export const cycleService = {
     return res.data;
   },
 
-  async logCorrection(data: {
-    period_start_date: string;
-    period_end_date?: string;
-    symptoms?: string[];
-    corrected_prediction_id?: string | null;
-  }): Promise<any> {
-    const res = await api.post('/cycle/corrections', data);
+  async logCorrection(
+    data: {
+      period_start_date: string;
+      period_end_date?: string;
+      symptoms?: string[];
+      corrected_prediction_id?: string | null;
+    },
+    idempotencyKey?: string,
+    clientUpdatedAt?: string,
+  ): Promise<any> {
+    const headers: Record<string, string> = {};
+    if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+    if (clientUpdatedAt) headers['X-Client-Updated-At'] = clientUpdatedAt;
+    const res = await api.post('/cycle/corrections', data, { headers });
     return unwrap(res.data);
   },
 
