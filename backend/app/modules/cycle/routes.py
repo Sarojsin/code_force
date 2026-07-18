@@ -18,6 +18,7 @@ from fastapi.responses import FileResponse
 
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.cycle.dependencies import CycleServiceDep
+from app.modules.cycle.exceptions import CycleConflictError
 from app.modules.cycle.schemas import (
     AnalyticsResponse,
     CalendarResponse,
@@ -29,6 +30,7 @@ from app.modules.cycle.schemas import (
     ModelStatusResponse,
     NextPredictionResponse,
     PredictionDetail,
+    PredictionHistoryResponse,
     SnoozeCreate,
     SnoozeResponse,
 )
@@ -142,7 +144,7 @@ async def get_predictions(
 
         model_used = prediction.model_type or prediction.model_version or "unknown"
         today = __import__("datetime").date.today()
-        days_until = (prediction.predicted_next_period_start - today).days
+        days_until = max(0, (prediction.predicted_next_period_start - today).days)
 
         detail = PredictionDetail(
             id=prediction.id,
@@ -166,6 +168,20 @@ async def get_predictions(
         model_used=model_used,
         data_quality=data_quality,
     )
+
+
+@router.get(
+    "/predictions/history",
+    response_model=PredictionHistoryResponse,
+    summary="Get prediction history — past predicted vs actual dates",
+)
+async def get_prediction_history(
+    current_user: CurrentUser,
+    svc: CycleServiceDep,
+    limit: int = Query(12, ge=1, le=50),
+) -> PredictionHistoryResponse:
+    items = await svc.get_prediction_history(current_user.id, limit=limit)
+    return PredictionHistoryResponse(items=items)
 
 
 def _confidence_label(score: float) -> str:
@@ -198,22 +214,31 @@ async def get_analytics(
     response_model=CorrectionResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Log a correction (period start) that may link to a prediction",
+    responses={409: {"model": CorrectionResponse, "description": "Conflict — data modified since client last synced"}},
 )
 async def create_correction(
     payload: CorrectionCreate,
     current_user: CurrentUser,
     svc: CycleServiceDep,
+    x_client_updated_at: str | None = Header(None, alias="X-Client-Updated-At"),
 ) -> CorrectionResponse:
     import uuid as _uuid
     corrected_id = _uuid.UUID(payload.corrected_prediction_id) if payload.corrected_prediction_id else None
-    entry = await svc.log_correction(
-        user_id=current_user.id,
-        period_start_date=payload.period_start_date,
-        period_end_date=payload.period_end_date,
-        symptoms=payload.symptoms,
-        corrected_prediction_id=corrected_id,
-    )
-    return CorrectionResponse.model_validate(entry)
+    try:
+        entry = await svc.log_correction(
+            user_id=current_user.id,
+            period_start_date=payload.period_start_date,
+            period_end_date=payload.period_end_date,
+            symptoms=payload.symptoms,
+            corrected_prediction_id=corrected_id,
+            client_updated_at=x_client_updated_at,
+        )
+    except CycleConflictError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.details) from e
+    avg_period_length = await svc.get_avg_period_length(current_user.id)
+    resp = CorrectionResponse.model_validate(entry)
+    resp.avg_period_length = avg_period_length
+    return resp
 
 
 @router.post(

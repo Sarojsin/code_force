@@ -63,6 +63,7 @@ class CorrectionCreate(BaseModel):
     period_end_date: date | None = None
     symptoms: list[str] = Field(default_factory=list)
     corrected_prediction_id: str | None = None
+    client_updated_at: str | None = None
 
 
 class CorrectionResponse(BaseModel):
@@ -75,6 +76,7 @@ class CorrectionResponse(BaseModel):
     is_correction: bool
     corrected_prediction_id: uuid.UUID | None
     created_at: datetime
+    avg_period_length: int = 5
 
 
 class SnoozeCreate(BaseModel):
@@ -122,6 +124,7 @@ class CalendarResponse(BaseModel):
     days: dict[str, str]  # "YYYY-MM-DD" → type code
     predictions: PredictionDetail | None = None
     next_period_in_days: int | None = None
+    needs_checkin: bool = False
 
 
 class NextPredictionResponse(BaseModel):
@@ -129,6 +132,19 @@ class NextPredictionResponse(BaseModel):
     days_until: int | None
     model_used: str
     data_quality: str  # insufficient | minimal | good | excellent
+
+
+class PredictionHistoryItem(BaseModel):
+    id: str
+    month: str
+    predicted_date: str
+    actual_date: str | None = None
+    delta_days: int | None = None
+    on_time: bool = False
+
+
+class PredictionHistoryResponse(BaseModel):
+    items: list[PredictionHistoryItem] = []
 
 
 class ModelStatusResponse(BaseModel):
