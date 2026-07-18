@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,10 +10,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Toast from 'react-native-toast-message';
 
-import { Button, Calendar, Card, DatePickerField, BottomSheet, StickyCard, Text, Skeleton } from 'src/components/ui';
+import { Button, Calendar, Card, DatePickerField, BottomSheet, EndDatePromptCard, MarkEndDateModal, StickyCard, Text, Skeleton } from 'src/components/ui';
 import { PredictionDetailCard } from 'src/components/ui/PredictionDetailCard';
 import { useTheme, shadow } from 'src/theme';
-import { useCycleCalendar, useLogCorrection, useLogSnooze } from 'src/services/queries';
+import { useCycleCalendar, useLogCorrection, useLogSnooze, useUpdateCycleEntry } from 'src/services/queries';
+import { useEndDateStore } from 'src/stores/endDateStore';
+import { cancelEndDateNotification } from 'src/services/endDateNotifications';
 import { globalModelClient } from 'src/services/ml/globalModel';
 import { modelUpdater } from 'src/services/ml';
 import { useNetworkStatus } from 'src/services/sync';
@@ -49,10 +51,20 @@ export function CycleDashboardScreen() {
   const { data: calData, isLoading } = useCycleCalendar(3, 3);
   const logCorrection = useLogCorrection();
   const logSnooze = useLogSnooze();
+  const updateEntry = useUpdateCycleEntry();
   const { isConnected } = useNetworkStatus();
 
   const [snoozeState, setSnoozeState] = useState<SnoozeState | null>(null);
   const [showOverride, setShowOverride] = useState(false);
+  const [showEndDateModal, setShowEndDateModal] = useState(false);
+  const route = useRoute<any>();
+  const endDateStore = useEndDateStore();
+
+  useEffect(() => {
+    if (route.params?.markEndDate && endDateStore.periodStartDate) {
+      setShowEndDateModal(true);
+    }
+  }, [route.params?.markEndDate, endDateStore.periodStartDate]);
   const overrideForm = useForm<OverrideForm>({
     resolver: zodResolver(overrideSchema),
     defaultValues: { overrideDate: toDateStr(new Date()) },
@@ -96,10 +108,7 @@ export function CycleDashboardScreen() {
 
   const showStickyCard = (() => {
     if (!prediction) return false;
-    const pDate = new Date(prediction.predicted_next_period_start);
-    const windowStart = addDays(pDate, -3);
-    const windowEnd = addDays(pDate, 6);
-    if (today < windowStart || today > windowEnd) return false;
+    if (!calData?.needs_checkin) return false;
     if (snoozeState) {
       const snoozedAt = new Date(snoozeState.snoozedAt);
       const snoozedDay = toDateStr(snoozedAt);
@@ -113,14 +122,8 @@ export function CycleDashboardScreen() {
 
   const handleConfirm = useCallback(
     (predictionId: string, confirmedDate: string) => {
-      const endDate = new Date(confirmedDate);
-      endDate.setDate(endDate.getDate() + 5);
       logCorrection.mutate(
-        {
-          period_start_date: confirmedDate,
-          period_end_date: toDateStr(endDate),
-          corrected_prediction_id: predictionId,
-        },
+        { period_start_date: confirmedDate, corrected_prediction_id: predictionId },
         { onSuccess: () => persistSnooze(null) },
       );
     },
@@ -129,14 +132,8 @@ export function CycleDashboardScreen() {
 
   const handleAdjust = useCallback(
     (predictionId: string, newDate: string) => {
-      const endDate = new Date(newDate);
-      endDate.setDate(endDate.getDate() + 5);
       logCorrection.mutate(
-        {
-          period_start_date: newDate,
-          period_end_date: toDateStr(endDate),
-          corrected_prediction_id: predictionId,
-        },
+        { period_start_date: newDate, corrected_prediction_id: predictionId },
         { onSuccess: () => persistSnooze(null) },
       );
     },
@@ -154,12 +151,35 @@ export function CycleDashboardScreen() {
     [logSnooze, persistSnooze, snoozeState, today],
   );
 
+  const handleConfirmEndDate = useCallback(
+    (endDate: string) => {
+      if (!endDateStore.entryId) return;
+      updateEntry.mutate(
+        { id: endDateStore.entryId, data: { period_end_date: endDate } },
+        { onSuccess: () => {
+          if (endDateStore.notificationId) cancelEndDateNotification(endDateStore.notificationId).catch(() => {});
+          endDateStore.clearPending();
+          setShowEndDateModal(false);
+        }},
+      );
+    },
+    [updateEntry, endDateStore],
+  );
+
+  const handleSkipEndDate = useCallback(() => {
+    if (endDateStore.notificationId) cancelEndDateNotification(endDateStore.notificationId).catch(() => {});
+    endDateStore.clearPending();
+    setShowEndDateModal(false);
+  }, [endDateStore]);
+
+  const daysSinceStart = endDateStore.periodStartDate
+    ? Math.max(0, Math.round((today.getTime() - new Date(endDateStore.periodStartDate + 'T00:00:00').getTime()) / 86400000))
+    : 0;
+
   const handlePermanentOverride = overrideForm.handleSubmit((data) => {
-    const endDate = addDays(new Date(data.overrideDate), 5);
     logCorrection.mutate(
       {
         period_start_date: data.overrideDate,
-        period_end_date: toDateStr(endDate),
         corrected_prediction_id: prediction?.id ?? null,
       },
       { onSuccess: () => setShowOverride(false) },
@@ -202,6 +222,17 @@ export function CycleDashboardScreen() {
             onConfirm={handleConfirm}
             onAdjust={handleAdjust}
             onSnooze={handleSnooze}
+          />
+        )}
+
+        {endDateStore.periodStartDate && (
+          <EndDatePromptCard
+            visible
+            periodStartDate={endDateStore.periodStartDate}
+            daysSinceStart={daysSinceStart}
+            onConfirmEndDate={() => setShowEndDateModal(true)}
+            onSkip={handleSkipEndDate}
+            loading={logCorrection.isPending}
           />
         )}
 
@@ -299,6 +330,17 @@ export function CycleDashboardScreen() {
           style={{ marginTop: theme.spacing.lg }}
         />
       </BottomSheet>
+
+      {endDateStore.periodStartDate && (
+        <MarkEndDateModal
+          visible={showEndDateModal}
+          onClose={() => setShowEndDateModal(false)}
+          onConfirm={handleConfirmEndDate}
+          onSkip={handleSkipEndDate}
+          loading={logCorrection.isPending}
+          periodStartDate={endDateStore.periodStartDate}
+        />
+      )}
     </SafeAreaView>
   );
 }

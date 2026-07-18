@@ -1,51 +1,63 @@
-/**
- * CycleHistoryScreen — FlatList of past cycle entries with calendar indicator.
- */
-
 import React from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Card, Text as Txt } from 'src/components/ui';
+import { Card, Skeleton, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
+import { useCycleEntries } from 'src/services/queries';
 
-interface CycleEntry {
-  id: string;
-  startDate: string;
-  endDate: string;
-  cycleLength: number;
-  flow: string;
+function toDisplayDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
-
-const MOCK_CYCLES: CycleEntry[] = [
-  { id: '1', startDate: 'Jan 1', endDate: 'Jan 5', cycleLength: 28, flow: 'Medium' },
-  { id: '2', startDate: 'Jan 29', endDate: 'Feb 2', cycleLength: 27, flow: 'Light' },
-  { id: '3', startDate: 'Feb 25', endDate: 'Mar 1', cycleLength: 29, flow: 'Heavy' },
-];
 
 export function CycleHistoryScreen() {
   const theme = useTheme();
+  const { data: entries, isLoading } = useCycleEntries({ limit: 50 });
 
-  const renderItem = ({ item, index }: { item: CycleEntry; index: number }) => (
-    <Card elevated style={{ marginBottom: theme.spacing.md }} accessibilityLabel={`Cycle from ${item.startDate}`}>
-      <View style={styles.cardHeader}>
-        <View style={[styles.indicator, { backgroundColor: theme.colors.primary, borderRadius: theme.radius.sm }]} />
-        <Txt variant="h3" style={{ flex: 1 }}>Cycle {MOCK_CYCLES.length - index}</Txt>
-        <Txt variant="bodySmall" color="secondary">{item.cycleLength} days</Txt>
-      </View>
-      <View style={styles.detailRow}>
-        <Txt variant="body" color="secondary">{item.startDate} – {item.endDate}</Txt>
-      </View>
-      <View style={styles.detailRow}>
-        <Txt variant="bodySmall" color="muted">Flow: {item.flow}</Txt>
-      </View>
-    </Card>
-  );
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+        <View style={{ padding: theme.spacing.lg }}>
+          <Skeleton height={24} width={200} style={{ marginBottom: 16 }} />
+          <Skeleton height={80} style={{ marginBottom: 12 }} />
+          <Skeleton height={80} style={{ marginBottom: 12 }} />
+          <Skeleton height={80} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const sortedEntries = entries ? [...entries].sort(
+    (a, b) => new Date(b.period_start_date + 'T00:00:00').getTime() - new Date(a.period_start_date + 'T00:00:00').getTime(),
+  ) : [];
+
+  const renderItem = ({ item, index }: { item: { id: string; period_start_date: string; period_end_date?: string | null }; index: number }) => {
+    const endDate = item.period_end_date || item.period_start_date;
+    const startMs = new Date(item.period_start_date + 'T00:00:00').getTime();
+    const endMs = new Date(endDate + 'T00:00:00').getTime();
+    const periodLength = Math.round((endMs - startMs) / 86400000) + 1;
+
+    return (
+      <Card elevated style={{ marginBottom: theme.spacing.md }} accessibilityLabel={`Cycle from ${toDisplayDate(item.period_start_date)}`}>
+        <View style={styles.cardHeader}>
+          <View style={[styles.indicator, { backgroundColor: theme.colors.primary, borderRadius: theme.radius.sm }]} />
+          <Txt variant="h3" style={{ flex: 1 }}>Cycle {sortedEntries.length - index}</Txt>
+          <Txt variant="bodySmall" color="secondary">{periodLength} days</Txt>
+        </View>
+        <View style={styles.detailRow}>
+          <Txt variant="body" color="secondary">
+            {toDisplayDate(item.period_start_date)} – {toDisplayDate(endDate)}
+          </Txt>
+        </View>
+      </Card>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <FlatList
-        data={MOCK_CYCLES}
+        data={sortedEntries}
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ padding: theme.spacing.lg }}

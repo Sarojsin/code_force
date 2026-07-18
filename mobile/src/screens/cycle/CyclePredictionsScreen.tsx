@@ -9,7 +9,7 @@ import Svg, { Path, Circle as SvgCircle, Rect } from 'react-native-svg';
 import { Button, DatePickerField, BottomSheet, Skeleton, Text } from 'src/components/ui';
 import { PredictionDetailCard } from 'src/components/ui/PredictionDetailCard';
 import { useTheme } from 'src/theme';
-import { useCyclePredictions, useLogCorrection } from 'src/services/queries/cycle';
+import { useCyclePredictions, usePredictionHistory, useLogCorrection } from 'src/services/queries/cycle';
 
 const overrideSchema = z.object({
   overrideDate: z.string().min(1, 'Please select a date'),
@@ -24,15 +24,6 @@ const DATA_QUALITY_LABELS: Record<string, { label: string; color: string }> = {
   excellent: { label: 'Excellent data — predictions are highly reliable', color: '#1B5E20' },
 };
 
-const MOCK_HISTORY = [
-  { month: 'May', predicted: 'May 12', actual: 'May 14', delta: 2, onTime: false },
-  { month: 'Jun', predicted: 'Jun 9', actual: 'Jun 10', delta: 1, onTime: false },
-  { month: 'Jul', predicted: 'Jul 7', actual: 'Jul 7', delta: 0, onTime: true },
-  { month: 'Aug', predicted: 'Aug 4', actual: 'Aug 6', delta: 2, onTime: false },
-  { month: 'Sep', predicted: 'Sep 1', actual: 'Sep 2', delta: 1, onTime: false },
-  { month: 'Oct', predicted: 'Oct 6', actual: 'Oct 5', delta: 1, onTime: false },
-];
-
 function toDateStr(date: Date): string {
   return date.toISOString().split('T')[0];
 }
@@ -46,6 +37,7 @@ function addDays(date: Date, days: number): Date {
 export function CyclePredictionsScreen() {
   const theme = useTheme();
   const { data, isLoading, isError, refetch } = useCyclePredictions();
+  const { data: historyData } = usePredictionHistory();
   const logCorrection = useLogCorrection();
   const { control, handleSubmit } = useForm<OverrideForm>({
     resolver: zodResolver(overrideSchema),
@@ -55,6 +47,7 @@ export function CyclePredictionsScreen() {
   const prediction = data?.prediction ?? null;
   const daysUntil = data?.days_until ?? null;
   const dataQuality = data?.data_quality ?? '';
+  const predictionHistory = historyData ?? [];
 
   const [showOverride, setShowOverride] = useState(false);
 
@@ -157,29 +150,31 @@ export function CyclePredictionsScreen() {
             />
 
             {/* Prediction History Table */}
-            <View style={[styles.historyCard, { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, marginHorizontal: theme.spacing.xl }]}>
-              <Text variant="h3" style={{ marginBottom: 12 }}>Prediction History</Text>
-              <View style={styles.historyHeader}>
-                <Text variant="caption" color="muted" style={{ flex: 1 }}>Month</Text>
-                <Text variant="caption" color="muted" style={{ flex: 1 }}>Predicted</Text>
-                <Text variant="caption" color="muted" style={{ flex: 1 }}>Actual</Text>
-                <Text variant="caption" color="muted" style={{ width: 50, textAlign: 'center' }}>Δ</Text>
-              </View>
-              {MOCK_HISTORY.map((row, i) => (
-                <View
-                  key={row.month}
-                  style={[styles.historyRow, { backgroundColor: row.onTime ? theme.colors.success + '12' : i % 2 === 0 ? 'transparent' : theme.colors.border + '40' }]}
-                >
-                  <Text variant="bodySmall" style={{ flex: 1 }}>{row.month}</Text>
-                  <Text variant="bodySmall" style={{ flex: 1, color: theme.colors.textSecondary }}>{row.predicted}</Text>
-                  <Text variant="bodySmall" style={{ flex: 1, color: theme.colors.textSecondary }}>{row.actual}</Text>
-                  <Text variant="bodySmall" style={{ width: 50, textAlign: 'center', color: row.onTime ? theme.colors.success : theme.colors.warning }}>
-                    {row.delta > 0 ? `+${row.delta}` : '0'}
-                  </Text>
+            {predictionHistory.length > 0 && (
+              <View style={[styles.historyCard, { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, marginHorizontal: theme.spacing.xl }]}>
+                <Text variant="h3" style={{ marginBottom: 12 }}>Prediction History</Text>
+                <View style={styles.historyHeader}>
+                  <Text variant="caption" color="muted" style={{ flex: 1 }}>Month</Text>
+                  <Text variant="caption" color="muted" style={{ flex: 1 }}>Predicted</Text>
+                  <Text variant="caption" color="muted" style={{ flex: 1 }}>Actual</Text>
+                  <Text variant="caption" color="muted" style={{ width: 50, textAlign: 'center' }}>Δ</Text>
                 </View>
-              ))}
-              <Text variant="caption" color="muted" style={{ marginTop: 8 }}>Last 6 cycles — green rows are exact matches</Text>
-            </View>
+                {predictionHistory.map((row, i) => (
+                  <View
+                    key={row.id}
+                    style={[styles.historyRow, { backgroundColor: row.on_time ? theme.colors.success + '12' : i % 2 === 0 ? 'transparent' : theme.colors.border + '40' }]}
+                  >
+                    <Text variant="bodySmall" style={{ flex: 1 }}>{row.month}</Text>
+                    <Text variant="bodySmall" style={{ flex: 1, color: theme.colors.textSecondary }}>{row.predicted_date}</Text>
+                    <Text variant="bodySmall" style={{ flex: 1, color: theme.colors.textSecondary }}>{row.actual_date ?? '—'}</Text>
+                    <Text variant="bodySmall" style={{ width: 50, textAlign: 'center', color: row.on_time ? theme.colors.success : theme.colors.warning }}>
+                      {row.delta_days != null ? (row.delta_days > 0 ? `+${row.delta_days}` : `${row.delta_days}`) : '—'}
+                    </Text>
+                  </View>
+                ))}
+                <Text variant="caption" color="muted" style={{ marginTop: 8 }}>Only cycles with confirmed dates shown</Text>
+              </View>
+            )}
           </>
         )}
       </ScrollView>
