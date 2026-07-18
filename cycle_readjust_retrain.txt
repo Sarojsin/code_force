@@ -1,0 +1,452 @@
+Complete Cycle Period Correction & Re-adjustment Plan
+1. Overview
+The "Correction" feature is the most critical feedback loop in the SheCare AI system. It bridges the gap between the model's prediction and the user's reality. This document outlines the end-to-end plan for handling period re-adjustments, covering UI triggers, offline behavior, local state management, backend processing, ML improvement, and UI re-rendering.
+
+2. Trigger Points (How the User Initiates a Correction)
+We offer 3 distinct entry points, ensuring the user never has to "hunt" for the correction button:
+
+Trigger	Timing	UI Component	Action
+1. Permanent Manual Button	Always visible	Cycle Dashboard > "Adjust Period Date" (pencil icon)	Opens unrestricted date picker.
+2. Proactive Push Notification	P - 3 days (3 days before prediction)	System push notification	Tapping opens the Sticky Card.
+3. Sticky Dashboard Card	P - 3 to P + 6 days	Persistent card on Home Dashboard	Three options: "Yes", "No (Adjust)", "Snooze".
+4. Quick Log (Add Period)	Any time	"+" button on Calendar	If a prediction exists for this date range, the system auto-detects it as a correction.
+3. Data Flow: The "Link, Calculate & Update" Core
+When a user submits a new actual period date, the system executes this exact sequence:
+
+Step 1: The "Link" (Associating Truth with Prediction)
+If the user is correcting an existing prediction (via Sticky Card or Manual Override), the system passes the predicted_cycle_id to the backend.
+
+If the user is just logging a period normally (without specifying a correction), the system checks: "Is there an active predicted_cycle within ±5 days of this date?"
+
+Yes: Automatically link it (treat as silent correction).
+
+No: Treat it as a standard new entry (no prediction_error generated).
+
+Step 2: The "Calculate" (Measuring the Miss)
+prediction_error_days = (Actual_Date) - (Predicted_Date).
+
+Example: Predicted 16th, Actual 20th → +4 (Late).
+
+Example: Predicted 30th, Actual 16th → -14 (Early).
+
+Example: Predicted 16th, Actual 16th → 0 (Perfect).
+
+Step 3: The "Update" (Local & Server Metrics)
+Update avg_prediction_error_days:
+
+new_avg = (old_avg * (total_cycles - 1) + new_error) / total_cycles.
+
+This running average is stored on the users table.
+
+Update cycle_length_std_dev:
+
+Recalculate the standard deviation of the user's last 12 cycle lengths.
+
+If std_dev > 3.5, the user is flagged as "Irregular" → triggers the UI to show a prediction window instead of a single date.
+
+Flag for Global Retraining:
+
+users.is_dirty_for_retraining = True.
+
+4. Mobile: Offline & Optimistic UI (Calendar Re-rendering)
+The user should never see a "spinner" while correcting a date. We use an Optimistic Update pattern:
+
+A. Local State Update (Immediate)
+The mobile app updates its local Zustand store and local SQLite cache immediately, even before the network request completes:
+
+Element	Before Correction	After Correction (Optimistic)
+Old Predicted Date (e.g., 16th)	Light pink dotted circle	Greyed out (#D4A5B5), crossed out (strikethrough), with a small "x" icon.
+New Actual Date (e.g., 20th)	Normal (unmarked)	Solid Dark Pink/Red circle (#FF6B8A) with a "pop" spring animation (scale 0.8 → 1.0).
+Top Stat Card	"Next period in 12 days"	"Next period in 8 days" (recalculated instantly).
+Sticky Card	Visible (awaiting response)	Disappears immediately.
+Toast	None	"Period corrected to June 20 ✅" (visible for 2 seconds).
+B. Offline Queue (Persistence)
+The correction operation (type: 'cycle/correction') is immediately added to offlineStore (EncryptedStorage) with priority: 'high'.
+
+If the user is offline, the app still shows the fully updated calendar (Step A). The sync engine will attempt to send POST /cycle/corrections the moment connectivity returns.
+
+C. Conflict Resolution (If Server Has Newer Data)
+The backend uses Client Timestamp Authority.
+
+If the server's version of the period date is newer than the client's submitted date, the server returns a 409 Conflict with its server_data.
+
+The mobile app overwrites the local optimistic update with the server's data (and shows a subtle toast: "Updated from another device").
+
+5. The "Snooze" Flow (Handling "Not Yet")
+If the user taps "Not Yet" on the Sticky Card:
+
+Action	System Behavior
+Day P (Predicted Day)	User taps "Not Yet". Card disappears for 24 hours. A snooze_event is logged with day_offset = 0.
+Day P + 1	Card reappears. User taps "Not Yet" again. snooze_event logged with day_offset = 1.
+...	... this continues until the user logs the actual date or the card expires at P+6.
+Why this matters	The snooze_events table provides the ML engine with crucial "lateness progression" data. If a user snoozes 4 times, the system knows she was exactly 4 days late, which gets factored into the avg_error automatically.
+6. Backend Processing (The "Dirty" Flag & Global Model)
+A. Server Receives the Correction
+Validates the Idempotency-Key header (prevents duplicate processing).
+
+Updates the predicted_cycle record:
+
+predicted_cycles.actual_cycle_entry_id = cycle_entry.id
+
+predicted_cycles.prediction_error_days = error_days
+
+Updates the users table:
+
+users.avg_prediction_error_days = new_avg
+
+users.cycle_length_std_dev = new_std
+
+users.is_dirty_for_retraining = True
+
+B. Monthly Global Retraining Integration
+The monthly script (scripts/train_global_model.py) queries all users with is_dirty_for_retraining = True.
+
+It extracts their updated avg_error, avg_cycle, std_dev, plus demographics (age, BMI, stress).
+
+It trains the single global XGBoost model on this updated anonymized population dataset.
+
+It exports new coefficients to global_model_v{N}.json (~5 KB).
+
+The next time the user connects to Wi-Fi, she downloads this JSON. Her local avg_error (applied on the device) resets to 0 because the new global model has already "absorbed" her correction pattern into its mathematical formula.
+
+7. API Contract (Sync)
+Method	Endpoint	Payload	Response
+POST	/api/v1/cycle/corrections	{ "predicted_cycle_id": "uuid", "actual_start_date": "YYYY-MM-DD", "period_end_date": "YYYY-MM-DD", "symptoms": [...] }	{ "status": "linked", "error_days": 4 }
+POST	/api/v1/cycle/snooze	{ "predicted_cycle_id": "uuid", "day_offset": 0 }	{ "status": "snoozed" }
+8. Validation Checklist (QA Gate)
+Manual Adjust: Tapping "Adjust Period Date" updates the Calendar instantly (old date greyed out, new date solid pink).
+
+Sticky Card "Yes": Confirming the predicted date sets error_days = 0 and updates avg_error.
+
+Sticky Card "No": Opening the date picker and selecting a new date triggers the full log_correction() flow.
+
+Snooze: Tapping "Not Yet" logs a snooze_event with the correct day_offset (0, 1, 2...).
+
+Offline Correction: Turn on airplane mode. Correct a date. Calendar updates. Close app. Reopen. Corrected date persists. Turn off airplane mode. Sync succeeds.
+
+Conflict Resolution: Correct a date offline on Device A, correct the same date online on Device B (website). Sync Device A. Device A's date is overwritten by Device B's date (server wins).
+
+Global Model Flag: After syncing a correction, users.is_dirty_for_retraining is True.
+
+Calendar Re-render: The top stat (e.g., "Days until next period") updates correctly after correction.
+
+9. Summary: The Feedback Loop
+text
+[User Corrects Date]
+        │
+        ▼
+[UI Updates Instantly]
+   (Old date greyed, new date filled)
+        │
+        ▼
+[Offline Queue / Sync Engine]
+   (Pushes to backend on reconnect)
+        │
+        ▼
+[Backend: Links Predicted → Actual]
+   (Calculates error_days)
+        │
+        ├─────────────────────┐
+        ▼                     ▼
+[Update avg_error]      [Set is_dirty = True]
+  (Improves local       (Feeds into monthly
+   predictions          global model retrain)
+   instantly)
+        │                     │
+        └─────────────────────┘
+                │
+                ▼
+         [Monthly Retrain]
+   (New global_model_v{N}.json)
+                │
+                ▼
+      [User downloads new JSON]
+    (Local avg_error resets to 0)
+This ensures that every single correction, whether made online or offline, is immediately reflected in the user's calendar and eventually improves the AI for everyone. 🚀🌺
+
+
+
+1. Why update avg_prediction_error_days? (The "Local Quick-Fix")
+The Problem:
+The user corrects her period from the 16th to the 20th (she is 4 days late). If we only send this data to the server for the monthly retrain, her phone will keep predicting the 16th for the entire month until the new global model is downloaded. This makes the app look broken and untrustworthy.
+
+The Solution (Why we do it):
+We store avg_prediction_error_days directly on the users table (and sync it locally). This is a running average of all the user's past mistakes.
+
+The Math: new_avg = (old_avg * (total_cycles - 1) + new_error) / total_cycles.
+
+This gives more weight to her most recent behavior while keeping the average stable.
+
+The Result: Immediately after she corrects to the 20th, her avg_error moves from 0 to +4 (or close to it).
+
+The User Experience: The next time she opens the app that same day, the top stat card updates to: "Next period predicted in 28 days" (which naturally shifts the date forward). She feels heard instantly.
+
+2. Why recalculate cycle_length_std_dev and flag "Irregular"? (The "Honest UX" Rule)
+The Problem:
+The AI can always spit out a single date (e.g., "June 16th"). But if the user's cycles bounce between 28 and 45 days, predicting a single exact date is mathematically dangerous. If we predict the 16th and she gets it on the 22nd, she will think the app is useless.
+
+The Solution (Why we do it):
+We calculate the Standard Deviation of her last 12 cycles. If std_dev is high (> 3.5), it means her cycles are highly irregular.
+
+The Flag: The system sets a flag (via prediction_window_days on the response) that tells the UI: "This user is irregular."
+
+The Result: Instead of showing a single date, the UI switches to a Prediction Window.
+
+It shows: "Your period may start between June 14th and June 22nd."
+
+Why this is critical: It manages user expectations. She won't panic if it doesn't hit on the 16th because she knows she has a ±5 day window. This builds trust and reduces frustration. 
+
+You have just caught a massive architectural flaw in my explanation.
+
+You are 100% correct, and I am glad you pushed back on this.
+
+If we only trained the global model on the 300 "dirty" users (the ones who made corrections), we would completely destroy the global model. It would overfit to the users who had errors, forget the patterns of the 700 stable users, and lose the baseline population knowledge.
+
+So why do we have the is_dirty_for_retraining = True flag?
+
+It is NOT used to filter the training dataset.
+
+It is used to efficiently update the "Feature Store" (the aggregated statistics table) so that when we train the model on ALL users, we don't have to recalculate the statistics for every single person from scratch.
+
+Here is exactly how it works in reality:
+
+1. The Problem (Why we need a flag)
+To train the global XGBoost model on 1,000 users, the server needs to build a dataset containing each user's statistical aggregates:
+
+user_id	avg_cycle_length	std_dev	avg_error	age	bmi	...
+User A	28.5	1.2	0.2	28	22	...
+User B	35.0	4.5	2.1	35	26	...
+...	...	...	...	...	...	...
+Calculating these aggregates (like std_dev and avg_error) for all 1,000 users every month requires scanning thousands of cycle_entries rows. This is computationally expensive and takes time.
+
+2. The Solution (The true use of is_dirty)
+The is_dirty_for_retraining flag simply answers the question: "Has this user's statistical profile changed since the last time I pre-calculated their aggregates?"
+
+When a user corrects a period, we set is_dirty = True.
+
+The Monthly Script (Step 1): The script queries SELECT * FROM users WHERE is_dirty_for_retraining = True.
+
+It finds the 300 users who changed.
+
+It recalculates their avg_cycle_length, std_dev, and avg_error and updates the ml_training_dataset table with their fresh numbers.
+
+It sets is_dirty = False for those 300 users.
+
+It does NOT touch the 700 users who didn't change (their stats in the ml_training_dataset are still perfectly valid).
+
+The Monthly Script (Step 2): The script now builds the complete training dataset:
+SELECT * FROM ml_training_dataset (which includes ALL 1,000 users, with fresh data for the 300 dirty ones and reused data for the 700 clean ones).
+
+The Monthly Script (Step 3): The XGBoost model trains on ALL 1,000 users (not just 300).
+
+3. The Result
+Mistaken Idea (What I wrongly said)	Reality (How it works)
+is_dirty filters who gets trained on.	is_dirty filters who needs re-calculation of aggregates.
+Only 300 users train the model.	All 1,000 users train the model.
+The model overfits to the noisy users.	The model retains the population baseline while seamlessly incorporating updates from users who changed.
+Why this matters for your system
+This is a classic "Incremental Feature Update" pattern. It saves your server from doing thousands of unnecessary AVG() and STDDEV() SQL aggregations every single month, making the retraining pipeline fast and cheap, while still ensuring the XGBoost model sees the full, correct picture of your entire user base.
+
+
+Phase 1: The User Action & Instant UI (Optimistic Update)
+The Problem: Network requests take 200ms to 5 seconds (or fail completely). If we make the user wait for the server to respond before updating the calendar, the app feels sluggish and broken.
+
+The Solution (Optimistic Update):
+The mobile app assumes the network request will succeed and updates the UI immediately.
+
+How it works (Under the Hood):
+
+User taps "Adjust" on the Sticky Card and selects June 20 (was previously predicted as June 16).
+
+Intercept the Mutation: In the useLogCorrection hook, we do NOT just call the API. We execute a side effect first:
+
+typescript
+// 1. Immediately update React Query cache (The Calendar)
+queryClient.setQueryData(['cycle', 'calendar'], (oldData) => {
+  return {
+    ...oldData,
+    days: oldData.days.map(day => {
+      if (day.date === '2025-06-16') return { ...day, type: 'predicted_cancelled' }; // Grey out
+      if (day.date === '2025-06-20') return { ...day, type: 'period' }; // Solid pink
+      return day;
+    }),
+    next_period_in_days: 8 // Recalculate instantly
+  };
+});
+
+// 2. Remove the Sticky Card from the UI
+setStickyCardVisible(false);
+
+// 3. Show the Toast
+Toast.show('Period corrected to June 20 ✅');
+The Render Cycle: Because React Query's cache is the source of truth for the calendar, the UI immediately re-renders. The user sees the 16th grey out and the 20th turn pink while the API request is still pending in the background. This feels instant (sub-50ms).
+
+Phase 2: The Write (Offline Queue Persistence)
+The Problem: What if the user is in airplane mode? If we just update the UI and throw away the API request, the data is lost forever.
+
+The Solution (Offline Queue):
+Before we even send the network request, we save the instruction to a persistent local queue.
+
+How it works:
+
+Enqueue the Operation: The mutation hook calls offlineStore.enqueue() with the correction payload.
+
+typescript
+offlineStore.enqueue({
+  type: 'cycle/correction',
+  endpoint: '/api/v1/cycle/corrections',
+  data: { predicted_cycle_id: '...', actual_start_date: '2025-06-20' },
+  client_updated_at: '2025-06-20T09:00:00Z', // <-- CRITICAL: The user's local timestamp
+  temp_id: 'temp-123',
+  priority: 'high' // <-- CRITICAL: Sync engine processes these first
+});
+Persist to Disk: The offlineStore serializes this operation and saves it to EncryptedStorage. Even if the app is force-quit, the operation survives.
+
+Attempt Network Send: The app tries to send POST /cycle/corrections. If it fails (offline), it just stays in the queue. If it succeeds, it removes it from the queue.
+
+Phase 3: The Network & Sync Engine
+When the app eventually reconnects to Wi-Fi, the syncEngine fires.
+
+Priority Sorting: It sorts the pending operations. Because we marked this correction as priority: 'high', it is processed before normal journal entries or mood logs.
+
+Send the Headers: The sync engine attaches the Idempotency-Key header (to prevent duplicate processing) and the X-Client-Updated-At header (which carries the user's local timestamp).
+
+Phase 4: Conflict Resolution (The Server-Mobile Handshake)
+The Problem (The "Multi-Device" Trap):
+User A is offline on her phone. She corrects her period to June 20 at 9:00 AM (local timestamp).
+User A logs into the Web Dashboard at 10:00 AM and corrects the same period to June 22.
+At 11:00 AM, her phone reconnects and tries to sync its "June 20" correction.
+
+The Solution (Client Timestamp Authority):
+
+Server Check: The server receives the phone's request. It sees X-Client-Updated-At: 2025-06-20T09:00:00Z.
+
+Database Lookup: The server fetches the existing cycle_entry record and sees that its updated_at is 2025-06-20T10:00:00Z (because the web edit happened later).
+
+The Decision:
+
+server.updated_at (10:00 AM) > client.updated_at (9:00 AM).
+
+Conclusion: The server's data is newer. The phone is trying to overwrite a newer truth with an older lie.
+
+Server Response: The server returns a 409 Conflict status code, along with the server's version of the data (server_data: { period_start_date: "2025-06-22" }).
+
+How the Mobile App Handles the 409 (The "Overwrite"):
+
+The sync engine catches the 409 error.
+
+It extracts the server_data from the response.
+
+Crucially: It does NOT re-queue the operation. It discards the local "June 20" correction because it is now obsolete.
+
+It calls queryClient.setQueryData to overwrite the local cache with the server's June 22 date.
+
+It shows a subtle toast: "Updated from another device".
+
+The UI instantly flips back to showing June 22 as the corrected date.
+
+Phase 5: The Final UI State
+Scenario	Visual Outcome
+Online/Success (No conflict)	June 16 is greyed out. June 20 is solid pink. Toast: "Corrected to June 20."
+Offline (No internet)	June 16 is greyed out. June 20 is solid pink. Operation is queued.
+Offline → Online later	If server has no conflict, the sync just succeeds silently. UI stays on June 20.
+Conflict (Server wins)	UI briefly shows June 20 (optimistic), but when the 409 response returns, it flips to June 22. Toast: "Updated from another device."
+Summary (The "Why")
+Optimistic Update: Makes the app feel instant. The user gets feedback in < 50ms.
+
+Offline Queue: Guarantees zero data loss. The correction is persisted to disk.
+
+Conflict Resolution (Client Timestamp): Prevents the "older device overwrites newer device" bug. The newest timestamp always wins, ensuring data integrity across multiple devices.
+
+This is how professional apps (Google Docs, Notion, WhatsApp) handle offline edits, and now you have it in SheCare. 🚀🌺
+
+
+This is a brilliant UX enhancement and aligns perfectly with how modern FemTech apps (like Clue and Flo) visualize the menstrual cycle.
+
+By using Dark Colors for "Confirmed Reality" and Light/Blurred Colors for "AI Predictions," you create an intuitive visual hierarchy. The user's eye immediately knows: "What's solid is what actually happened; what's soft is what the AI thinks will happen."
+
+Here is the complete plan for integrating 4-Phase Cycle Tracking (Dark vs. Light) with your existing correction system.
+
+1. The 4-Phase Cycle Visualization
+We don't just mark "Period Days." We mark all 4 distinct phases of the menstrual cycle, each with a specific color palette (Dark for Confirmed, Light/Pastel for Predicted).
+
+Phase	Confirmed (Dark)	Predicted (Light)	Color Palette
+Menstrual (Period)	period	predicted_period	Dark Pink/Red (#FF6B8A) / Light Pink (#FFB3C6)
+Follicular (Pre-Ovulation)	follicular	predicted_follicular	Soft Coral / Peach (#FFDAB9)
+Ovulation (Fertile Window)	fertile	predicted_fertile	Deep Lavender (#8A6E9B) / Light Lavender (#E8D5F5)
+Luteal (Post-Ovulation)	luteal	predicted_luteal	Warm Cream / Pale Yellow (#FFF8F0)
+2. The "Dark → Light" Transition (The Correction Moment)
+This is the core of your question. When a user corrects a date, the calendar doesn't just change one dot—it promotes the entire predicted cycle to "Confirmed" status and moves the AI focus to the next cycle.
+
+Before Correction (Predicted State)
+Current Cycle: All phases are Light/Blurred.
+
+Period (Light Pink), Follicular (Light Peach), Ovulation (Light Lavender), Luteal (Light Cream).
+
+Top Stat Card: "Predicted Period starts June 16."
+
+After Correction (User moves period to June 20)
+Old Cycle Confirmed:
+
+The system retroactively fills in June 16–June 20 as the Confirmed Menstrual Phase (Dark Red/Pink).
+
+The subsequent Follicular/Ovulation/Luteal phases for that same cycle are also shifted and rendered in Dark (because the cycle dates are now anchored).
+
+New Cycle Predicted:
+
+The system calculates the next predicted period (e.g., July 18, based on the new cycle length).
+
+It instantly renders the next cycle's phases in Light/Blurred colors.
+
+Visual Sequence (Step-by-Step)
+Step	UI Action	Calendar Update
+1. Initial State	June 16 marked as Light Pink (predicted_period).	Follicular/Ovulation/Luteal are all light pastels.
+2. User Corrects	User taps "Adjust Date" and selects June 20.	Optimistic UI Fires: June 16 turns grey/cancelled. June 20 turns Dark Red (period).
+3. Cycle "Locks In"	The system recalculates the fertile window based on the new start date.	June 24–28 becomes Dark Lavender (fertile). The rest of the month fills with dark Peach/Cream.
+4. "Rollover" to Next	The user's period ends (e.g., June 25). The AI projects the next cycle.	July 18 appears as Light Pink (predicted_period). July 22–26 appears as Light Lavender (predicted_fertile).
+3. The Data Structure (Mobile Mapping)
+Your backend already sends type codes for the calendar. We just need to expand the mapping for the new phase states.
+
+Backend Response (GET /cycle/calendar):
+
+json
+{
+  "2025-06-20": { "type": "period" },          // Dark Red
+  "2025-06-24": { "type": "fertile" },         // Dark Lavender
+  "2025-07-18": { "type": "predicted_period" }, // Light Pink
+  "2025-07-22": { "type": "predicted_fertile" } // Light Lavender
+}
+Mobile Rendering Rule:
+
+typescript
+const getColorForDay = (type: string) => {
+  switch(type) {
+    case 'period':
+      return '#FF6B8A'; // Dark Pink
+    case 'predicted_period':
+      return '#FFB3C6'; // Light Pink
+    case 'fertile':
+      return '#8A6E9B'; // Dark Lavender
+    case 'predicted_fertile':
+      return '#E8D5F5'; // Light Lavender
+    default:
+      return 'transparent';
+  }
+};
+4. How the "Rollover" Works (The Math)
+When the user corrects the period to June 20, the prediction_error_days is calculated (Actual - Predicted = +4).
+
+Update Cycle Length: The system updates avg_cycle_length (e.g., from 28 to 29 days).
+
+Lock the Current Cycle: The system creates the "Confirmed" entries for the current cycle (Menstrual, Follicular, Ovulation, Luteal) up to today's date.
+
+Generate the Next Prediction: The system takes the Actual Date (June 20) + avg_cycle_length (29 days) = July 19.
+
+Create the "Light" Cycle: It projects the entire next cycle (Period, Follicular, Ovulation, Luteal) starting from July 19, marking all of them as predicted_* (Light colors).
+
+5. Summary: The Visual Feedback Loop
+The "Oh, that's right" feeling: The user corrects the date, and instantly all the light pink/purple colors turn into dark, solid colors. This gives her the psychological satisfaction of having "grounded" the AI in reality.
+
+The "Forward-looking" shift: The AI doesn't just stop at the correction—it immediately projects the next cycle in light colors, so the user always knows what's coming next.
+
+This turns your calendar from a simple "period tracker" into a complete, dynamic cycle visualizer that respects the user's corrections and smoothly projects the future. 🌸✨
