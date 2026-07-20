@@ -367,7 +367,142 @@ On `429`, backend sets the `Retry-After` header (seconds). Mobile shows a toast 
 
 ---
 
-## 6. ETag & Offline Support (project invariant §7)
+## 6. Corrections
+
+### `POST /api/v1/cycle/corrections`
+
+Log a period start correction that may link to a previous prediction.
+
+**Request:**
+
+```json
+{
+  "period_start_date": "2026-07-15",
+  "period_end_date": null,
+  "symptoms": ["cramps", "bloating"],
+  "corrected_prediction_id": "uuid-or-null",
+  "client_updated_at": "2026-07-15T10:00:00Z"
+}
+```
+
+**Response `201`:**
+
+```json
+{
+  "id": "uuid",
+  "period_start_date": "2026-07-15",
+  "period_end_date": null,
+  "symptoms": ["cramps", "bloating"],
+  "is_correction": true,
+  "corrected_prediction_id": "uuid",
+  "created_at": "2026-07-15T10:00:00Z",
+  "avg_period_length": 5
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string (UUID) | Entry ID |
+| `period_start_date` | string (ISO date) | When the period started |
+| `period_end_date` | string (ISO date) \| null | `null` when unknown (pending confirmation) |
+| `symptoms` | string[] | Symptom tags |
+| `is_correction` | boolean | Always `true` for corrections |
+| `corrected_prediction_id` | string (UUID) \| null | Prediction this correction links to |
+| `created_at` | string (ISO datetime) | Timestamp |
+| `avg_period_length` | int | User's historical average bleeding duration (default 5) |
+
+**Errors:** `409 CONFLICT` (data modified since client last synced)
+
+---
+
+## 7. Prediction History
+
+### `GET /api/v1/cycle/predictions/history`
+
+Returns a list of past predictions that have been confirmed by a period correction (actual start logged).
+
+**Response `200`:**
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "month": "Jul",
+      "predicted_date": "2026-07-17",
+      "actual_date": "2026-06-19",
+      "delta_days": -1,
+      "on_time": false
+    }
+  ]
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string (UUID) | Prediction ID |
+| `month` | string | Abbreviated month of the predicted date (e.g. "Jul") |
+| `predicted_date` | string (ISO date) | Date the prediction estimated |
+| `actual_date` | string (ISO date) \| null | Actual period start date from the correction |
+| `delta_days` | int \| null | Difference: actual - predicted (negative = started early) |
+| `on_time` | boolean | True when `abs(delta_days) <= 1` |
+
+**Notes:**
+- Empty array `{"items": []}` when the user has no confirmed predictions yet
+- Ordered by `predicted_next_period_start` descending (most recent first)
+- Limit defaults to 12, max 50
+
+---
+
+## 8. Calendar
+
+### `GET /api/v1/cycle/calendar`
+
+Returns a dictionary-encoded calendar grid with cycle day types, the next prediction, and check-in status.
+
+**Query params:** `?months_back=3&months_forward=3`
+
+**Response `200`:**
+
+```json
+{
+  "days": {
+    "2026-07-17": "P",
+    "2026-07-18": "P",
+    "2026-07-29": "F",
+    "2026-07-31": "O",
+    "2026-08-01": "L",
+    "2026-08-14": "p"
+  },
+  "predictions": {
+    "id": "uuid",
+    "predicted_next_period_start": "2026-08-14",
+    "predicted_period_end": "2026-08-19",
+    "predicted_fertile_window_start": "2026-07-31",
+    "predicted_fertile_window_end": "2026-08-05",
+    "model_type": "fallback",
+    "confidence_score": 0.42,
+    "confidence_label": "Uncertain",
+    "training_data_points": 6,
+    "prediction_window_days": null
+  },
+  "next_period_in_days": 27,
+  "needs_checkin": false
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `days` | `Record<string, string>` | ISO date → day type code: `P`=period, `p`=predicted period, `u`=unconfirmed period day (pending end date), `F`=fertile, `f`=predicted fertile, `O`=ovulation, `o`=predicted ovulation, `L`=luteal, `l`=predicted luteal, `T`=today, `c`=cancelled (correction overrode this day) |
+| `predictions` | `PredictionDetail \| null` | The next active prediction |
+| `next_period_in_days` | `int \| null` | Days until next predicted period (clamped to ≥ 0) |
+| `needs_checkin` | `bool` | Whether the check-in card should show (`true` only when prediction is unconfirmed, today is within P-3 to P+6 of predicted date, and no recent period entry exists) |
+
+**ETag:** Backend computes a SHA-256 ETag on the response body. Mobile sends `If-None-Match`; server returns `304 Not Modified` when unchanged.
+
+---
+
+## 9. ETag & Offline Support (project invariant §7)
 
 Backend emits `ETag` on journal, mood, cycle, and prediction responses.
 Mobile sends `If-None-Match` for cheap revalidation.
@@ -375,7 +510,7 @@ On `304 Not Modified` → use cached data.
 
 ---
 
-## 7. Security Notes
+## 10. Security Notes
 
 - Access tokens expire in 60 min (configurable via `JWT__ACCESS_TOKEN_EXPIRE_MINUTES`)
 - Refresh tokens expire in 14 days (configurable via `JWT__REFRESH_TOKEN_EXPIRE_DAYS`)
