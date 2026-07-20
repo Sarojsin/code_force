@@ -1,6 +1,19 @@
 # Run
 Email: testuser@shecare.app
 Password: TestPass123!
+
+User 1 — Priya Sharma (Regular 28-day cycles)
+Email: priya.sharma@test.shecare / Password: Test@1234
+Onboarding: age 25, BMI 22.1, moderate stress/exercise, balanced diet
+6 cycle entries, avg cycle: 28.0 days (std dev 0.0)
+Prediction: next period start predicted for 2025-07-02
+
+User 2 — Ananya Verma (Irregular/PCOS pattern)
+
+Email: ananya.verma@test.shecare / Password: Test@1234
+Onboarding: age 32, BMI 28.8, high stress, low exercise, poor sleep
+6 cycle entries, avg cycle: 37.0 days (range 33–43)
+Prediction: next period start predicted for 2025-09-08
 ## Quick Start (Full Stack)
 
 ### 1. Start Infrastructure
