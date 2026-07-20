@@ -1,7 +1,7 @@
 # Onboarding Workflow — SheCare
 
 > **Codebase version:** 0.1.0  
-> **Last updated:** 2026-07-10  
+> **Last updated:** 2026-07-19  
 > **Scope:** From app launch through splash, auth, onboarding form, to dashboard display.
 
 ---
@@ -19,14 +19,17 @@
    - 5.4 [Refresh Token](#54-refresh-token)
    - 5.5 [Logout](#55-logout)
    - 5.6 [Session Expiry](#56-session-expiry)
-   - 5.7 [Password Management](#57-password-management)
-6. [Onboarding Form](#6-onboarding-form)
+    - 5.7 [Password Management](#57-password-management)
+    - 5.8 [MFA (TOTP) Flow](#58-mfa-totp-flow)
+    - 5.9 [Phone + Password Login](#59-phone--password-login)
+    - 5.10 [Device Registration](#510-device-registration)
+    - 5.11 [Session Management](#511-session-management)
+ 6. [Onboarding Form](#6-onboarding-form)
    - 6.1 [Personal Info](#61-personal-info)
    - 6.2 [Lifestyle & Health](#62-lifestyle--health)
    - 6.3 [Current Cycle](#63-current-cycle)
-   - 6.4 [Past Cycles](#64-past-cycles)
-   - 6.5 [Permissions](#65-permissions)
-7. [Backend Processing](#7-backend-processing)
+    - 6.4 [Past Cycles](#64-past-cycles)
+ 7. [Backend Processing](#7-backend-processing)
 8. [Database Schema](#8-database-schema)
 9. [Offline Architecture](#9-offline-architecture)
 10. [Synchronization](#10-synchronization)
@@ -200,15 +203,15 @@ mobile/src/
 │   ├── auth/
 │   │   ├── LoginScreen.tsx       # Email + password
 │   │   ├── RegisterScreen.tsx    # Email + password + display name
-│   │   ├── OtpScreen.tsx         # Phone OTP entry
-│   │   └── OtpVerifyScreen.tsx   # OTP code verification
+│   │   ├── PhoneScreen.tsx       # Phone OTP entry (E.164)
+│   │   └── OtpScreen.tsx         # OTP code verification
 │   ├── onboarding/
 │   │   ├── WelcomeScreen.tsx             # Intro + Get Started
-│   │   ├── PersonalInfoScreen.tsx        # Age, height, weight
-│   │   ├── LifestyleScreen.tsx           # Stress, exercise, sleep, diet
-│   │   ├── CurrentCycleScreen.tsx        # Current period start, length
-│   │   ├── PastCycleScreen.tsx           # Past cycle backfill (3 cycles)
-│   │   └── CompleteScreen.tsx            # Success, redirect to dashboard
+│   │   ├── PersonalInfoScreen.tsx        # Age, height, weight (PickerField)
+│   │   ├── LifestyleScreen.tsx           # Stress, exercise, sleep (Slider), diet
+│   │   ├── CurrentCycleScreen.tsx        # Current period start, length, symptoms
+│   │   ├── PastCycleScreen.tsx           # Reusable: PastCycle1/2/3 by route param
+│   │   └── CompleteScreen.tsx            # Success, calls submitOnboarding() → API
 │   └── cycle/
 │       ├── CycleDashboardScreen.tsx     # Calendar + predictions + sticky card
 │       ├── CyclePredictionsScreen.tsx   # Next prediction detail
@@ -226,7 +229,8 @@ mobile/src/
 │   └── storage/
 │       └── index.ts           # EncryptedStorage wrapper (react-native-encrypted-storage)
 ├── stores/
-│   └── authStore.ts           # Zustand: user, isHydrated, hydrate(), login(), register(), reset()
+│   ├── authStore.ts           # Zustand: user, isHydrated, hydrate(), login(), register(), reset()
+│   └── onboardingStore.ts     # Zustand+persist: 26-field state, setPersonalInfo/Lifestyle/CurrentCycle, addPastCycle, submitOnboarding()
 └── types/
     └── auth.ts                # User, LoginResponse, TokenPair, RegisterRequest, etc.
 ```
@@ -341,9 +345,9 @@ type OnboardingStackParamList = {
   PersonalInfo: undefined;
   Lifestyle: undefined;
   CurrentCycle: undefined;
-  PastCycle1: { cycleIndex: number };
-  PastCycle2: { cycleIndex: number };
-  PastCycle3: { cycleIndex: number };
+  PastCycle1: undefined;
+  PastCycle2: undefined;
+  PastCycle3: undefined;
   Complete: undefined;
 };
 ```
@@ -528,22 +532,24 @@ Tokens are stored in **`react-native-encrypted-storage`** (never plain AsyncStor
 
 **UI Components:**
 - `SafeAreaView` with background color
-- `KeyboardAvoidingView` for keyboard handling
-- ScrollView with centered content
-- SheCare logo/icon
-- `Text` heading ("Welcome Back")
-- `FormField` — Email input (keyboard type: email-address, autoCapitalize: none)
-- `FormField` — Password input (secureTextEntry: true)
-- `Text` — "Forgot Password?" link → navigates to OTP flow
-- `Button` — "Log In" (primary, full width)
-- `Text` + link → "Don't have an account? Sign Up" → navigates to RegisterScreen
-- Loading overlay/spinner during API call
+- `KeyboardAvoidingWrapper` for keyboard handling
+- `DecorativeHeader` — gradient SVG background with wave curve, brand flower icon, "SheCare" title + tagline
+- `View` card (surface background, border radius, shadow) overlapping the header
+- `Text` "Welcome back"
+- `Text` "Sign in to continue"
+- `FormField` — Email input (keyboard type: email-address, autoCapitalize: none, autoComplete: email)
+- `FormField` — Password input (secureTextEntry: true, autoComplete: password)
+- `Text` — "Forgot password?" (muted color, non-interactive placeholder)
+- `Button` — "Sign in" (primary, full width, loading state from useLogin)
+- Error box shown on API failure ("Invalid email or password. Please try again.")
+- Divider ("or") with horizontal lines
+- `Text` + link → "Don't have an account? Create one" → navigates to RegisterScreen
 
 **Validation (zod schema):**
 ```typescript
-const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+const loginFormSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Required').max(128),  // lenient — accepts legacy passwords
 });
 ```
 
@@ -566,7 +572,7 @@ User taps "Log In"
 │   │   ├── Headers: { Content-Type: application/json }
 │   │   └── Rate limit: 10 requests per 10 minutes per email
 │   │
-│   ├── On success (201):
+│   ├── On success (200):
 │   │   ├── Response: { user: {...}, tokens: { access_token, refresh_token }, requires_mfa: bool }
 │   │   ├── Store tokens in EncryptedStorage
 │   │   │   ├── tokenStore.setBoth(access_token, refresh_token)
@@ -579,12 +585,13 @@ User taps "Log In"
 │   │   │   └── queryClient.setQueryData(['auth','me'], resp.user)
 │   │   │
 │   │   │   └── requires_mfa = true?
-│   │   │       ├── Navigate to MFA screen
+│   │   │       ├── Navigate to MFA screen (not yet implemented in mobile)
 │   │   │       └── else → RootNavigator re-renders with MainTabs
 │   │   │
 │   │   └── └── Navigation
 │   │           └── RootNavigator detects user !== null
-│   │               ├── Calls GET /onboarding/status
+│   │               ├── Reads `user.onboarding_completed` from response (no separate API call)
+│   │               ├── Also checks AsyncStorage `shecare.onboarding` state for fast path
 │   │               ├── If completed → show MainTabs
 │   │               └── If not completed → show OnboardingStack
 │   │
@@ -628,43 +635,37 @@ async def login(payload: LoginCreate, svc: AuthServiceDep):
 ```python
 async def login_with_email(self, email: str, password: str, device_info: dict | None = None):
     # 1. Find user by email
-    user = await self.db.execute(select(User).where(User.email == email))
-    user = user.scalar_one_or_none()
+    normalized = email.strip().lower()
+    user = await self.get_user_by_email(normalized)
 
-    if not user:
+    if user is None:
         raise InvalidCredentialsError("Invalid email or password")
 
-    # 2. Rate limit: max 5 failed attempts
-    if user.failed_login_attempts >= 5:
-        raise TooManyAttemptsError("Account locked. Try again later.")
+    # 2. Provider guard: only "local" accounts can use password auth
+    if user.provider != "local":
+        raise InvalidCredentialsError("This account uses a different sign-in method")
 
-    # 3. Verify password
-    if not verify_password(password, user.hashed_password):
+    # 3. Lockout check: max 10 failed attempts
+    if user.failed_login_attempts >= 10:
+        raise InvalidCredentialsError("Account locked. Reset password.")
+
+    # 4. Verify password
+    if user.hashed_password is None or not verify_password(password, user.hashed_password):
         user.failed_login_attempts += 1
-        await self.db.commit()
+        await self.db.flush()
         raise InvalidCredentialsError("Invalid email or password")
 
-    # 4. Reset failed attempts, update last_login
+    if not user.is_active:
+        raise InvalidCredentialsError("Account is inactive")
+
+    # 5. Reset failed attempts, update last_login
     user.failed_login_attempts = 0
     user.last_login_at = datetime.now(tz=UTC)
 
-    # 5. Create session + token pair
-    session = UserSession(
-        user_id=user.id,
-        refresh_token_hash=...,  # SHA-256 of refresh JTI
-        refresh_jti=refresh_jti,
-        expires_at=datetime.now(tz=UTC) + timedelta(days=30),
-        device_info=device_info or {},
-    )
-    self.db.add(session)
+    # 6. Create JWT pair via _issue_token_pair (creates UserSession, encodes both tokens)
+    tokens = await self._issue_token_pair(user, device_info=device_info)
 
-    # 6. Create JWT pair (access + refresh)
-    access_token = self._create_access_token(user)
-    refresh_token = self._create_refresh_token(user, session)
-
-    await self.db.commit()
-
-    return user, TokenPair(access_token=access_token, refresh_token=refresh_token)
+    return user, tokens
 ```
 
 #### 5.1.3 JWT Token Structure
@@ -715,9 +716,11 @@ async def login_with_email(self, email: str, password: str, device_info: dict | 
     "user": {
       "id": "e860cea6-9609-4f05-9cdd-266b30aeeafc",
       "email": "user@example.com",
+      "phone_number": null,
       "display_name": "User",
       "role": "user",
       "is_verified": true,
+      "onboarding_completed": true,
       "created_at": "2026-01-15T10:30:00Z"
     },
     "tokens": {
@@ -753,44 +756,49 @@ async def login_with_email(self, email: str, password: str, device_info: dict | 
 **Purpose:** Create a new user account.
 
 **UI Components:**
-- Similar to LoginScreen
-- Fields: Display Name, Email, Password, Confirm Password
-- Terms & Conditions checkbox
-- "Create Account" button
+- `DecorativeHeader` — same gradient SVG + wave + brand icon as LoginScreen
+- `View` card (surface background, border radius, shadow) overlapping the header
+- `Text` "Create account" heading + "Join SheCare and take control of your health."
+- `FormField` — Display name (optional, autoCapitalize: words)
+- `FormField` — Email (keyboardType: email-address, autoCapitalize: none)
+- `FormField` — Password (secureTextEntry, hint text)
+- `PasswordStrengthIndicator` — live 3-bar indicator: 8+ chars, 1+ number, 1+ special char
+- `Button` — "Create account" (primary, full width, loading state)
+- Error box shown on conflict ("Could not create account. The email may already be registered.")
+- Divider ("or") with horizontal lines
+- `Text` + link → "Already have an account? Sign in" → navigates to LoginScreen
 
 **Validation (zod schema):**
 ```typescript
-const registerSchema = z.object({
-  display_name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Please enter a valid email'),
+const registerFormSchema = z.object({
+  email: z.string().email('Invalid email address'),
   password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Must contain an uppercase letter')
-    .regex(/[0-9]/, 'Must contain a number'),
-  confirmPassword: z.string(),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
+    .min(8, 'At least 8 characters')
+    .max(128)
+    .regex(/[0-9]/, 'At least one number')
+    .regex(/[!@#$%^&*(),.?":{}|<>_\-+=~`\[\];']/, 'At least one special character'),
+  display_name: z.string().min(1, 'Required').max(100).optional(),
 });
 ```
 
 **User Actions:**
 
 ```
-User taps "Create Account"
+User taps "Create account"
 │
-├── Validate form
+├── Validate form (zod — password must have 8+ chars, 1 number, 1 special char)
 │
-├── Call useRegister().mutateAsync(data)
+├── Call useRegister().mutateAsync({ email, password, display_name })
 │   └── authService.register() → POST /api/v1/auth/register
 │       ├── Body: { email, password, display_name }
 │       ├── Success 201:
+│       │   ├── Response: { user: {...}, tokens: {...}, requires_mfa: false }
 │       │   ├── Store tokens in EncryptedStorage
-│       │   ├── Cache user
+│       │   ├── Cache user in EncryptedStorage
 │       │   ├── Set Zustand user
-│       │   ├── RootNavigator detects user → show OnboardingStack
+│       │   ├── RootNavigator detects user → checks onboarding_completed → show OnboardingStack
 │       └── Error:
-│           ├── 409 → "Email already registered"
+│           ├── 409 → "Account with this email already exists"
 │           └── 422 → Validation error
 ```
 
@@ -816,89 +824,117 @@ async def register(payload: RegisterCreate, svc: AuthServiceDep):
 ```
 register()
 │
+├── Normalize email (strip, lowercase)
+│
 ├── Check email uniqueness
-│   └── Existing → raise ConflictError("Email already registered")
+│   └── Existing → raise ConflictError("An account with this email already exists")
 │
-├── Hash password (passlib.context CryptContext, bcrypt)
-│   └── hashed = pwd_context.hash(password)
+├── Hash password (bcrypt directly, no passlib)
+│   └── hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 │
-├── Generate user_secret_key (for token kill-switch)
-│   └── usk = secrets.token_urlsafe(32)
+├── Generate user_secret_key (SHA-256 hash embedded in JWTs as kill-switch)
+│   └── usk = secrets.token_hex(32)
 │
 ├── Create User record
 │   ├── id = uuid4()
-│   ├── email = payload.email
+│   ├── email = normalized
 │   ├── display_name = payload.display_name
 │   ├── hashed_password = hashed
 │   ├── user_secret_key = usk
+│   ├── provider = "local"
 │   ├── role = "user"
-│   └── is_verified = false
+│   ├── is_verified = false
+│   └── encryption_key_salt = make_user_salt()
 │
-├── Create initial session + JWT pair
-│
-├── Emit event: "user_registered" (for audit, welcome email)
+├── Create initial session + JWT pair via _issue_token_pair()
 │
 └── Commit transaction
-    └── Return User + TokenPair
+    └── Return User + TokenPair (no event emitted during registration)
 ```
 
 ### 5.3 OTP Flow
 
-#### 5.3.1 Screen: `OtpScreen.tsx`
+Two screens: **PhoneScreen** (enter number) → **OtpScreen** (enter code).
 
-**Purpose:** Enter phone number to receive OTP for authentication or password reset.
+#### 5.3.1 Screen: `PhoneScreen.tsx`
+
+**Purpose:** Enter E.164 phone number to receive an OTP code via SMS.
 
 **UI Components:**
-- Phone number input with country code picker
-- "Send OTP" button
-- Rate limit info text
+- `SafeAreaView` with background color, `KeyboardAvoidingWrapper`
+- `Text` — "Welcome to SheCare" heading
+- `Text` — "Enter your phone number to receive a one-time code."
+- `FormField` — Phone input (keyboardType: phone-pad, autoComplete: tel, E.164 hint)
+- `Button` — "Send code" (loading state from useRequestOtp)
+- Error text shown on API failure
+
+**Validation (zod):**
+```typescript
+const requestOtpFormSchema = z.object({
+  phone: z.string()
+    .min(8, 'Phone number is too short')
+    .regex(/^\+[1-9]\d{6,14}$/, 'Phone must be in E.164 format, e.g. +14155552671'),
+});
+```
 
 **User Actions:**
 
 ```
-User enters phone, taps "Send OTP"
+User enters E.164 phone, taps "Send code"
 │
-├── Validate phone format (E.164)
+├── Validate phone format (E.164 regex)
 ├── Call useRequestOtp().mutateAsync(phone)
 │   └── authService.requestOtp() → POST /api/v1/auth/otp/request
-│       ├── Body: { phone: "+1234567890" }
+│       ├── Body: { phone: "+14155552671" }
 │       ├── Rate limit: 5 req/10min per phone
 │       ├── Success 202:
 │       │   ├── Response: { expires_in: 300, dev_code: "123456" }
-│       │   └── Navigate to OtpVerifyScreen with phone + expiresIn + devCode
+│       │   └── Navigate to OtpScreen with { phone, expiresIn, devCode }
 │       └── Error:
 │           ├── 429 → "Too many OTP requests"
 │           └── Network → "Unable to send OTP"
 ```
 
-#### 5.3.2 Screen: `OtpVerifyScreen.tsx`
+#### 5.3.2 Screen: `OtpScreen.tsx`
 
-**Purpose:** Verify OTP code sent via SMS.
+**Purpose:** Verify the 6-digit OTP code sent via SMS.
 
 **UI Components:**
-- 6-digit OTP input (individual digit boxes)
-- Countdown timer (based on `expiresIn`)
-- "Resend OTP" link (disabled during countdown)
-- Loading state during verification
+- `SafeAreaView`, `KeyboardAvoidingWrapper`
+- `Text` — "Enter the code" heading
+- `Text` — "We sent a 6-digit code to {phone}. It expires in {secondsLeft}s."
+- Dev mode banner (visible only in dev/test) showing the OTP code
+- `FormField` — OTP input (keyboardType: number-pad, maxLength: 6, autoComplete: one-time-code)
+- `Button` — "Verify" (disabled until 4+ digits entered, loading state)
+- `Button` — "Resend code in {secondsLeft}s" / "Resend code" (outline, disabled during countdown)
+- Error text shown on verification failure
+
+**Validation (zod):**
+```typescript
+const verifyOtpFormSchema = z.object({
+  phone: z.string().regex(/^\+[1-9]\d{6,14}$/),
+  otp: z.string().regex(/^\d{4,8}$/, 'OTP must be 4-8 digits'),
+});
+```
 
 **User Actions:**
 
 ```
-User enters 6-digit OTP (auto-submit on completion)
+User enters 6-digit OTP, taps "Verify"
 │
 ├── Call useVerifyOtp().mutateAsync({ phone, otp })
 │   └── authService.verifyOtp() → POST /api/v1/auth/otp/verify
 │       ├── Body: { phone, otp }
 │       ├── Success:
 │       │   ├── Tokens stored, user cached
-│       │   ├── requires_mfa? → MFA challenge
-│       │   └── Navigate to appropriate stack
+│       │   ├── requires_mfa? → MFA challenge (not yet implemented in mobile)
+│       │   └── user set in authStore → RootNavigator shows MainTabs/OnboardingStack
 │       └── Error:
-│           ├── 400 → "Invalid OTP" / "OTP expired"
+│           ├── 400 → "OTP does not match" / "OTP expired"
 │           └── 429 → Rate limited
 │
-├── User taps "Resend OTP"
-│   └── call requestOtp() again, restart countdown
+├── User taps "Resend code"
+│   └── navigate.replace('Phone') to restart the flow
 ```
 
 #### 5.3.3 Backend OTP Flow
@@ -1108,7 +1144,69 @@ Service:
 └── Return 204
 ```
 
-### 5.8 Session Management
+### 5.8 MFA (TOTP) Flow
+
+Three endpoints for optional TOTP multi-factor authentication:
+
+#### 5.8.1 Enable MFA: `POST /api/v1/auth/mfa/enable`
+
+Generates a new TOTP secret and returns the provisioning URI (for QR code) and the raw secret (for manual entry). Does NOT flip `mfa_enabled` — user must complete verify-setup first.
+
+```
+Auth required: Bearer <access_token>
+Response 200: { "secret": "JBSWY3DPEHPK3PXP", "otpauth_uri": "otpauth://totp/SheCare:+14155552671?secret=..." }
+```
+
+Secret is stored encrypted via per-user `encryption_key_salt` (Fernet + PBKDF2).
+
+#### 5.8.2 Verify MFA Setup: `POST /api/v1/auth/mfa/verify-setup`
+
+Confirm a fresh TOTP code from the authenticator app. On success `mfa_enabled` flips to `true`.
+
+```
+Request:  { "code": "123456" }
+Auth required: Bearer <access_token>
+Response 200: { "enabled": true }
+Error 400:   { "code": "MFA_INVALID", "details": "Code did not match" }
+```
+
+#### 5.8.3 MFA Login: `POST /api/v1/auth/mfa/login`
+
+When the user has MFA enabled, login/OTP flows return `requires_mfa: true` plus a short-lived "challenge" access token. The client presents that token + TOTP code here to get a real token pair.
+
+```
+Request:  { "mfa_token": "<challenge_access_token>", "code": "123456", "device_info": {...} }
+Response: { "access_token": "...", "refresh_token": "...", "token_type": "bearer", "expires_in": 900 }
+Error 400: { "code": "MFA_INVALID", "details": "MFA code did not match" }
+```
+
+### 5.9 Phone + Password Login
+
+An alternative to OTP: users who set a password on their phone-based account can login with `POST /api/v1/auth/login/phone`.
+
+```
+Request:  { "phone": "+14155552671", "password": "securePassword123", "device_info": {...} }
+Rate limit: 10 req/10min per phone
+Response: LoginResponse (same shape as email login, including requires_mfa)
+```
+
+Backend validates provider guard, checks `failed_login_attempts >= 10` lockout, verifies bcrypt hash, then issues token pair via `_issue_token_pair`.
+
+### 5.10 Device Registration
+
+Used by the Safety module for push notifications (FCM).
+
+**`POST /api/v1/auth/device/register`**
+
+```
+Auth required: Bearer <access_token>
+Request:  { "fcm_token": "fcm-abc123...", "platform": "ios" | "android", "device_info": {...} }
+Response 201: { "message": "Device registered", "fcm_token_prefix": "fcm-abc123..." }
+```
+
+Stores the FCM token in the user's `fcm_tokens` JSONB array (deduplicates on re-registration).
+
+### 5.11 Session Management
 
 **`GET /api/v1/auth/sessions`** — List active sessions
 
@@ -1136,80 +1234,98 @@ Service:
 OnboardingStack
 │
 ├── WelcomeScreen
-│   ├── "Track your cycle, understand your body"
-│   ├── Illustrations / Lottie animation
-│   ├── "Get Started" button
+│   ├── "Welcome to SheCare" / "Your personal wellness companion"
+│   ├── SVG FlowerIcon (no Lottie — gradient background with wave)
+│   ├── ProgressDots (0/6)
+│   ├── Privacy footer: "Your data is encrypted end-to-end..."
+│   ├── "Get started" button
 │   └── → navigates to PersonalInfoScreen
 │
 ├── PersonalInfoScreen
-│   ├── Age (number input)
-│   ├── Height (cm, number input with units)
-│   ├── Weight (kg, number input with units)
-│   ├── "Continue" button
-│   ├── Validate → store locally → navigate
-│   └── → navigates to LifestyleScreen
+│   ├── ProgressDots (1/6), ← Back → goBack()
+│   ├── Age (TextInput, numeric, min 13 / max 120)
+│   ├── Height (PickerField dropdown: 50-250 cm)
+│   ├── Weight (PickerField dropdown: 20-300 kg)
+│   ├── ScreenErrorBoundary wrapper
+│   ├── "Continue" button (disabled until valid)
+│   └── → setPersonalInfo(store) → navigates to LifestyleScreen
 │
 ├── LifestyleScreen
-│   ├── Stress Level (picker: Low / Medium / High)
-│   ├── Exercise Frequency (picker: None / 1-2x / 3-4x / 5+ / Daily)
-│   ├── Sleep Hours (number: 4-12)
-│   ├── Diet (optional, picker)
-│   ├── "Continue" button
-│   └── → navigates to CurrentCycleScreen
+│   ├── ProgressDots (2/6), ← Back → goBack()
+│   ├── Stress Level (ToggleGroup: Low / Moderate / High — values: low/moderate/high)
+│   ├── Exercise Frequency (ToggleGroup: Light / Moderate / Heavy — values: low/moderate/high)
+│   ├── Sleep Hours (Slider: 4-12, step 0.5, live label)
+│   ├── Diet (ToggleGroup: Balanced / Normal / Junk — values: balanced/normal/junk, required)
+│   ├── "Continue" button (disabled until valid)
+│   └── → setLifestyle(store) → navigates to CurrentCycleScreen
 │
 ├── CurrentCycleScreen
-│   ├── Current Period Start (date picker)
-│   ├── Typical Cycle Length (picker: 21-45 days)
-│   ├── Typical Period Length (picker: 2-10 days)
-│   ├── Current Symptoms (multi-select: Cramps, Bloating, Headache, etc.)
-│   ├── "Continue" button
-│   └── → navigates to PastCycle1
+│   ├── ProgressDots (3/6), ← Back → goBack()
+│   ├── Period start date (DatePickerField, max: today)
+│   ├── Cycle length (TextInput numeric: 20-45 days)
+│   ├── Period length (TextInput numeric: 2-10 days)
+│   ├── Symptoms (chip toggle grid: Cramps, Bloating, Headache, Fatigue, Acne, Mood swings, Back pain, Nausea, Breast tenderness, Insomnia)
+│   ├── "Continue" button (disabled until valid)
+│   └── → setCurrentCycle(store) → navigates to PastCycle1
 │
-├── PastCycle1
-│   ├── Past cycle date (date picker — at least 25 days before current)
-│   ├── Period length (picker)
-│   ├── Symptoms (multi-select)
-│   ├── "Add Another Cycle" / "Skip" / "Continue"
-│   └── → navigates to PastCycle2 (if adding another) or CompleteScreen
+├── PastCycle1 (reusable PastCycleScreen, determined by route name)
+│   ├── ProgressDots (4/6), ← Back → CurrentCycle
+│   ├── Start date (DatePickerField, max: today)
+│   ├── Cycle length (TextInput numeric: 20-45) — includes cycle_length
+│   ├── Period length (TextInput numeric: 2-10)
+│   ├── Symptoms (chip toggle grid, same 10 options)
+│   ├── "Continue" button (label changes to "Complete" on PastCycle3)
+│   └── → addPastCycle(store) → navigates to PastCycle2
 │
-├── PastCycle2 (same as above)
-├── PastCycle3 (same as above)
+├── PastCycle2 (same PastCycleScreen, ProgressDots 5/6, ← Back → PastCycle1)
+│   └── → navigates to PastCycle3
+│
+├── PastCycle3 (same PastCycleScreen, ProgressDots 6/6, ← Back → PastCycle2)
+│   └── → navigates to CompleteScreen (button label: "Complete")
 │
 └── CompleteScreen
-    ├── "You're all set!" animation
+    ├── ProgressDots (6/6), backgroundColor: primary500
+    ├── CelebrationAnimation component
+    ├── "You're all set!" title
+    ├── "Your dashboard is ready. We've backfilled your cycle history..."
+    ├── Footer with rounded top corners (surface background)
     ├── "Go to Dashboard" button
-    ├── → Calls PUT /onboarding → navigates to MainTabs
+    └── → Calls submitOnboarding() from store → RootNavigator switches to MainTabs
 ```
 
 ### 6.2 Data Accumulation
 
 Onboarding data is accumulated through the screens. Each screen stores data locally (not yet sent to backend):
 
+The **Zustand store** (`onboardingStore.ts`) holds all onboarding state in-memory and persists `isCompleted` to AsyncStorage (key: `shecare.onboarding`). Each screen writes fields to the store via discrete actions, then the **`submitOnboarding()`** function (exported from the same module) maps store fields to the API schema and calls `onboardingService.upsert()`.
+
 ```typescript
-interface OnboardingData {
-  // PersonalInfo
-  age: number;
-  height_cm: number;
-  weight_kg: number;
+// Store state (camelCase — mapped to snake_case on submit):
+interface OnboardingState {
+  age: number | null;
+  heightCm: number | null;
+  weightKg: number | null;
 
-  // Lifestyle
-  stress_level: 'low' | 'medium' | 'high';
-  exercise_frequency: 'none' | '1-2' | '3-4' | '5+' | 'daily';
-  sleep_hours: number;
-  diet?: string;
+  stressLevel: 'low' | 'moderate' | 'high' | null;
+  exerciseFrequency: 'low' | 'moderate' | 'high' | null;
+  sleepHours: number | null;
+  diet: 'balanced' | 'normal' | 'junk' | null;
 
-  // Current cycle
-  current_cycle_start: string;  // ISO date
-  current_cycle_length: number;
-  current_period_length: number;
-  current_symptoms: string[];
+  currentCycleStart: string | null;     // ISO date
+  currentCycleLength: number | null;
+  currentPeriodLength: number | null;
+  currentSymptoms: string[];
 
-  // Past cycles
-  past_cycles: Array<{
-    cycle_start: string;
-    period_length: number;
-    symptoms: string[];
-  }>;
+  pastCycles: PastCycle[];
+  isSubmitting: boolean;
+  isCompleted: boolean;
+}
+
+interface PastCycle {
+  cycle_start: string;     // ISO date
+  cycle_length: number;    // 20-45 days (included in store)
+  period_length: number;   // 2-10 days
+  symptoms: string[];
 }
 ```
 
@@ -1226,16 +1342,17 @@ User taps "Go to Dashboard"
 │   │     "age": 28,
 │   │     "height_cm": 165,
 │   │     "weight_kg": 60,
-│   │     "stress_level": "medium",
-│   │     "exercise_frequency": "3-4",
+│   │     "stress_level": "moderate",
+│   │     "exercise_frequency": "moderate",
 │   │     "sleep_hours": 7,
+│   │     "diet": "balanced",
 │   │     "current_cycle_start": "2026-06-28",
 │   │     "current_cycle_length": 28,
 │   │     "current_period_length": 5,
-│   │     "current_symptoms": ["cramps", "bloating"],
+│   │     "current_symptoms": ["Cramps", "Bloating"],
 │   │     "past_cycles": [
-│   │       { "cycle_start": "2026-05-31", "period_length": 5, "symptoms": [] },
-│   │       { "cycle_start": "2026-05-03", "period_length": 4, "symptoms": ["cramps"] }
+│   │       { "cycle_start": "2026-05-31", "cycle_length": 28, "period_length": 5, "symptoms": [] },
+│   │       { "cycle_start": "2026-05-03", "cycle_length": 28, "period_length": 4, "symptoms": ["Cramps"] }
 │   │     ]
 │   │   }
 │   └── Headers: Authorization: Bearer <token>
@@ -1371,28 +1488,24 @@ async def _backfill_cycles(self, user_id: uuid.UUID, data: OnboardingCreate) -> 
 When `onboarding_completed` is emitted, the cycle module's subscriber computes the first prediction:
 
 ```python
-# In app/modules/cycle/init_module():
-@event_bus.subscribe("onboarding_completed")
-async def on_onboarding_completed(user_id: str):
-    # Enqueue async task to compute initial prediction
-    from app.modules.cycle.tasks import compute_initial_prediction
-    compute_initial_prediction.delay(user_id=user_id)
-```
+# In app/modules/cycle/routes.py (init_module):
+event_bus.subscribe_sync("onboarding_completed", _on_onboarding_completed)
 
-```python
-# tasks.py
-@celery_app.task(
-    task_id=lambda user_id: f"initial_prediction_{user_id}",
-    soft_time_limit=30,
-    time_limit=60,
-    acks_late=True,
-)
-def compute_initial_prediction(user_id: str):
-    # 1. Fetch all cycle entries for user
-    # 2. Compute cycle statistics (avg length, std dev)
-    # 3. Generate initial prediction using global model or fallback
-    # 4. Store prediction in predicted_cycles table
-    # 5. Update user's avg_cycle_length, total_cycles_logged
+async def _on_onboarding_completed(user_id: str):
+    # Compute initial prediction directly (no Celery task)
+    import uuid
+    from app.core.database import AsyncSessionLocal
+    from app.modules.cycle.services import CycleService
+    async with AsyncSessionLocal() as session:
+        svc = CycleService(session)
+        try:
+            await svc.compute_initial_prediction(uuid.UUID(user_id))
+        except Exception:
+            import logging
+            logging.getLogger(__name__).warning(
+                "cycle.initial_prediction_failed",
+                extra={"user_id": user_id},
+            )
 ```
 
 ---
@@ -1440,41 +1553,44 @@ The backend stores height_cm and weight_kg but does NOT re-calculate BMI (stored
 ```python
 class OnboardingCreate(BaseModel):
     age: int = Field(ge=13, le=120)                           # Age 13-120
-    height_cm: float = Field(ge=100, le=250)                  # Height 100-250cm
-    weight_kg: float = Field(ge=30, le=300)                   # Weight 30-300kg
-    stress_level: str = Field(pattern=r"^(low|medium|high)$")
-    exercise_frequency: str = Field(pattern=r"^(none|1-2|3-4|5\+|daily)$")
+    height_cm: float = Field(ge=50, le=250)                  # Height 50-250cm
+    weight_kg: float = Field(ge=20, le=300)                   # Weight 20-300kg
+    stress_level: str = Field(pattern=r"^(low|moderate|high)$")
+    exercise_frequency: str = Field(pattern=r"^(low|moderate|high)$")
     sleep_hours: float = Field(ge=0, le=24)                   # 0-24 hours
-    diet: str | None = None
-    current_cycle_start: date                                 # ISO date
-    current_cycle_length: int = Field(ge=21, le=45)          # 21-45 days
+    diet: str = Field(pattern=r"^(balanced|normal|junk)$")    # required
+    current_cycle_start: date                                 # ISO date; validated <= today
+    current_cycle_length: int = Field(ge=20, le=45)          # 20-45 days
     current_period_length: int = Field(ge=2, le=10)          # 2-10 days
-    current_symptoms: list[str] = []
-    past_cycles: list[PastCycleData] = []                    # Max ~3
+    current_symptoms: list[str] = Field(default_factory=list)
+    past_cycles: list[PastCycleSchema] = Field(default_factory=list, max_length=3)
 
-class PastCycleData(BaseModel):
-    cycle_start: date
+class PastCycleSchema(BaseModel):
+    cycle_start: date                                         # validated < today
+    cycle_length: int = Field(ge=20, le=45)                  # included in schema
     period_length: int = Field(ge=2, le=10)
-    symptoms: list[str] = []
+    symptoms: list[str] = Field(default_factory=list)
 ```
 
 **Response schema (`OnboardingResponse`):**
 ```python
 class OnboardingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     user_id: uuid.UUID
-    age: int
-    height_cm: float
-    weight_kg: float
-    stress_level: str
-    exercise_frequency: str
-    sleep_hours: float
+    age: int | None                      # nullable until first submission
+    height_cm: float | None
+    weight_kg: float | None
+    stress_level: str | None
+    exercise_frequency: str | None
+    sleep_hours: float | None
     diet: str | None
-    current_cycle_start: date
-    current_cycle_length: int
-    current_period_length: int
+    current_cycle_start: date | None
+    current_cycle_length: int | None
+    current_period_length: int | None
     current_symptoms: list[str]
-    past_cycles: list[dict]
+    past_cycles: list                     # JSONB, raw list
     onboarding_completed: bool
     completed_at: datetime | None
     created_at: datetime
@@ -1488,8 +1604,8 @@ class OnboardingResponse(BaseModel):
 | Invalid field values | 422 | VALIDATION_ERROR | Zod/Pydantic validation |
 | Missing required fields | 422 | VALIDATION_ERROR | Field-level errors |
 | Age < 13 | 422 | VALIDATION_ERROR | "Must be at least 13" |
-| Height out of range | 422 | VALIDATION_ERROR | "Height must be 100-250cm" |
-| Cycle length out of range | 422 | VALIDATION_ERROR | "Cycle length must be 21-45 days" |
+| Height out of range | 422 | VALIDATION_ERROR | "Height must be 50-250cm" |
+| Cycle length out of range | 422 | VALIDATION_ERROR | "Cycle length must be 20-45 days" |
 | Unauthenticated | 401 | UNAUTHORIZED | "Not authenticated" |
 | Internal error | 500 | INTERNAL_ERROR | Logged, generic message |
 
@@ -1511,14 +1627,14 @@ CREATE TABLE users (
     blood_group         VARCHAR(5),
     medical_notes       TEXT,
     role                VARCHAR(20) NOT NULL DEFAULT 'user',
-    user_secret_key     VARCHAR(64) NOT NULL,      -- Token kill-switch
-    provider            VARCHAR(20),                -- 'email', 'phone', 'google'
+    user_secret_key     VARCHAR(64) NOT NULL DEFAULT '',  -- Token kill-switch
+    provider            VARCHAR(20) NOT NULL DEFAULT 'local',  -- 'local', 'phone', 'google'
     is_verified         BOOLEAN NOT NULL DEFAULT FALSE,
     last_login_at       TIMESTAMPTZ,
     failed_login_attempts INTEGER NOT NULL DEFAULT 0,
     mfa_enabled         BOOLEAN NOT NULL DEFAULT FALSE,
-    mfa_secret          VARCHAR(64),
-    encryption_key_salt VARCHAR(64),                -- Per-user encryption salt
+    mfa_secret          VARCHAR(255),               -- encrypted TOTP secret
+    encryption_key_salt VARCHAR(255),               -- Per-user encryption salt
     fcm_tokens          JSONB DEFAULT '[]'::jsonb,  -- Push notification tokens
     hashed_password     VARCHAR(255),
 
@@ -1545,7 +1661,7 @@ CREATE INDEX idx_users_phone ON users(phone_number) WHERE is_active = TRUE;
 CREATE TABLE user_sessions (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id             UUID NOT NULL REFERENCES users(id),
-    refresh_token_hash  VARCHAR(64) NOT NULL,  -- SHA-256 of refresh JTI
+    refresh_token_hash  VARCHAR(255) NOT NULL,  -- SHA-256 of refresh JTI
     refresh_jti         UUID NOT NULL,
     expires_at          TIMESTAMPTZ NOT NULL,
     ip_address          VARCHAR(45),
@@ -1567,7 +1683,7 @@ CREATE INDEX idx_sessions_jti ON user_sessions(refresh_jti);
 CREATE TABLE otp_attempts (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     phone_hash      VARCHAR(64) NOT NULL,
-    code_hash       VARCHAR(64) NOT NULL,
+    code_hash       VARCHAR(255) NOT NULL,
     expires_at      TIMESTAMPTZ NOT NULL,
     consumed        BOOLEAN NOT NULL DEFAULT FALSE,
     attempt_count   INTEGER NOT NULL DEFAULT 0,
@@ -1591,10 +1707,10 @@ CREATE TABLE user_onboarding (
     weight_kg               REAL,
 
     -- Lifestyle
-    stress_level            VARCHAR(10),       -- 'low' | 'medium' | 'high'
-    exercise_frequency      VARCHAR(10),       -- 'none' | '1-2' | '3-4' | '5+' | 'daily'
+    stress_level            VARCHAR(10),       -- 'low' | 'moderate' | 'high'
+    exercise_frequency      VARCHAR(10),       -- 'low' | 'moderate' | 'high'
     sleep_hours             REAL,
-    diet                    VARCHAR(50),
+    diet                    VARCHAR(50),       -- 'balanced' | 'normal' | 'junk'
 
     -- Cycle info
     current_cycle_start     DATE,

@@ -16,7 +16,8 @@
    - 4.2 [Calendar Integration](#42-calendar-integration)
    - 4.3 [PredictionDetailCard](#43-predictiondetailcard)
    - 4.4 [StickyCard (Correction Window)](#44-stickycard-correction-window)
-   - 4.5 [Adjust Period Date BottomSheet](#45-adjust-period-date-bottomsheet)
+    - 4.5 [Adjust Period Date BottomSheet](#45-adjust-period-date-bottomsheet)
+    - 4.6 [EndDatePromptCard (Mark End Date)](#46-enddatepromptcard-mark-end-date)
 5. [Cycle Predictions Screen](#5-cycle-predictions-screen)
 6. [Cycle History Screen](#6-cycle-history-screen)
 7. [Log Period Screen](#7-log-period-screen)
@@ -82,9 +83,9 @@
 │  └──────────────────────┬─────────────────────────────────────┘  │
 │                         │                                        │
 │  ┌──────────────────────┴─────────────────────────────────────┐  │
-│  │               ONNX INFERENCE ENGINE                         │  │
-│  │  globalModel → linear regression + scaler                   │  │
-│  │  wellnessClassifier → MiniLM embeddings → sentiment         │  │
+│  │               PREDICTION ENGINE (MOBILE)                    │  │
+│  │  globalModel → linear regression + JSON scaler              │  │
+│  │  modelUpdater → downloads .onnx wellness classifier         │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 └─────────────────────────┬────────────────────────────────────────┘
                           │ HTTPS
@@ -101,6 +102,7 @@
 │  │  PUT  /cycle/entries/{id}    → Update entry                 │  │
 │  │  DEL  /cycle/entries/{id}    → Soft-delete entry            │  │
 │  │  GET  /cycle/predictions     → Next prediction              │  │
+│  │  GET  /cycle/predictions/history → Past predictions vs actual│  │
 │  │  GET  /cycle/analytics       → Cycle statistics             │  │
 │  │  POST /cycle/corrections     → Log correction               │  │
 │  │  POST /cycle/snooze          → Log "Not yet"                │  │
@@ -126,7 +128,7 @@
 │  └──────────────────────┬─────────────────────────────────────┘  │
 │                         │                                        │
 │  ┌──────────────────────┴─────────────────────────────────────┐  │
-│  │  PostgreSQL │ Redis │ ONNX Model Storage                   │  │
+│  │  PostgreSQL │ Redis │ JSON Model Storage                   │  │
 │  └────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -142,6 +144,7 @@ app/modules/cycle/
 ├── schemas.py             # EntryCreate/Response, PredictionResponse, CorrectionCreate, etc.
 ├── dependencies.py        # CycleServiceDep
 ├── exceptions.py          # CycleNotFoundError, PredictionNotFoundError
+├── phase_utils.py         # calculate_cycle_phases, compute_period_length
 ├── tasks.py               # compute_initial_prediction (Celery)
 └── plans/
     └── cycle_rule_plan.md # Correction window spec (P-3 to P+6)
@@ -239,7 +242,7 @@ type HomeStackParamList = {
 User taps Calendar tab
 │
 ├── CalendarScreen renders
-│   ├── Fetches cycle calendar data (3 months back, 3 months forward) # forward is not concidered in the current implementation
+│   ├── Fetches cycle calendar data (3 months back, 3 months forward)
 │   │   └── GET /api/v1/cycle/calendar?months_back=3&months_forward=3
 │   ├── Renders month grid with phase colors
 │   │   ├── Menstrual → red (#FF5252)
@@ -329,6 +332,17 @@ The main cycle dashboard view showing the user's current cycle status, predictio
 // On mount:
 const { data: calData, isLoading } = useCycleCalendar(3, 3);
 // GET /api/v1/cycle/calendar?months_back=3&months_forward=3
+const logCorrection = useLogCorrection();
+const logSnooze = useLogSnooze();
+const updateEntry = useUpdateCycleEntry();  // For EndDatePromptCard updates
+const endDateStore = useEndDateStore();
+
+// Check if navigated from MarkEndDate notification:
+useEffect(() => {
+  if (route.params?.markEndDate && endDateStore.periodStartDate) {
+    setShowEndDateModal(true);
+  }
+}, [route.params?.markEndDate, endDateStore.periodStartDate]);
 
 // Also loads ML model:
 useEffect(() => {
@@ -340,9 +354,9 @@ useEffect(() => {
   if (isConnected) {
     modelUpdater.checkForUpdate().then((result) => {
       if (result.wellness || result.minilm) {
-        Toast.show({ type: 'success', text1: 'Wellness model updated' });
+        Toast.show({ type: 'success', text1: 'Wellness model updated — predictions improved' });
       }
-    });
+    }).catch(() => {});
   }
 }, [isConnected]);
 ```
@@ -354,6 +368,7 @@ interface CalendarResponse {
   days: Record<string, string>;      // "2026-07-10": "P" | "F" | "O" | "L"
   predictions?: PredictionDetail | null;
   next_period_in_days?: number | null;
+  needs_checkin: bool;               // True if in P-3 window and no checkin sent yet
 }
 
 interface PredictionDetail {
@@ -372,14 +387,21 @@ interface PredictionDetail {
 
 #### 3.1.4 Day Encoding
 
-The calendar returns days as a dictionary mapping date strings to phase codes:
+The calendar returns days as a dictionary mapping date strings to 11 possible type codes:
 
-| Code | Phase | Color |
-|------|-------|-------|
-| `P` / `p` | Menstrual | Red (#FF5252) |
-| `F` / `f` | Follicular | Yellow (#FFD54F) |
-| `O` / `o` | Ovulation | Green (#4CAF50) |
-| `L` / `l` | Luteal | Blue (#42A5F5) |
+| Code | Label | Color | When Assigned |
+|------|-------|-------|---------------|
+| `P` | Period | #F48FB1 | Confirmed cycle entry day (has end_date) |
+| `p` | Predicted Period | #FCE4EC | Predicted period day from active prediction |
+| `u` | Unconfirmed | #FFB3C1 | Cycle entry without end_date (partial, only start known) |
+| `c` | Cancelled | #E0E0E0 | Prediction whose `actual_cycle_entry_id` is set |
+| `F` | Fertile | #CE93D8 | Fertile window from confirmed entry |
+| `f` | Predicted Fertile | #F3E5F5 | Fertile window from active prediction |
+| `O` | Ovulation | #81C784 | Ovulation day from confirmed entry |
+| `o` | Predicted Ovulation | #E8F5E9 | Ovulation day from active prediction |
+| `L` | Luteal | #90CAF9 | Luteal phase from confirmed entry |
+| `l` | Predicted Luteal | #E3F2FD | Luteal phase from active prediction |
+| `T` | Today | #42A5F5 | Always set to current day, overrides other codes |
 
 #### 3.1.5 Loading State
 
@@ -406,15 +428,24 @@ if (isLoading) {
 │  ┌───────────────────────────────┐  │
 │  │  PredictionDetailCard         │  │
 │  │  - Next period: Jul 15       │  │
-│  │  - Confidence: High (85%)    │  │
+│  │  - Confidence: Good (85%)    │  │
 │  │  - 4 cycles of data          │  │
 │  └───────────────────────────────┘  │
 │                                      │
 │  ┌─── StickyCard (P-3 to P+6) ───┐  │
-│  │  "Did your period start?"      │  │
-│  │  [Yes, it started] [Not yet]   │  │
-│  │  [Adjust date]                 │  │
+│  │  Period Check-in               │  │
+│  │  "We expected your period      │  │
+│  │   around Jul 15. Did it arrive?"│  │
+│  │  [Yes, on Jul 15]              │  │
+│  │  [No, adjust date] [Not yet]   │  │
 │  └────────────────────────────────┘  │
+│                                      │
+│  ┌───────────────────────────────┐  │
+│  │  EndDatePromptCard (if open   │  │
+│  │  entry exists from a prior    │  │
+│  │  log without end date)        │  │
+│  │  [Mark End Date] [Skip]       │  │
+│  └───────────────────────────────┘  │
 │                                      │
 │  ┌───────────────────────────────┐  │
 │  │  Next period in 5 days        │  │
@@ -423,9 +454,8 @@ if (isLoading) {
 │                                      │
 │  ┌─── Calendar ─────────────────┐   │
 │  │  Su Mo Tu We Th Fr Sa        │   │
-│  │             1  2  3  4  5  6 │   │
-│  │  7  8  9 10 11 12 13 14     │   │
-│  │  (phase color coded)         │   │
+│  │  (11 day-type codes with     │   │
+│  │   phase-based coloring)      │   │
 │  └──────────────────────────────┘  │
 │                                      │
 │  [Log Period]  [Predictions]        │
@@ -439,33 +469,57 @@ if (isLoading) {
 
 #### 3.2.1 Calendar Component
 
-The `Calendar` UI component (`src/components/ui/Calendar.tsx`) renders a read-only month grid with phase color coding:
+The `Calendar` UI component (`src/components/ui/Calendar.tsx`) renders an interactive month grid with phase color coding, month navigation arrows, and configurable bounds:
 
 ```tsx
 interface CalendarProps {
-  selectedDate: Date;
+  selectedDate?: Date;
   onDateSelect: (date: Date) => void;
+  markedDates?: Date[];
+  minDate?: Date;
+  maxDate?: Date;
   encodedDays?: Record<string, string>;
+  animatingDates?: Set<string>;
 }
 ```
 
+Supporting features: disabled date cells outside month, animated cells with Reanimated `withSpring`, strikethrough style for cancelled days (`c`), dashed border for unconfirmed days (`u`), and dot markers for `markedDates` without a day type.
+
 #### 3.2.2 Phase Color Mapping
 
+The backend returns 11 day-type codes (not just 4 phases). The mobile maps them to distinct colors:
+
 ```typescript
-const PHASE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  menstrual: { bg: '#FF5252', text: '#FFFFFF', label: 'Menstrual' },
-  follicular: { bg: '#FFD54F', text: '#1A1D26', label: 'Follicular' },
-  ovulation: { bg: '#4CAF50', text: '#FFFFFF', label: 'Ovulation' },
-  luteal: { bg: '#42A5F5', text: '#FFFFFF', label: 'Luteal' },
+const DAY_TYPE_COLORS: Record<string, { bg: string; text: string; strike?: boolean; dashed?: boolean }> = {
+  P: { bg: '#F48FB1', text: '#FFFFFF' },        // Confirmed Period day
+  p: { bg: '#FCE4EC', text: '#C62828' },         // Predicted Period day
+  u: { bg: '#FFB3C1', text: '#CC3355', dashed: true },  // Unconfirmed pending
+  c: { bg: '#E0E0E0', text: '#9E9E9E', strike: true }, // Cancelled (prediction with actual entry)
+  F: { bg: '#CE93D8', text: '#FFFFFF' },         // Confirmed Fertile day
+  f: { bg: '#F3E5F5', text: '#7B1FA2' },         // Predicted Fertile day
+  O: { bg: '#81C784', text: '#FFFFFF' },         // Ovulation day
+  o: { bg: '#E8F5E9', text: '#2E7D32' },         // Predicted Ovulation day
+  L: { bg: '#90CAF9', text: '#FFFFFF' },         // Confirmed Luteal day
+  l: { bg: '#E3F2FD', text: '#1565C0' },         // Predicted Luteal day
+  T: { bg: '#42A5F5', text: '#FFFFFF' },          // Today marker
 };
 
-const DAY_TYPE_MAP: Record<string, string> = {
-  P: 'menstrual', p: 'menstrual',
-  F: 'follicular', f: 'follicular',
-  O: 'ovulation', o: 'ovulation',
-  L: 'luteal', l: 'luteal',
-};
+const LEGEND_KEYS = ['P', 'p', 'u', 'F', 'O', 'L'];
 ```
+
+| Code | Label | Color | Notes |
+|------|-------|-------|-------|
+| `P` | Period | Pink (#F48FB1) | Confirmed logged period day |
+| `p` | Predicted Period | Light pink (#FCE4EC) | Predicted period day |
+| `u` | Unconfirmed | Coral (#FFB3C1) | Partial entry (no end date yet); dashed border |
+| `c` | Cancelled | Grey (#E0E0E0) | Prediction superseded; strikethrough |
+| `F` | Fertile | Purple (#CE93D8) | Confirmed fertile window |
+| `f` | Predicted Fertile | Lavender (#F3E5F5) | Predicted fertile window |
+| `O` | Ovulation | Green (#81C784) | Ovulation day |
+| `o` | Predicted Ovulation | Light green (#E8F5E9) | Predicted ovulation day |
+| `L` | Luteal | Blue (#90CAF9) | Confirmed luteal phase |
+| `l` | Predicted Luteal | Light blue (#E3F2FD) | Predicted luteal phase |
+| `T` | Today | Blue (#42A5F5) | Current day — always stamped |
 
 #### 3.2.3 Calendar Data Flow
 
@@ -486,14 +540,15 @@ CycleDashboardScreen mount
 │       ...
 │     },
 │     "next_period_in_days": 5,
+│     "needs_checkin": true,
 │     "predictions": { ... }
 │   }
 │
 ├── Calendar component renders month grid
 │   ├── Weekday headers: Su Mo Tu We Th Fr Sa
-│   ├── Day cells: each day gets background color based on phase
-│   ├── Today highlighted with primary color
-│   └── Selected date gets primary color
+│   ├── Day cells: background color based on day type, strikethrough for cancelled, dash for unconfirmed
+│   ├── Today button jumps to current month with primary color highlight
+│   └── Animated skeleton loading state (Reanimated withSpring)
 │
 └── "Next period in X days" stat card uses next_period_in_days
 ```
@@ -520,7 +575,7 @@ interface PredictionDetailCardProps {
 │  🌸 Fertile Window:                 │
 │     Jul 25 - Jul 30                 │
 │                                     │
-│  ⭐ Confidence: High (85%)          │
+│  ⭐ Confidence: Good (85%)          │
 │  📊 Based on 4 logged cycles        │
 │  🤖 Model: Global Model v3          │
 └─────────────────────────────────────┘
@@ -530,22 +585,14 @@ interface PredictionDetailCardProps {
 
 #### 3.4.1 Purpose
 
-Display a correction prompt during the P-3 to P+6 window (3 days before to 6 days after the predicted period start).
+Display a "Period Check-in" prompt during the P-3 to P+6 window, asking the user whether their period arrived. The check-in window is computed server-side and returned as the `needs_checkin` boolean in the calendar response.
 
 #### 3.4.2 Visibility Logic
 
 ```typescript
-const today = new Date();
-
 const showStickyCard = (() => {
   if (!prediction) return false;
-
-  const pDate = new Date(prediction.predicted_next_period_start);
-  const windowStart = addDays(pDate, -3);   // P-3
-  const windowEnd = addDays(pDate, 6);       // P+6
-
-  // Outside window?
-  if (today < windowStart || today > windowEnd) return false;
+  if (!calData?.needs_checkin) return false;  // Server-computed P-3 to P+6 window
 
   // Snoozed today?
   if (snoozeState) {
@@ -565,29 +612,33 @@ const showStickyCard = (() => {
 
 #### 3.4.3 StickyCard Component
 
+The card displays "Period Check-in" with the predicted date and three actions:
+
 ```tsx
 <StickyCard
   predictedDate={prediction.predicted_next_period_start}
   predictionId={prediction.id}
   visible={showStickyCard}
   loading={logCorrection.isPending || logSnooze.isPending}
-  onConfirm={handleConfirm}    // "Yes, it started" → logCorrection
-  onAdjust={handleAdjust}      // "Adjust date" → inline date picker
+  onConfirm={handleConfirm}    // "Yes, on [date]" → logCorrection
+  onAdjust={handleAdjust}      // "No, adjust date" → inline BottomSheet picker
   onSnooze={handleSnooze}      // "Not yet" → logSnooze
 />
 ```
 
+The card uses Card with `elevated` prop, `primaryMuted` background, and a `primary` border. The adjust date button opens a nested BottomSheet with a DatePickerField (max date = today).
+
 #### 3.4.4 Confirm Action
+
+The confirm action sends only the start date (no end_date; the backend defaults or auto-closes):
 
 ```typescript
 const handleConfirm = useCallback(
   (predictionId: string, confirmedDate: string) => {
-    const endDate = new Date(confirmedDate);
-    endDate.setDate(endDate.getDate() + 5);  // Default 5-day period
     logCorrection.mutate({
       period_start_date: confirmedDate,
-      period_end_date: toDateStr(endDate),
       corrected_prediction_id: predictionId,
+      // period_end_date omitted — backend computes it
     }, { onSuccess: () => persistSnooze(null) });
   },
   [logCorrection, persistSnooze],
@@ -650,30 +701,37 @@ const persistSnooze = useCallback((state: SnoozeState | null) => {
 
 #### 3.5.1 Flow
 
+Available from both CalendarScreen and CycleDashboardScreen. The calendar version sends a 5-day end_date guess but no prediction link; the dashboard version sends the prediction ID when available.
+
 ```
 User taps "Adjust Period Date"
 │
 ├── setShowOverride(true)
 │
-├── BottomSheet animates in (translateY: SCREEN_HEIGHT → 0)
+├── BottomSheet animates in
 │
 ├── DatePickerField renders:
 │   ├── Label: "When did your period start?"
-│   ├── Native <input type="date"> (web)
-│   │   └── or TouchableOpacity + DateTimePicker (native)
+│   ├── Native date picker
 │   ├── Controlled via react-hook-form useForm
 │   └── Pre-filled with today's date
 │
 ├── User selects date
 │
-├── User taps "Confirm"
+├── User taps "Save & Recalculate" (CalendarScreen) or "Confirm" (Dashboard)
 │   ├── overrideForm.handleSubmit() validates
 │   ├── handlePermanentOverride fires
 │   │   ├── POST /api/v1/cycle/corrections
+│   │   │   CalendarScreen sends:
 │   │   │   {
 │   │   │     "period_start_date": "2026-07-05",
 │   │   │     "period_end_date": "2026-07-10",
-│   │   │     "corrected_prediction_id": "uuid-or-null"
+│   │   │     "corrected_prediction_id": null
+│   │   │   }
+│   │   │   Dashboard sends (no end_date):
+│   │   │   {
+│   │   │     "period_start_date": "2026-07-05",
+│   │   │     "corrected_prediction_id": "prediction-uuid-or-null"
 │   │   │   }
 │   │   ├── On success → setShowOverride(false)
 │   │   │              → React Query invalidates cycle queries
@@ -694,7 +752,7 @@ const overrideSchema = z.object({
 
 type OverrideForm = z.infer<typeof overrideSchema>;
 
-// In component:
+// In CalendarScreen — sends end_date, no prediction link:
 const overrideForm = useForm<OverrideForm>({
   resolver: zodResolver(overrideSchema),
   defaultValues: { overrideDate: toDateStr(new Date()) },
@@ -706,11 +764,51 @@ const handlePermanentOverride = overrideForm.handleSubmit((data) => {
     {
       period_start_date: data.overrideDate,
       period_end_date: toDateStr(endDate),
-      corrected_prediction_id: prediction?.id ?? null,
+      corrected_prediction_id: null,
     },
-    { onSuccess: () => setShowOverride(false) },
+    { onSuccess: () => { setShowOverride(false); reset(); } },
   );
 });
+```
+
+---
+
+### 3.6 EndDatePromptCard (Mark End Date)
+
+#### 3.6.1 Purpose
+
+When a user logs a period without an end date (partial entry), the backend creates it with `period_end_date = None`. The calendar encodes those days as `u` (Unconfirmed) with a dashed border. The DashboardScreen shows an `EndDatePromptCard` reminding the user to supply the end date.
+
+#### 3.6.2 Flow
+
+```
+Cycle entry logged without end_date
+│
+├── Backend: period_end_date = NULL, days encoded as "u" on calendar
+├── Dashboard: EndDatePromptCard visible (checks endDateStore.periodStartDate)
+│   ├── Shows "Period started X days ago — when did it end?"
+│   ├── [Mark End Date] → opens MarkEndDateModal
+│   │   ├── DatePickerField + Confirm button
+│   │   ├── On confirm → PUT /api/v1/cycle/entries/{id} (via useUpdateCycleEntry)
+│   │   │   { "period_end_date": "2026-07-10" }
+│   │   ├── Cancels any local end-date notification
+│   │   └── Clears endDateStore state
+│   └── [Skip] → dismisses card, cancels notification
+│
+└── MarkEndDateModal also reachable via deep link from end-date push notification
+```
+
+#### 3.6.3 State Store
+
+```typescript
+// src/stores/endDateStore.ts
+interface EndDateState {
+  periodStartDate: string | null;
+  entryId: string | null;
+  notificationId: string | null;
+  setPending: (data: { periodStartDate: string; entryId: string; notificationId?: string }) => void;
+  clearPending: () => void;
+}
 ```
 
 ---
@@ -757,7 +855,7 @@ interface PredictionListResponse {
 │  │  📅 Start: July 15, 2026       │  │
 │  │  📅 End:   July 20, 2026       │  │
 │  │  🌸 Fertile: Jul 25 - Jul 30   │  │
-│  │  ⭐ Confidence: High (85%)     │  │
+│  │  ⭐ Confidence: Good (85%)     │  │
 │  │  🤖 Model: Global Model v3     │  │
 │  │  📊 Data: 4 cycles             │  │
 │  └────────────────────────────────┘  │
@@ -921,65 +1019,112 @@ User fills form, taps "Save"
 
 ### 7.1 Purpose
 
-Full-screen month calendar with phase color coding, day selection, and quick actions.
+Full-screen month calendar with 11-code phase color mapping, day selection bottom sheet, Adjust Period Date BottomSheet, and inline override.
 
 ### 7.2 Data Fetching
 
+Uses the shared `useCycleCalendar` hook (no manual fetch/state management):
+
 ```typescript
-const fetchData = useCallback(async () => {
-  setLoading(true);
-  try {
-    const cal = await cycleService.getCalendar(3, 3);
-    setEncodedDays(cal?.days ?? {});
-  } catch { /* ignore */ } finally {
-    setLoading(false);
-  }
-}, []);
+const { data: calData, isLoading } = useCycleCalendar(3, 3);
+const logCorrection = useLogCorrection();
+const encodedDays = calData?.days ?? {};
 ```
 
-### 7.3 Month Navigation
+### 7.3 UI Layout
+
+```
+┌──────────────────────────────────────┐
+│ Calendar                     [Today] │
+│                                      │
+│   ◀  July 2026                  ▶   │
+│                                      │
+│  Su Mo Tu We Th Fr Sa                │
+│            1   2   3   4             │
+│   5   6   7   8   9  10  11         │
+│  (phase colors: 11 codes,           │
+│   cancelled=c strikethrough,         │
+│   unconfirmed=u dashed border)      │
+│                                      │
+│  ● Period  ● Pred.Period  ● Unconf. │
+│  ● Fertile  ● Ovulation   ● Luteal  │
+│                                      │
+│  [Cycle Dashboard]                   │
+│  [Adjust Period Date]                │
+└──────────────────────────────────────┘
+```
+
+### 7.4 Month Navigation + Today Button
 
 ```typescript
 const [currentMonth, setCurrentMonth] = useState(new Date());
+const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-// Previous month:
-setCurrentMonth(m => subMonths(m, 1));
+// Header with Today button:
+<Pressable onPress={() => { setCurrentMonth(new Date()); setSelectedDate(new Date()); }}>
+  <Text>Today</Text>
+</Pressable>
 
-// Next month:
-setCurrentMonth(m => addMonths(m, 1));
-
-// Today:
-setCurrentMonth(new Date());
-setSelectedDate(new Date());
+// Month arrows using SVG icons:
+<Pressable onPress={() => setCurrentMonth(m => subMonths(m, 1))} />
+<Text>{format(currentMonth, 'MMMM yyyy')}</Text>
+<Pressable onPress={() => setCurrentMonth(m => addMonths(m, 1))} />
 ```
 
-### 7.4 Day Grid Calculation
+### 7.5 Day Grid with Phase Colors
 
 ```typescript
-const days = React.useMemo(() => {
+const days = useMemo(() => {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
-  const calStart = startOfWeek(monthStart);  // Include leading days
-  const calEnd = endOfWeek(monthEnd);        // Include trailing days
+  const calStart = startOfWeek(monthStart);
+  const calEnd = endOfWeek(monthEnd);
   return eachDayOfInterval({ start: calStart, end: calEnd });
 }, [currentMonth]);
+
+// Each day cell resolves color from the 11-code DAY_TYPE_MAP:
+const encoded = encodedDays[format(day, 'yyyy-MM-dd')];
+const typeColor = DAY_TYPE_MAP[encoded ?? ''] ?? null;
+
+const isCancelled = encoded === 'c';  // strikethrough + 0.5 opacity
 ```
 
-### 7.5 Selected Day Bottom Sheet
+The grid wraps the month into week rows. Days outside the current month are dimmed. Cancelled (`c`) days get strikethrough and 0.5 opacity. Unconfirmed (`u`) days get a dashed border.
 
-When a day is tapped, a bottom sheet (SelectedDaySheet) appears with:
-- Date header (e.g., "July 10, 2026")
-- Phase badge (colored pill)
-- Quick mood chips (😊 Happy, 😴 Tired, 😰 Anxious, 💪 Motivated)
-- Symptom chips (Cramps, Bloating, Headache, Fatigue, Nausea)
-- "Log Period" button
-- "View [Phase] Details" → navigates to PhaseDetail screen
+### 7.6 Legend
 
-### 7.6 Bottom Buttons
+The legend at the bottom shows only 6 codes: `P` (Period), `p` (Predicted Period), `u` (Unconfirmed), `F` (Fertile), `O` (Ovulation), `L` (Luteal), each with a colored dot.
 
-Below the legend, two buttons:
-- **"Cycle Dashboard"** → navigates to `CycleDashboardScreen`
-- **"Adjust Period Date"** → opens override BottomSheet (same as Dashboard)
+### 7.7 Selected Day Bottom Sheet
+
+When a day is tapped, a BottomSheet appears with:
+- **Date header** (e.g., "July 10, 2026")
+- **Phase badge** (colored pill with phase label, e.g. "Period Phase")
+- **Quick Log** section with mood chip buttons: 😊 Happy, 😴 Tired, 😰 Anxious, 💪 Motivated
+- **Symptoms** chip buttons: Cramps, Bloating, Headache, Fatigue, Nausea
+- **"Log Period"** button
+- **"View [Phase] Details"** → navigates to PhaseDetail screen
+
+### 7.8 Adjust Period Date BottomSheet
+
+An inline BottomSheet with `react-hook-form` + `zod` controlled DatePickerField. The submit button is labeled **"Save & Recalculate"** and posts a correction with a 5-day end_date guess but no prediction link:
+
+```typescript
+const handlePermanentOverride = handleSubmit((data) => {
+  const endDate = addDays(new Date(data.overrideDate), 5);
+  logCorrection.mutate({
+    period_start_date: data.overrideDate,
+    period_end_date: toDateStr(endDate),
+    corrected_prediction_id: null,  // CalendarScreen doesn't link to a prediction
+  }, {
+    onSuccess: () => { setShowOverride(false); reset(); },
+  });
+});
+```
+
+### 7.9 Animated Loading Skeleton
+
+While loading, the screen shows an animated skeleton grid with 35 cells, each using Reanimated `withDelay` and `withSpring` for a staggered reveal effect.
 
 ---
 
@@ -1064,7 +1209,7 @@ interface CycleAnalytics {
 │  │                                    │                   │
 │  │  ┌──────────────┐  ┌──────────────┐ │                   │
 │  │  │ Global Model │  │   Fallback   │ │                   │
-│  │  │ (ONNX)       │  │  Heuristics  │ │                   │
+│  │  │ (JSON)       │  │  Heuristics  │ │                   │
 │  │  └──────┬───────┘  └──────┬───────┘ │                   │
 │  │         │                 │          │                   │
 │  │         ▼                 ▼          │                   │
@@ -1091,7 +1236,7 @@ interface CycleAnalytics {
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### 9.2 ONNX Model Pipeline
+### 9.2 Global Model Pipeline (JSON)
 
 #### 9.2.1 Global Model (Backend)
 
@@ -1204,12 +1349,16 @@ def compute_confidence(features: dict, model_rmse: float) -> tuple[float, str]:
     score = min(max(score, 0), 1)  # Clamp [0, 1]
 
     # Label
-    if score >= 0.8:
-        label = "high"
-    elif score >= 0.5:
-        label = "medium"
+    if score >= 0.85:
+        label = "Excellent"
+    elif score >= 0.71:
+        label = "Good"
+    elif score >= 0.51:
+        label = "Fair"
+    elif score >= 0.31:
+        label = "Uncertain"
     else:
-        label = "low"
+        label = "Very uncertain"
 
     return round(score, 2), label
 ```
@@ -1260,183 +1409,138 @@ export const globalModelClient = new GlobalModelClient();
 
 ### 9.3 Fallback Heuristics
 
-When insufficient data exists (< 2 logged cycles), the system uses heuristic fallback:
+When insufficient data exists (< 3 cycles) or no global model is loaded, the system uses a median-based fallback:
 
 ```python
 # app/integrations/prediction_engine.py
 
-def fallback_prediction(user_data: dict) -> dict:
-    """Compute prediction using population defaults + user's onboarding data."""
+def fallback_prediction(
+    cycle_lengths: list[int],
+    avg_error: float | None = None,
+) -> tuple[int, float, int]:
+    """Return (predicted_length, confidence, window_days)."""
+    if len(cycle_lengths) >= 3:
+        base = int(median(cycle_lengths))
+        confidence = 0.40
+    else:
+        base = 28  # default
+        confidence = 0.20
 
-    # Default cycle length
-    default_cycle = user_data.get("current_cycle_length", 28)
-    default_period = user_data.get("current_period_length", 5)
+    if avg_error is not None and abs(avg_error) > 0.1:
+        base = int(round(base + avg_error))
+        confidence = max(0.15, confidence - 0.05)
 
-    # Use last period start from onboarding
-    last_start = user_data.get("current_cycle_start")
+    base = max(20, min(45, base))
+    pred_std = float(np.std(cycle_lengths)) if len(cycle_lengths) >= 2 else 5.0
+    window = max(3, min(10, int(pred_std)))
 
-    if not last_start:
-        return None
-
-    # Predict next period
-    next_start = last_start + timedelta(days=default_cycle)
-    next_end = next_start + timedelta(days=default_period)
-
-    # Fertile window (approximate: cycle_length - 14 ± 3 days)
-    ovulation_day = default_cycle - 14
-    fertile_start = last_start + timedelta(days=ovulation_day - 3)
-    fertile_end = last_start + timedelta(days=ovulation_day + 3)
-
-    return {
-        "predicted_next_period_start": next_start.isoformat(),
-        "predicted_period_end": next_end.isoformat(),
-        "predicted_fertile_window_start": fertile_start.isoformat(),
-        "predicted_fertile_window_end": fertile_end.isoformat(),
-        "model_type": "fallback",
-        "confidence_score": 0.3,
-        "confidence_label": "low",
-        "training_data_points": 0,
-    }
+    return base, round(confidence, 2), window
 ```
+
+The backend `CycleService._predict_with_fallback()` applies the fallback:
+- Gets cycle lengths from entries (20-45 day gap filter)
+- Calls `fallback_prediction(cycle_lengths, avg_error)` to get predicted length + confidence
+- Computes fertile window as ovulation_day ± range (fertile_start = next_start - 14, fertile_end = fertile_start + 5)
+- Returns a `PredictionResult` dataclass
 
 ### 9.4 Prediction Service (Backend)
 
+All prediction logic lives in `CycleService` (no separate `PredictionService` class). The main entry point is `compute_predictions()`:
+
 ```python
-# app/modules/cycle/services.py
+# app/modules/cycle/services.py — inside CycleService
 
-class PredictionService:
-    def __init__(self, db: AsyncSession, event_bus: EventBus | None = None):
-        self.db = db
-        self.event_bus = event_bus
+async def compute_predictions(self, user_id: uuid.UUID) -> PredictedCycle:
+    entries = await self._get_recent_entries(user_id, limit=12)
+    if len(entries) < 1:
+        raise InsufficientDataError("Need at least 1 cycle entry")
 
-    async def get_prediction(self, user_id: uuid.UUID) -> PredictedCycle | None:
-        # Find most recent active prediction
-        stmt = (
-            select(PredictedCycle)
-            .where(PredictedCycle.user_id == user_id)
-            .where(PredictedCycle.is_active.is_(True))
-            .order_by(PredictedCycle.created_at.desc())
-        )
-        return (await self.db.execute(stmt)).scalar_one_or_none()
+    model = await self._load_active_model()  # JSON model from DB path
+    if model is not None and len(entries) >= 3:
+        result = await self._predict_with_global_model(user_obj, entries, model)
+    else:
+        result = self._predict_with_fallback(entries, user_obj)
 
-    async def compute_prediction(self, user_id: uuid.UUID) -> PredictedCycle:
-        # 1. Fetch user's cycle entries
-        entries = await self._get_entries(user_id)
-
-        # 2. Extract features
-        features = extract_features(entries)
-
-        # 3. Load global model
-        model = await self._load_global_model()
-
-        # 4. Compute prediction
-        if features and len(entries) >= 2 and model:
-            # Global model prediction
-            predicted_cycle_days = model.predict(features)
-            confidence, label = compute_confidence(features, model.rmse)
-            model_type = "global_model"
-            data_points = len(entries)
-        else:
-            # Fallback
-            onboarding = await self._get_onboarding(user_id)
-            fallback = fallback_prediction(onboarding.__dict__ if onboarding else {})
-            if not fallback:
-                return None
-
-            predicted_cycle_days = None  # Fallback returns full dates
-            confidence = fallback["confidence_score"]
-            label = fallback["confidence_label"]
-            model_type = "fallback"
-            data_points = 0
-
-        # 5. Determine next period start
-        if predicted_cycle_days and entries:
-            last_entry = sorted(entries, key=lambda e: e.period_start_date)[-1]
-            next_start = last_entry.period_start_date + timedelta(days=int(predicted_cycle_days))
-            next_end = next_start + timedelta(days=5)  # Default 5-day period
-
-            # Fertile window
-            ovulation_day = int(predicted_cycle_days) - 14
-            fertile_start = next_start - timedelta(days=(predicted_cycle_days - ovulation_day - 3))
-            fertile_end = fertile_start + timedelta(days=6)
-        elif fallback:
-            next_start = date.fromisoformat(fallback["predicted_next_period_start"])
-            next_end = date.fromisoformat(fallback["predicted_period_end"])
-            fertile_start = date.fromisoformat(fallback["predicted_fertile_window_start"])
-            fertile_end = date.fromisoformat(fallback["predicted_fertile_window_end"])
-        else:
-            return None
-
-        # 6. Create prediction record
-        prediction = PredictedCycle(
-            user_id=user_id,
-            predicted_next_period_start=next_start,
-            predicted_period_end=next_end,
-            predicted_fertile_window_start=fertile_start,
-            predicted_fertile_window_end=fertile_end,
-            model_version=str(model.version) if model else "fallback",
-            model_type=model_type,
-            confidence_score=confidence,
-            confidence_label=label,
-            training_data_points=data_points,
-        )
-        self.db.add(prediction)
-        await self.db.commit()
-
-        return prediction
+    return await self._upsert_prediction(user_id, result)
 ```
+
+The global model path (`_predict_with_global_model`):
+- Loads the active JSON model via `SystemConfig` table (key `global_model_path`)
+- Computes cycle lengths, period lengths, user BMI bucket, age bucket, stress level
+- Calls `apply_global_model()` from `prediction_engine.py` which applies linear regression using stored coefficients + scaler
+- Fertile window: `next_start - 14` to `fertile_start + 5`
+- Median period length used for predicted end date
+
+The `_upsert_prediction` method:
+- Deactivates the previous active prediction (sets `is_active = False`)
+- Creates a new `PredictedCycle` record with the computed dates
+- The `prediction_window_days` is set from `cycle_length_std_dev` if > 3.5 days
+
+Auto-link on new entry (`_try_auto_link_prediction`):
+- When a new `CycleEntry` is created, the service checks if its start date falls within `auto_link_window_days` of any active prediction
+- If matched, sets `prediction.actual_cycle_entry_id`, `prediction_error_days`, and marks `entry.is_correction = True`
+- Updates user ML metrics (avg_prediction_error_days, total_cycles_logged, is_dirty_for_retraining)
 
 ### 9.5 Correction Logic
 
 #### 9.5.1 Backend: `POST /api/v1/cycle/corrections`
 
+The route accepts an optional `X-Client-Updated-At` header for conflict detection, and `symptoms` in the body:
+
 ```python
-@router.post("/corrections", status_code=201)
-async def log_correction(payload: CorrectionCreate, current_user: CurrentUser, svc: CycleServiceDep):
-    result = await svc.log_correction(
+@router.post("/corrections", response_model=CorrectionResponse, status_code=201)
+async def create_correction(
+    payload: CorrectionCreate,
+    current_user: CurrentUser,
+    svc: CycleServiceDep,
+    x_client_updated_at: str | None = Header(None, alias="X-Client-Updated-At"),
+) -> CorrectionResponse:
+    corrected_id = uuid.UUID(payload.corrected_prediction_id) if payload.corrected_prediction_id else None
+    entry = await svc.log_correction(
         user_id=current_user.id,
-        period_start=payload.period_start_date,
-        period_end=payload.period_end_date,
-        corrected_prediction_id=payload.corrected_prediction_id,
+        period_start_date=payload.period_start_date,
+        period_end_date=payload.period_end_date,
+        symptoms=payload.symptoms,
+        corrected_prediction_id=corrected_id,
+        client_updated_at=x_client_updated_at,
     )
-    return CorrectionResponse.model_validate(result)
+    avg_period_length = await svc.get_avg_period_length(current_user.id)
+    resp = CorrectionResponse.model_validate(entry)
+    resp.avg_period_length = avg_period_length  # Returned for client-side display
+    return resp
 ```
 
-**Service:**
+**Service (simplified):**
 ```python
-async def log_correction(
-    self,
-    user_id: uuid.UUID,
-    period_start: date,
-    period_end: date | None,
-    corrected_prediction_id: uuid.UUID | None,
-) -> CycleEntry:
-    # 1. Create cycle entry from correction
-    entry = CycleEntry(
-        user_id=user_id,
-        period_start_date=period_start,
-        period_end_date=period_end or period_start + timedelta(days=5),
-        is_correction=True,
-        corrected_prediction_id=corrected_prediction_id,
-    )
-    self.db.add(entry)
+async def log_correction(self, user_id, period_start_date, period_end_date=None,
+                         symptoms=None, corrected_prediction_id=None, client_updated_at=None):
+    # 1. Conflict detection: reject if server has newer data
+    if client_updated_at:
+        latest = await self._get_latest_entry(user_id)
+        if latest and latest.created_at > client_updated_at:
+            raise CycleConflictError("Server has newer data")
 
-    # 2. If a prediction was corrected, mark it
+    # 2. Create cycle entry
+    entry = CycleEntry(user_id=user_id, period_start_date=period_start_date,
+                       period_end_date=period_end_date, symptoms=symptoms or [],
+                       is_correction=corrected_prediction_id is not None,
+                       corrected_prediction_id=corrected_prediction_id)
+
+    # 3. Auto-close any open entry that ended before this period
+    await self._auto_close_open_entry(user_id, period_start_date)
+
+    # 4. If linked to a prediction, record error and update ML metrics
     if corrected_prediction_id:
-        stmt = select(PredictedCycle).where(PredictedCycle.id == corrected_prediction_id)
-        prediction = (await self.db.execute(stmt)).scalar_one_or_none()
-        if prediction:
-            prediction.is_active = False  # Deactivate corrected prediction
-
-    # 3. Recompute prediction
-    await self._recompute_prediction(user_id)
+        prediction = await self.get_prediction_by_id(corrected_prediction_id, user_id)
+        error = (period_start_date - prediction.predicted_next_period_start).days
+        prediction.actual_cycle_entry_id = entry.id
+        prediction.prediction_error_days = error
+        await self._update_user_ml_metrics(user_id, error)
 
     await self.db.commit()
-    await self.db.refresh(entry)
 
-    # 4. Emit event
-    if self.event_bus:
-        await self.event_bus.emit("cycle_corrected", user_id=str(user_id))
+    # 5. Recompute predictions asynchronously
+    await self.compute_predictions(user_id)
 
     return entry
 ```
@@ -1732,6 +1836,7 @@ INSERT INTO system_config (key, value) VALUES ('global_model_version', '3');
 | PUT | `/api/v1/cycle/entries/{id}` | Update entry | Access | — |
 | DELETE | `/api/v1/cycle/entries/{id}` | Soft-delete entry | Access | — |
 | GET | `/api/v1/cycle/predictions` | Get next prediction | Access | — |
+| GET | `/api/v1/cycle/predictions/history` | Past predictions vs actual dates | Access | — |
 | GET | `/api/v1/cycle/analytics` | Cycle statistics | Access | — |
 | POST | `/api/v1/cycle/corrections` | Log correction | Access | — |
 | POST | `/api/v1/cycle/snooze` | Log "Not yet" | Access | — |
@@ -1787,6 +1892,7 @@ INSERT INTO system_config (key, value) VALUES ('global_model_version', '3');
       "2026-07-16": "P"
     },
     "next_period_in_days": 5,
+    "needs_checkin": true,
     "predictions": {
       "id": "uuid",
       "predicted_next_period_start": "2026-07-15",
@@ -1795,7 +1901,7 @@ INSERT INTO system_config (key, value) VALUES ('global_model_version', '3');
       "predicted_fertile_window_end": "2026-07-30",
       "model_type": "global_model",
       "confidence_score": 0.85,
-      "confidence_label": "high",
+      "confidence_label": "Good",
       "training_data_points": 4,
       "prediction_window_days": 28
     }
