@@ -3,7 +3,7 @@
  * Route: MainTabs → Home tab
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback } from 'react';
 import { ScrollView, StyleSheet, View, Pressable, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -12,7 +12,7 @@ import Svg, { Path, Circle as SvgCircle } from 'react-native-svg';
 
 import { Text, Skeleton } from 'src/components/ui';
 import { useTheme } from 'src/theme';
-import { cycleService } from 'src/services/api/cycle';
+import { useCycleCalendar } from 'src/services/queries';
 import { useAuthStore } from 'src/stores/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -99,29 +99,9 @@ const StatBadge = React.memo(function StatBadge({ value, label, color }: { value
 export function HomeDashboardScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
-  const [calData, setCalData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: calData, isLoading: loading, error, refetch } = useCycleCalendar(3, 3);
   const user = useAuthStore((s) => s.user);
   const displayName = user?.display_name ?? '';
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const cal = await cycleService.getCalendar(3, 3);
-      setCalData(cal);
-    } catch (err) {
-      setError('Could not reload dashboard. Please check your connection.');
-      console.warn('Failed to load home dashboard', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   const nextPeriodDate = calData?.next_period_in_days != null
     ? new Date(Date.now() + calData.next_period_in_days * 86400000)
@@ -147,9 +127,9 @@ export function HomeDashboardScreen() {
         {error && (
           <View style={[styles.errorBanner, { backgroundColor: theme.colors.danger + '15', borderColor: theme.colors.danger + '30', borderRadius: theme.radius.md }]}>
             <Text variant="bodySmall" style={{ color: theme.colors.danger, flex: 1 }}>
-              {error}
+              Could not reload dashboard. Please check your connection.
             </Text>
-            <Pressable onPress={fetchData} accessibilityLabel="Retry loading dashboard" accessibilityRole="button">
+            <Pressable onPress={() => refetch()} accessibilityLabel="Retry loading dashboard" accessibilityRole="button">
               <Text variant="bodySmall" style={{ color: theme.colors.danger, fontWeight: '700' }}>Retry</Text>
             </Pressable>
           </View>

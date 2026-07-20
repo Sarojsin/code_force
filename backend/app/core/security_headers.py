@@ -53,12 +53,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
         # Content Security Policy
+        connect_src = ["'self'", "https:", "wss:"]
+        if settings.environment == "development":
+            connect_src.extend(["http://localhost", "http://127.0.0.1", "ws://localhost", "ws://127.0.0.1"])
         csp_directives = [
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
             "img-src 'self' data: https:",
-            "connect-src 'self' https: wss:",
+            f"connect-src {' '.join(connect_src)}",
             "font-src 'self' data:",
             "object-src 'none'",
             "base-uri 'self'",

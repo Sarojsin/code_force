@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 import { useTheme } from 'src/theme';
 
@@ -8,6 +11,14 @@ import { Button } from './Button';
 import { Card } from './Card';
 import { DatePickerField } from './DatePickerField';
 import { Text } from './Text';
+
+const adjustSchema = z.object({
+  adjustDate: z.string().min(1, 'Please select a date'),
+});
+
+function toDateStr(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
 
 export interface StickyCardProps {
   predictedDate: string;
@@ -30,7 +41,10 @@ export function StickyCard({
 }: StickyCardProps) {
   const theme = useTheme();
   const [showPicker, setShowPicker] = useState(false);
-  const [selectedDate, _setSelectedDate] = useState(new Date());
+  const { control, handleSubmit } = useForm({
+    resolver: zodResolver(adjustSchema),
+    defaultValues: { adjustDate: toDateStr(new Date()) },
+  });
 
   if (!visible) return null;
 
@@ -93,7 +107,7 @@ export function StickyCard({
         title="Adjust Period Date"
       >
         <DatePickerField
-          control={null as any}
+          control={control}
           name="adjustDate"
           label="When did your period start?"
           maximumDate={new Date()}
@@ -101,11 +115,10 @@ export function StickyCard({
         <Button
           label="Confirm"
           fullWidth
-          onPress={() => {
-            const iso = selectedDate.toISOString().split('T')[0];
-            onAdjust(predictionId, iso);
+          onPress={handleSubmit((data) => {
+            onAdjust(predictionId, data.adjustDate);
             setShowPicker(false);
-          }}
+          })}
           style={{ marginTop: theme.spacing.lg }}
         />
       </BottomSheet>

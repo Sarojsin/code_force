@@ -8,6 +8,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useEndDateStore } from 'src/stores/endDateStore';
+import { cancelEndDateNotification } from 'src/services/endDateNotifications';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
@@ -49,6 +51,11 @@ export function LogPeriodScreen() {
   };
 
   const onSubmit = async (data: LogPeriodForm) => {
+    if (data.endDate) {
+      const store = useEndDateStore.getState();
+      if (store.notificationId) cancelEndDateNotification(store.notificationId);
+      store.clearPending();
+    }
     createEntry({
       period_start_date: data.startDate,
       period_end_date: data.endDate || undefined,

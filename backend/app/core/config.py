@@ -92,6 +92,11 @@ class SentrySettings(BaseSettings):
     profiles_sample_rate: float = 0.05
 
 
+class CycleSettings(BaseSettings):
+    auto_link_window_days: int = 3
+    period_default_length: int = 5
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -119,6 +124,7 @@ class Settings(BaseSettings):
     safety: SafetySettings = Field(default_factory=SafetySettings)
     sentry: SentrySettings = Field(default_factory=SentrySettings)
     wellness_model: WellnessModelSettings = Field(default_factory=WellnessModelSettings)
+    cycle: CycleSettings = Field(default_factory=CycleSettings)
 
 
 @lru_cache

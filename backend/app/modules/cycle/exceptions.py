@@ -22,3 +22,8 @@ class InsufficientDataError(CycleError):
 class PredictionNotFoundError(CycleError):
     code = "PREDICTION_NOT_FOUND"
     http_status = 404
+
+
+class CycleConflictError(CycleError):
+    code = "CYCLE_CONFLICT"
+    http_status = 409

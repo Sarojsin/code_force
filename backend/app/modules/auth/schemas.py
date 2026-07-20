@@ -138,6 +138,7 @@ class UserResponse(BaseModel):
     provider: str = "local"
     created_at: datetime
     last_login_at: datetime | None = None
+    onboarding_completed: bool = False
 
 
 class LoginResponse(BaseModel):

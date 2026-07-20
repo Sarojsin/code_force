@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -15,9 +15,7 @@ import {
 
 import { Text, Button, BottomSheet, DatePickerField, Skeleton } from 'src/components/ui';
 import { useTheme } from 'src/theme';
-import { cycleService } from 'src/services/api/cycle';
-import { useLogCorrection } from 'src/services/queries';
-import Toast from 'react-native-toast-message';
+import { useCycleCalendar, useLogCorrection } from 'src/services/queries';
 
 const overrideSchema = z.object({
   overrideDate: z.string().min(1, 'Please select a date'),
@@ -39,19 +37,21 @@ type Nav = any;
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const PHASE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  menstrual: { bg: '#FF6B8A', text: '#FFFFFF', label: 'Menstrual' },
-  follicular: { bg: '#FFDAB9', text: '#1A1D26', label: 'Follicular' },
-  ovulation: { bg: '#D4F0E0', text: '#1A1D26', label: 'Ovulation' },
-  luteal: { bg: '#E8D5F5', text: '#1A1D26', label: 'Luteal' },
+const DAY_TYPE_MAP: Record<string, { bg: string; text: string; label: string }> = {
+  P: { bg: '#F48FB1', text: '#FFFFFF', label: 'Period' },
+  p: { bg: '#FCE4EC', text: '#C62828', label: 'Predicted Period' },
+  u: { bg: '#FFB3C1', text: '#CC3355', label: 'Unconfirmed' },
+  c: { bg: '#E0E0E0', text: '#9E9E9E', label: 'Cancelled' },
+  F: { bg: '#CE93D8', text: '#FFFFFF', label: 'Fertile' },
+  f: { bg: '#F3E5F5', text: '#7B1FA2', label: 'Predicted Fertile' },
+  O: { bg: '#81C784', text: '#FFFFFF', label: 'Ovulation' },
+  o: { bg: '#E8F5E9', text: '#2E7D32', label: 'Predicted Ovulation' },
+  L: { bg: '#90CAF9', text: '#FFFFFF', label: 'Luteal' },
+  l: { bg: '#E3F2FD', text: '#1565C0', label: 'Predicted Luteal' },
+  T: { bg: '#42A5F5', text: '#FFFFFF', label: 'Today' },
 };
 
-const DAY_TYPE_MAP: Record<string, string> = {
-  P: 'menstrual', p: 'menstrual',
-  F: 'follicular', f: 'follicular',
-  O: 'ovulation', o: 'ovulation',
-  L: 'luteal', l: 'luteal',
-};
+const LEGEND_KEYS = ['P', 'p', 'u', 'F', 'O', 'L'];
 
 function LoadingSkeleton() {
   const skeletonDays = useMemo(() => Array.from({ length: 35 }), []);
@@ -65,11 +65,7 @@ function LoadingSkeleton() {
         return (
           <View key={i} style={styles.dayCell}>
             <Animated.View style={animStyle}>
-              <Skeleton
-                width={32}
-                height={32}
-                style={{ borderRadius: 16 }}
-              />
+              <Skeleton width={32} height={32} style={{ borderRadius: 16 }} />
             </Animated.View>
           </View>
         );
@@ -84,14 +80,16 @@ export function CalendarScreen() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showOverride, setShowOverride] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  const { control, handleSubmit } = useForm<OverrideForm>({
+  const { control, handleSubmit, reset } = useForm<OverrideForm>({
     resolver: zodResolver(overrideSchema),
     defaultValues: { overrideDate: toDateStr(new Date()) },
   });
 
+  const { data: calData, isLoading } = useCycleCalendar(3, 3);
   const logCorrection = useLogCorrection();
+
+  const encodedDays = calData?.days ?? {};
 
   const handlePermanentOverride = handleSubmit((data) => {
     const endDate = addDays(new Date(data.overrideDate), 5);
@@ -101,28 +99,16 @@ export function CalendarScreen() {
         period_end_date: toDateStr(endDate),
         corrected_prediction_id: null,
       },
-      { onSuccess: () => setShowOverride(false) },
+      {
+        onSuccess: () => {
+          setShowOverride(false);
+          reset();
+        },
+      },
     );
   });
 
-  const [encodedDays, setEncodedDays] = useState<Record<string, string>>({});
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const cal = await cycleService.getCalendar(3, 3);
-      setEncodedDays(cal?.days ?? {});
-    } catch {
-      Toast.show({ type: 'error', text1: 'Could not refresh calendar', text2: 'Showing cached data' });
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const days = React.useMemo(() => {
+  const days = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
     const calStart = startOfWeek(monthStart);
@@ -131,10 +117,8 @@ export function CalendarScreen() {
   }, [currentMonth]);
 
   const selectedPhase = selectedDate
-    ? DAY_TYPE_MAP[encodedDays[format(selectedDate, 'yyyy-MM-dd')] ?? ''] ?? 'menstrual'
-    : 'menstrual';
-
-  const selectedPhaseInfo = PHASE_COLORS[selectedPhase] || PHASE_COLORS.menstrual;
+    ? DAY_TYPE_MAP[encodedDays[format(selectedDate, 'yyyy-MM-dd')] ?? ''] ?? DAY_TYPE_MAP.P
+    : DAY_TYPE_MAP.P;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: '#FFF8FB' }]}>
@@ -181,7 +165,7 @@ export function CalendarScreen() {
             ))}
           </View>
 
-          {loading ? (
+          {isLoading ? (
             <LoadingSkeleton />
           ) : (
             Array.from({ length: Math.ceil(days.length / 7) }, (_, weekIdx) => (
@@ -192,43 +176,51 @@ export function CalendarScreen() {
                   const today = isToday(day);
                   const dateStr = format(day, 'yyyy-MM-dd');
                   const encoded = encodedDays[dateStr];
-                  const phaseKey = DAY_TYPE_MAP[encoded ?? ''] ?? '';
-                  const phaseColor = PHASE_COLORS[phaseKey];
+                  const typeColor = DAY_TYPE_MAP[encoded ?? ''] ?? null;
 
                   const bgColor = selected
                     ? theme.colors.primary
-                    : phaseColor
-                      ? phaseColor.bg
+                    : typeColor
+                      ? typeColor.bg
                       : 'transparent';
                   const txtColor = selected
                     ? '#fff'
-                    : phaseColor
-                      ? phaseColor.text
+                    : typeColor
+                      ? typeColor.text
                       : today
                         ? theme.colors.primary
                         : inMonth
                           ? theme.colors.textPrimary
                           : theme.colors.textMuted;
 
+                  const isCancelled = encoded === 'c';
+
                   return (
-                    <Pressable
-                      key={dayIdx}
-                      onPress={() => inMonth && setSelectedDate(day)}
-                      disabled={!inMonth}
-                      accessibilityLabel={`${format(day, 'MMMM d, yyyy')}${phaseKey ? `, ${phaseKey}` : ''}`}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: !!selected }}
-                      style={[
-                        styles.dayCell,
-                        { minHeight: theme.minTouchTarget, minWidth: theme.minTouchTarget },
-                        { backgroundColor: bgColor, borderRadius: theme.radius.pill },
-                        selected && { backgroundColor: theme.colors.primary, transform: [{ scale: 1.1 }] },
-                      ]}
-                    >
-                      <Text variant="body" align="center" style={{ color: txtColor }}>
-                        {format(day, 'd')}
-                      </Text>
-                    </Pressable>
+                      <Pressable
+                        key={dateStr}
+                        onPress={() => inMonth && setSelectedDate(day)}
+                        disabled={!inMonth}
+                        accessibilityLabel={`${format(day, 'MMMM d, yyyy')}${encoded ? `, ${DAY_TYPE_MAP[encoded]?.label ?? encoded}` : ''}`}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: !!selected }}
+                        style={[
+                          styles.dayCell,
+                          { minHeight: theme.minTouchTarget, minWidth: theme.minTouchTarget },
+                          { backgroundColor: bgColor, borderRadius: theme.radius.pill },
+                          selected && { backgroundColor: theme.colors.primary, transform: [{ scale: 1.1 }] },
+                        ]}
+                      >
+                        <Text
+                          variant="body"
+                          align="center"
+                          style={[
+                            { color: txtColor },
+                            isCancelled && { opacity: 0.5, textDecorationLine: 'line-through' },
+                          ]}
+                        >
+                          {format(day, 'd')}
+                        </Text>
+                      </Pressable>
                   );
                 })}
               </View>
@@ -236,12 +228,15 @@ export function CalendarScreen() {
           )}
 
           <View style={[styles.legend, { marginTop: theme.spacing.lg }]}>
-            {Object.entries(PHASE_COLORS).map(([key, val]) => (
-              <View key={key} style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: val.bg, borderRadius: theme.radius.pill }]} />
-                <Text variant="caption" color="muted">{val.label}</Text>
-              </View>
-            ))}
+            {LEGEND_KEYS.map((key) => {
+              const val = DAY_TYPE_MAP[key];
+              return (
+                <View key={key} style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: val.bg, borderRadius: theme.radius.pill }]} />
+                  <Text variant="caption" color="muted">{val.label}</Text>
+                </View>
+              );
+            })}
           </View>
 
           <View style={{ gap: theme.spacing.sm, paddingVertical: theme.spacing.md }}>
@@ -250,7 +245,6 @@ export function CalendarScreen() {
           </View>
         </View>
 
-        {/* Day details bottom sheet with snap points */}
         <BottomSheet
           visible={selectedDate != null}
           onClose={() => setSelectedDate(null)}
@@ -258,8 +252,8 @@ export function CalendarScreen() {
           snapPoints={[0.3, 0.65, 0.9]}
         >
           <View style={{ gap: 12 }}>
-            <View style={[styles.phaseBadge, { backgroundColor: selectedPhaseInfo.bg, borderRadius: theme.radius.pill, alignSelf: 'flex-start' }]}>
-              <Text variant="bodySmall" style={{ color: selectedPhaseInfo.text }}>{selectedPhaseInfo.label} Phase</Text>
+            <View style={[styles.phaseBadge, { backgroundColor: selectedPhase.bg, borderRadius: theme.radius.pill, alignSelf: 'flex-start' }]}>
+              <Text variant="bodySmall" style={{ color: selectedPhase.text }}>{selectedPhase.label} Phase</Text>
             </View>
 
             <Text variant="bodySmall" color="secondary">Quick Log</Text>
@@ -282,7 +276,7 @@ export function CalendarScreen() {
 
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
               <Button label="Log Period" onPress={() => {}} size="md" style={{ flex: 1 }} />
-              <Button label={`View ${selectedPhaseInfo.label}`} onPress={() => (navigation as any).navigate('PhaseDetail', { phase: selectedPhase })} size="md" variant="outline" style={{ flex: 1 }} />
+              <Button label={`View ${selectedPhase.label}`} onPress={() => (navigation as any).navigate('PhaseDetail', { phase: selectedPhase.label.toLowerCase() })} size="md" variant="outline" style={{ flex: 1 }} />
             </View>
           </View>
         </BottomSheet>

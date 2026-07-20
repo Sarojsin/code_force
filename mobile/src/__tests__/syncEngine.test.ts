@@ -59,7 +59,7 @@ beforeEach(async () => {
 
   const { result } = renderHook(() => useOfflineStore());
   await act(async () => { await result.current.clear(); });
-  useAuthStore.setState({ user: { id: 'user1', email: 'test@test.com', phone_number: null, display_name: null, role: 'user', is_active: true, is_verified: true, provider: 'local', created_at: new Date().toISOString(), last_login_at: null } });
+  useAuthStore.setState({ user: { id: 'user1', email: 'test@test.com', phone_number: null, display_name: null, role: 'user', is_active: true, is_verified: true, provider: 'local', created_at: new Date().toISOString(), last_login_at: null, onboarding_completed: true } });
 });
 
 describe('pushOperations', () => {

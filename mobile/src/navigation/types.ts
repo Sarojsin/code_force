@@ -20,7 +20,7 @@ export type WellnessStackParamList = {
 };
 
 export type CycleStackParamList = {
-  CycleDashboard: undefined;
+  CycleDashboard: { markEndDate?: boolean } | undefined;
   LogPeriod: undefined;
   CycleHistory: undefined;
   CyclePredictions: undefined;
@@ -74,7 +74,7 @@ export type HomeStackParamList = {
 export type CalendarStackParamList = {
   CalendarMain: undefined;
   PhaseDetail: { phase: string };
-  CycleDashboard: undefined;
+  CycleDashboard: { markEndDate?: boolean } | undefined;
   LogPeriod: undefined;
   CycleHistory: undefined;
   CyclePredictions: undefined;

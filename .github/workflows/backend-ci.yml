@@ -71,6 +71,17 @@ jobs:
       JWT__SECRET_KEY: ci-test-secret-key
       JWT__REFRESH_SECRET_KEY: ci-test-refresh-secret-key
       ENCRYPTION__MASTER_KEY: ci-test-master-key-for-tests-only-32bytes
+      TWILIO__ACCOUNT_SID: mock
+      TWILIO__AUTH_TOKEN: mock
+      TWILIO__VERIFY_SERVICE_SID: mock
+      TWILIO__FROM_NUMBER: "+15005550006"
+      FCM__SERVICE_ACCOUNT_JSON_PATH: ""
+      STREAM__API_KEY: mock
+      STREAM__API_SECRET: mock
+      S3__ENDPOINT_URL: ""
+      S3__AWS_ACCESS_KEY_ID: mock
+      S3__AWS_SECRET_ACCESS_KEY: mock
+      HUGGINGFACE__API_TOKEN: mock
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -75,8 +75,10 @@ async def register(
         password=payload.password,
         display_name=payload.display_name,
     )
+    resp = UserResponse.model_validate(user)
+    resp.onboarding_completed = await svc.get_onboarding_status(user.id)
     return LoginResponse(
-        user=UserResponse.model_validate(user),
+        user=resp,
         tokens=tokens,
         requires_mfa=False,
     )
@@ -97,8 +99,10 @@ async def login(
         password=payload.password,
         device_info=payload.device_info,
     )
+    resp = UserResponse.model_validate(user)
+    resp.onboarding_completed = await svc.get_onboarding_status(user.id)
     return LoginResponse(
-        user=UserResponse.model_validate(user),
+        user=resp,
         tokens=tokens,
         requires_mfa=False,
     )
@@ -289,8 +293,12 @@ async def mfa_login(
 )
 async def get_me(
     current_user: CurrentUser,
+    svc: AuthServiceDep,
 ) -> UserResponse:
-    return UserResponse.model_validate(current_user)
+    onboarding_completed = await svc.get_onboarding_status(current_user.id)
+    resp = UserResponse.model_validate(current_user)
+    resp.onboarding_completed = onboarding_completed
+    return resp
 
 
 # ---- Password management ----

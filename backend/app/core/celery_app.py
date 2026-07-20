@@ -18,11 +18,7 @@ celery_app = Celery(
     broker=_settings.redis.celery_broker_url,
     backend=_settings.redis.celery_result_backend,
     include=[
-        # "app.modules.wellness.tasks",
-        # "app.modules.cycle.tasks",
-        # "app.modules.safety.tasks",
-        # "app.modules.users.tasks",
-        # "app.tasks.global_cleanup",
+        "app.modules.cycle.tasks",
         "app.tasks.retention_cleanup",
         "app.tasks.checkin",
     ],
@@ -49,11 +45,14 @@ celery_app.conf.update(
         },
     },
     beat_schedule={
-        # Plan 26 wires the real schedule:
-        # "update-cycle-predictions-daily": {
-        #     "task": "app.modules.cycle.tasks.update_cycle_predictions",
-        #     "schedule": crontab(hour=2, minute=0),
-        # },
+        "update-cycle-predictions-daily": {
+            "task": "app.modules.cycle.tasks.update_cycle_predictions",
+            "schedule": crontab(hour=2, minute=0),
+        },
+        "train-global-model-monthly": {
+            "task": "app.modules.cycle.tasks.train_global_model",
+            "schedule": crontab(day=1, hour=3, minute=0),
+        },
         "checkin-daily": {
             "task": "app.tasks.checkin.daily_checkin",
             "schedule": crontab(hour=8, minute=0),

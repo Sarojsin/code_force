@@ -56,6 +56,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (err) {
       const status = (err as any)?.response?.status;
       const cached = await getCachedUser();
+      // Cached user exists → must have completed onboarding (it gates the main app).
+      // Backfill the new field so RootNavigator doesn't fall through to retry.
+      if (cached && cached.onboarding_completed === undefined) {
+        cached.onboarding_completed = true;
+      }
       if (isNetworkError(err) || (status && status >= 500) || status === 429) {
         if (cached) {
           set({ user: cached, isHydrated: true });

@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, CommonActions } from '@react-navigation/native';
 
 import { Button, Text, CelebrationAnimation, ProgressDots } from 'src/components/ui';
 import { useTheme, palette } from 'src/theme';
@@ -10,14 +9,12 @@ import { submitOnboarding } from 'src/stores/onboardingStore';
 
 export function CompleteScreen() {
   const theme = useTheme();
-  const navigation = useNavigation();
   const isSubmitting = useOnboardingStore((s) => s.isSubmitting);
 
   const handleComplete = async () => {
     await submitOnboarding();
-    navigation.dispatch(
-      CommonActions.reset({ index: 0, routes: [{ name: 'Main' }] }),
-    );
+    // RootNavigator watches onboardingStore.isCompleted — it will
+    // auto-switch from OnboardingStack to MainTabs via conditional rendering.
   };
 
   return (

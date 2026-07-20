@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { onboardingService } from 'src/services/api/onboarding';
 import type {
@@ -26,29 +28,38 @@ const initialState: OnboardingState = {
 
 type Store = OnboardingState & OnboardingActions;
 
-export const useOnboardingStore = create<Store>((set, get) => ({
-  ...initialState,
+export const useOnboardingStore = create<Store>()(
+  persist(
+    (set, get) => ({
+      ...initialState,
 
-  setPersonalInfo: ({ age, heightCm, weightKg }) => set({ age, heightCm, weightKg }),
+      setPersonalInfo: ({ age, heightCm, weightKg }) => set({ age, heightCm, weightKg }),
 
-  setLifestyle: ({ stressLevel, exerciseFrequency, sleepHours, diet }) =>
-    set({ stressLevel, exerciseFrequency, sleepHours, diet }),
+      setLifestyle: ({ stressLevel, exerciseFrequency, sleepHours, diet }) =>
+        set({ stressLevel, exerciseFrequency, sleepHours, diet }),
 
-  setCurrentCycle: ({ currentCycleStart, currentCycleLength, currentPeriodLength, currentSymptoms }) =>
-    set({ currentCycleStart, currentCycleLength, currentPeriodLength, currentSymptoms }),
+      setCurrentCycle: ({ currentCycleStart, currentCycleLength, currentPeriodLength, currentSymptoms }) =>
+        set({ currentCycleStart, currentCycleLength, currentPeriodLength, currentSymptoms }),
 
-  addPastCycle: (data: PastCycle) => {
-    const { pastCycles } = get();
-    if (pastCycles.length >= 3) return;
-    set({ pastCycles: [...pastCycles, data] });
-  },
+      addPastCycle: (data: PastCycle) => {
+        const { pastCycles } = get();
+        if (pastCycles.length >= 3) return;
+        set({ pastCycles: [...pastCycles, data] });
+      },
 
-  setSubmitting: (v) => set({ isSubmitting: v }),
+      setSubmitting: (v) => set({ isSubmitting: v }),
 
-  setCompleted: (v) => set({ isCompleted: v }),
+      setCompleted: (v) => set({ isCompleted: v }),
 
-  reset: () => set({ ...initialState }),
-}));
+      reset: () => set({ ...initialState, isCompleted: get().isCompleted }),
+    }),
+    {
+      name: 'shecare.onboarding',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({ isCompleted: state.isCompleted }),
+    },
+  ),
+);
 
 export async function submitOnboarding(): Promise<void> {
   const state = useOnboardingStore.getState();
@@ -76,7 +87,6 @@ export async function submitOnboarding(): Promise<void> {
       })),
     });
     useOnboardingStore.getState().setCompleted(true);
-    useOnboardingStore.getState().reset();
   } finally {
     useOnboardingStore.getState().setSubmitting(false);
   }

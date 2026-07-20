@@ -16,6 +16,16 @@ import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { AppProviders, queryClient } from './providers';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: false,
+    shouldShowBanner: false,
+    shouldShowList: false,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 import { RootNavigator } from 'src/navigation';
 import { ConnectivityBanner } from 'src/components/ui/ConnectivityBanner';
 import { ErrorBoundary } from 'src/components/ui/ErrorBoundary';
@@ -107,6 +117,8 @@ export default function App() {
       const data = response.notification.request.content.data;
       if (data?.type === 'checkin') {
         navigate('Main', { screen: 'Calendar', params: { screen: 'CycleDashboard' } });
+      } else if (data?.type === 'mark-end-date') {
+        navigate('Main', { screen: 'Calendar', params: { screen: 'CycleDashboard', params: { markEndDate: true } } });
       }
     });
     return () => sub.remove();

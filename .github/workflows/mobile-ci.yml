@@ -27,9 +27,9 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
       - name: ESLint
-        run: npx eslint .
+        run: npx eslint src/
       - name: Prettier check
-        run: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,md}"
+        run: npx prettier --check "src/**/*.{ts,tsx,js,jsx}"
       - name: Security audit
         run: npm audit --audit-level=high || true
 

@@ -27,10 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings
 from app.core.encryption import EncryptionService
 from app.core.exceptions import ConflictError
-from app.core.security import (
-    create_access_token,
-    create_refresh_token,
-)
+from app.core.security import create_access_token, create_refresh_token
 from app.core.token_revocation import TokenRevocationStore
 from app.integrations.twilio_client import TwilioClient
 from app.modules.auth.exceptions import (
@@ -42,6 +39,7 @@ from app.modules.auth.exceptions import (
 )
 from app.modules.auth.models import OTPAttempt, User, UserSession
 from app.modules.auth.schemas import TokenPair
+from app.modules.onboarding.models import UserOnboarding
 
 SECRET_KEY_BYTES = 32  # 64 hex chars for user_secret_key
 
@@ -507,25 +505,23 @@ class AuthService:
         )
 
     async def _revoke_user_sessions(self, user_id: uuid.UUID) -> None:
-        from sqlalchemy import update
-
-        await self.db.execute(
-            update(UserSession)
-            .where(UserSession.user_id == user_id, UserSession.is_active.is_(True))
-            .values(is_active=False, revoked_at=datetime.now(tz=UTC))
+        stmt = select(UserSession).where(
+            UserSession.user_id == user_id,
+            UserSession.is_active == True,
         )
+        result = await self.db.execute(stmt)
+        sessions = result.scalars().all()
+        for session in sessions:
+            session.is_active = False
         await self.db.commit()
 
-    def _decrypt_mfa_secret(self, user: User) -> str:
-        if not user.mfa_secret:
-            raise MFAMissingError("MFA secret not provisioned")
-        if user.encryption_key_salt:
-            try:
-                return self.encryption.decrypt_for_user(user.mfa_secret, user.encryption_key_salt)
-            except Exception:
-                # Legacy plain secret (created before salt was assigned).
-                return user.mfa_secret
-        return user.mfa_secret
+    async def get_onboarding_status(self, user_id: uuid.UUID) -> bool:
+        stmt = select(UserOnboarding.onboarding_completed).where(
+            UserOnboarding.user_id == user_id,
+        )
+        result = await self.db.execute(stmt)
+        row = result.scalar_one_or_none()
+        return bool(row) if row is not None else False
 
 
 def _new_user_salt() -> str:

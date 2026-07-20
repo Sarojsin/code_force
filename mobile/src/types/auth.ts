@@ -11,6 +11,7 @@ export interface User {
   provider: 'local' | 'google';
   created_at: string;
   last_login_at: string | null;
+  onboarding_completed: boolean;
 }
 
 export interface TokenPair {
