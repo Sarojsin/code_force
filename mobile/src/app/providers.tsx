@@ -4,7 +4,8 @@
  * Rule §2.1: ThemeProvider, GestureHandlerRootView, SafeAreaProvider wrap
  * navigation so screens can rely on them being present.
  *
- * Phase 1b: persistQueryClient with AsyncStorage for offline cache survival.
+ * Phase 2: SQLite replaces AsyncStorage as the permanent offline cache.
+ * React Query is in-memory only — persistQueryClient is removed.
  */
 
 import React, { ReactNode } from 'react';
@@ -12,19 +13,8 @@ import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { persistQueryClient } from '@tanstack/react-query-persist-client';
-import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemeProvider } from 'src/theme';
-
-const asyncStoragePersister = createAsyncStoragePersister({
-  storage: AsyncStorage,
-  key: 'REACT_QUERY_OFFLINE_CACHE',
-  throttleTime: 1000,
-});
-
-const CACHE_BUSTER = 'v1';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,13 +33,6 @@ const queryClient = new QueryClient({
       networkMode: 'offlineFirst',
     },
   },
-});
-
-persistQueryClient({
-  queryClient,
-  persister: asyncStoragePersister,
-  maxAge: 7 * 24 * 60 * 60_000,
-  buster: CACHE_BUSTER,
 });
 
 export { queryClient };

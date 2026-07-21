@@ -8,7 +8,7 @@ interface Props {
   contentContainerStyle?: any;
 }
 
-export function KeyboardAvoidingWrapper({ children, offset = 0, bounces = true, contentContainerStyle }: Props) {
+export function KeyboardAvoidingWrapper({ children, offset, bounces = true, contentContainerStyle }: Props) {
   const scrollProps = {
     contentContainerStyle: [styles.scroll, contentContainerStyle].filter(Boolean),
     keyboardShouldPersistTaps: 'handled' as const,
@@ -25,7 +25,7 @@ export function KeyboardAvoidingWrapper({ children, offset = 0, bounces = true, 
     );
   }
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={offset}>
+    <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={offset ?? 100}>
       <ScrollView {...scrollProps}>
         {children}
       </ScrollView>

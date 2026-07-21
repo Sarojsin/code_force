@@ -30,7 +30,8 @@
     "plugins": [
       "expo-secure-store",
       "expo-notifications",
-      "expo-dev-client"
+      "expo-dev-client",
+      "expo-sqlite"
     ],
     "doctor": {
       "reactNativeDirectoryCheck": {

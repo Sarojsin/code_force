@@ -2,11 +2,11 @@
  * App entry. Wires providers, navigator, and global UI overlays.
  * Rule §1.3: navigation state in Zustand, not in component state.
  * Rule §14.3: clear in-memory sensitive state on background.
- * Phase 5: offline sync + connectivity banner + background sync.
+ * Phase 2: SQLite migrations run before UI renders.
  */
 
 import React, { useEffect, useRef } from 'react';
-import { AppState, AppStateStatus, StatusBar, View } from 'react-native';
+import { ActivityIndicator, AppState, AppStateStatus, StatusBar, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import * as BackgroundFetch from 'expo-background-fetch';
@@ -14,6 +14,9 @@ import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
+import migrations from '../db/migrations/migrations';
+import { getDb } from '../db/connection';
 
 import { AppProviders, queryClient } from './providers';
 
@@ -36,6 +39,10 @@ import { navigate } from 'src/navigation/rootNavigation';
 import { syncAll, setQueryClient } from 'src/services/sync';
 import { initSyncBreadcrumbs } from 'src/services/sync/sentrySyncBreadcrumbs';
 import { initSafetyQueueListener } from 'src/services/safetySyncQueue';
+import { pruneLocalDb } from 'src/services/localDb/pruneLocalDb';
+import { backfillSqliteIfNeeded } from 'src/services/localDb/backfillSqlite';
+import { migrateStoreDataToSqlite } from 'src/services/localDb/migrateStoreDataToSqlite';
+import { cleanupObsoleteKeys } from 'src/services/localDb/cleanupObsoleteKeys';
 
 const LAST_LOCATION_KEY = 'shecare.last_known_location';
 
@@ -61,6 +68,41 @@ async function updateLastKnownLocation(): Promise<void> {
     });
     await AsyncStorage.setItem(LAST_LOCATION_KEY, JSON.stringify(loc.coords));
   } catch {}
+}
+
+function MigrationGate({ children }: { children: React.ReactNode }) {
+  const { success, error } = useMigrations(getDb(), migrations);
+  const cleaned = useRef(false);
+
+  useEffect(() => {
+    if (error) {
+      logger.error('SQLite migration failed', error);
+      Toast.show({ type: 'error', text1: 'Local storage unavailable — offline features may be limited.' });
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (success && !cleaned.current) {
+      cleaned.current = true;
+      AsyncStorage.removeItem('REACT_QUERY_OFFLINE_CACHE').catch(() => {});
+      pruneLocalDb();
+      migrateStoreDataToSqlite().then(() => {
+        cleanupObsoleteKeys();
+      });
+      backfillSqliteIfNeeded();
+    }
+  }, [success]);
+
+  if (error || success) {
+    return <>{children}</>;
+  }
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <ActivityIndicator size="large" />
+      <Text style={{ marginTop: 12 }}>Preparing your data...</Text>
+    </View>
+  );
 }
 
 export default function App() {
@@ -126,14 +168,16 @@ export default function App() {
 
   return (
     <AppProviders>
-      <View style={{ flex: 1 }}>
-        <StatusBar barStyle="default" />
-        <ConnectivityBanner />
-        <ErrorBoundary>
-          <RootNavigator />
-        </ErrorBoundary>
-        <Toast />
-      </View>
+      <MigrationGate>
+        <View style={{ flex: 1 }}>
+          <StatusBar barStyle="default" />
+          <ConnectivityBanner />
+          <ErrorBoundary>
+            <RootNavigator />
+          </ErrorBoundary>
+          <Toast />
+        </View>
+      </MigrationGate>
     </AppProviders>
   );
 }
