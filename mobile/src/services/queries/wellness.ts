@@ -9,6 +9,12 @@ import {
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { isNetworkError } from 'src/services/sync';
 import { generateId } from 'src/utils';
+import {
+  placeholderJournalEntries,
+  placeholderMoodLogs,
+  placeholderInsights,
+} from 'src/services/localDb/syncPlaceholders';
+import { upsertJournalEntry, upsertMoodLog } from 'src/services/localDb/writeThroughHelpers';
 
 export const wellnessKeys = {
   all: ['wellness'] as const,
@@ -22,6 +28,9 @@ export function useJournalEntries(params?: { page?: number; per_page?: number })
   return useQuery({
     queryKey: [...wellnessKeys.journal, params],
     queryFn: () => wellnessService.getJournalEntries(params?.per_page, params?.page),
+    initialData: () => placeholderJournalEntries(params?.per_page) as any,
+    staleTime: 0,
+    retry: false,
   });
 }
 
@@ -30,7 +39,8 @@ export function useCreateJournalEntry() {
   const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (data: Partial<JournalEntry>) => wellnessService.createJournalEntry(data as any),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      upsertJournalEntry(result as unknown as Record<string, unknown>);
       qc.invalidateQueries({ queryKey: wellnessKeys.journal });
     },
     onError: (error, data) => {
@@ -62,6 +72,9 @@ export function useMoodLogs(params?: { page?: number; per_page?: number }) {
   return useQuery({
     queryKey: [...wellnessKeys.moodLogs, params],
     queryFn: () => wellnessService.getMoodLogs(params?.per_page),
+    initialData: () => placeholderMoodLogs(params?.per_page) as any,
+    staleTime: 0,
+    retry: false,
   });
 }
 
@@ -70,7 +83,8 @@ export function useCreateMoodLog() {
   const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (data: Partial<MoodLog>) => wellnessService.createMoodLog(data as any),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      upsertMoodLog(result as unknown as Record<string, unknown>);
       qc.invalidateQueries({ queryKey: wellnessKeys.moodLogs });
     },
     onError: (error, data) => {
@@ -139,5 +153,8 @@ export function useInsights() {
   return useQuery({
     queryKey: wellnessKeys.insights,
     queryFn: () => wellnessService.getInsights(),
+    initialData: () => placeholderInsights() as any,
+    staleTime: 0,
+    retry: false,
   });
 }

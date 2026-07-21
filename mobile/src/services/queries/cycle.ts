@@ -8,6 +8,8 @@ import { isNetworkError } from 'src/services/sync';
 import { scheduleEndDateNotification } from 'src/services/endDateNotifications';
 import { calculateCyclePhases, applyPhaseToDays } from 'src/utils';
 import { generateId } from 'src/utils';
+import { placeholderCycleEntries, placeholderCyclePredictions, placeholderCycleCalendar } from 'src/services/localDb/syncPlaceholders';
+import { upsertCycleEntry } from 'src/services/localDb/writeThroughHelpers';
 
 export const cycleKeys = {
   all: ['cycle'] as const,
@@ -22,6 +24,9 @@ export function useCycleEntries(params?: { limit?: number; offset?: number; mont
   return useQuery({
     queryKey: [...cycleKeys.entries, params],
     queryFn: () => cycleService.getEntries(params),
+    initialData: () => placeholderCycleEntries(params?.limit) as any,
+    staleTime: 0,
+    retry: false,
   });
 }
 
@@ -30,7 +35,8 @@ export function useCreateCycleEntry() {
   const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (data: Partial<CycleEntry>) => cycleService.createEntry(data),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      upsertCycleEntry(result as unknown as Record<string, unknown>);
       qc.invalidateQueries({ queryKey: cycleKeys.entries });
     },
     onError: (error, data) => {
@@ -64,7 +70,8 @@ export function useUpdateCycleEntry() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<CycleEntry> }) =>
       cycleService.updateEntry(id, data),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      upsertCycleEntry(result as unknown as Record<string, unknown>);
       qc.invalidateQueries({ queryKey: cycleKeys.entries });
     },
     onError: (error, variables) => {
@@ -93,6 +100,9 @@ export function useCyclePredictions() {
   return useQuery({
     queryKey: cycleKeys.predictions,
     queryFn: () => cycleService.getPredictions(),
+    initialData: () => placeholderCyclePredictions() as any,
+    staleTime: 0,
+    retry: false,
   });
 }
 
@@ -107,6 +117,9 @@ export function useCycleCalendar(monthsBack = 3, monthsForward = 3) {
   return useQuery({
     queryKey: [...cycleKeys.calendar, monthsBack, monthsForward],
     queryFn: () => cycleService.getCalendar(monthsBack, monthsForward),
+    initialData: () => placeholderCycleCalendar() as any,
+    staleTime: 0,
+    retry: false,
   });
 }
 
@@ -203,6 +216,9 @@ export function useLogCorrection() {
     },
 
     onSuccess: (result, variables) => {
+      if (result && result.id) {
+        upsertCycleEntry(result);
+      }
       qc.invalidateQueries({ queryKey: cycleKeys.calendar });
       qc.invalidateQueries({ queryKey: cycleKeys.predictions });
       qc.invalidateQueries({ queryKey: cycleKeys.entries });
@@ -267,7 +283,10 @@ export function useLogSnooze() {
   return useMutation({
     mutationFn: ({ predictedCycleId, dayOffset }: { predictedCycleId: string; dayOffset: number }) =>
       cycleService.logSnooze(predictedCycleId, dayOffset),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result && result.id) {
+        upsertCycleEntry(result);
+      }
       qc.invalidateQueries({ queryKey: cycleKeys.calendar });
     },
     onError: (error, variables) => {

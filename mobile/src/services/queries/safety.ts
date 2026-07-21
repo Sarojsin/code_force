@@ -10,6 +10,17 @@ import {
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { isNetworkError } from 'src/services/sync';
 import { generateId } from 'src/utils';
+import {
+  placeholderEmergencyContacts,
+  placeholderActiveSos,
+  placeholderSosHistory,
+} from 'src/services/localDb/syncPlaceholders';
+import {
+  upsertEmergencyContact,
+  upsertSosAlert,
+  softDeleteLocalEntity,
+} from 'src/services/localDb/writeThroughHelpers';
+import { localDb } from 'src/services/localDb';
 
 export const safetyKeys = {
   all: ['safety'] as const,
@@ -22,6 +33,9 @@ export function useEmergencyContacts() {
   return useQuery({
     queryKey: safetyKeys.contacts,
     queryFn: () => safetyService.getEmergencyContacts(),
+    initialData: () => placeholderEmergencyContacts() as any,
+    staleTime: 0,
+    retry: false,
   });
 }
 
@@ -30,7 +44,8 @@ export function useCreateEmergencyContact() {
   const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (data: EmergencyContactCreate) => safetyService.createEmergencyContact(data),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      upsertEmergencyContact(result as unknown as Record<string, unknown>);
       qc.invalidateQueries({ queryKey: safetyKeys.contacts });
     },
     onError: (error, data) => {
@@ -64,7 +79,8 @@ export function useUpdateEmergencyContact() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: EmergencyContactUpdate }) =>
       safetyService.updateEmergencyContact(id, data),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      upsertEmergencyContact(result as unknown as Record<string, unknown>);
       qc.invalidateQueries({ queryKey: safetyKeys.contacts });
     },
     onError: (error, variables) => {
@@ -94,7 +110,8 @@ export function useDeleteEmergencyContact() {
   const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (id: string) => safetyService.deleteEmergencyContact(id),
-    onSuccess: () => {
+    onSuccess: (_result, id) => {
+      softDeleteLocalEntity(localDb.emergencyContact, id);
       qc.invalidateQueries({ queryKey: safetyKeys.contacts });
     },
     onError: (error, id) => {
@@ -125,7 +142,10 @@ export function useTriggerSos() {
   return useMutation({
     mutationFn: ({ data, idempotencyKey }: { data: SosTriggerRequest; idempotencyKey: string }) =>
       safetyService.triggerSos(data, idempotencyKey),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result && result.id) {
+        upsertSosAlert(result as unknown as Record<string, unknown>);
+      }
       qc.invalidateQueries({ queryKey: safetyKeys.sosHistory });
       qc.invalidateQueries({ queryKey: safetyKeys.activeSos });
     },
@@ -159,6 +179,8 @@ export function useActiveSos() {
     queryKey: safetyKeys.activeSos,
     queryFn: () => safetyService.getActiveSos(),
     refetchInterval: 30_000,
+    initialData: () => placeholderActiveSos() as any,
+    retry: false,
   });
 }
 
@@ -166,6 +188,9 @@ export function useSosHistory() {
   return useQuery({
     queryKey: safetyKeys.sosHistory,
     queryFn: () => safetyService.getSosHistory(),
+    initialData: () => placeholderSosHistory() as any,
+    staleTime: 0,
+    retry: false,
   });
 }
 
@@ -174,7 +199,10 @@ export function useCancelSos() {
   const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (alertId: string) => safetyService.cancelSos(alertId),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result && (result as any).id) {
+        upsertSosAlert(result as unknown as Record<string, unknown>);
+      }
       qc.invalidateQueries({ queryKey: safetyKeys.sosHistory });
       qc.invalidateQueries({ queryKey: safetyKeys.activeSos });
     },
@@ -202,7 +230,10 @@ export function useResolveSos() {
   const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (alertId: string) => safetyService.resolveSos(alertId),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result && (result as any).id) {
+        upsertSosAlert(result as unknown as Record<string, unknown>);
+      }
       qc.invalidateQueries({ queryKey: safetyKeys.sosHistory });
       qc.invalidateQueries({ queryKey: safetyKeys.activeSos });
     },

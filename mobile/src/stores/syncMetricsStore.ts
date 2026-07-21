@@ -11,6 +11,9 @@ interface SyncMetrics {
   totalSyncCycles: number;
   failedSyncCycles: number;
   maxQueueSize: number;
+  sqliteWriteCount: number;
+  sqliteWriteLatencyMs: number;
+  sqliteErrors: number;
 }
 
 interface SyncMetricsState extends SyncMetrics {
@@ -21,6 +24,8 @@ interface SyncMetricsState extends SyncMetrics {
     opsPulled: number,
     queueSize: number,
   ) => void;
+  recordSqliteWrite: (latencyMs: number) => void;
+  recordSqliteError: () => void;
   reset: () => void;
 }
 
@@ -33,6 +38,9 @@ const initial: SyncMetrics = {
   totalSyncCycles: 0,
   failedSyncCycles: 0,
   maxQueueSize: 0,
+  sqliteWriteCount: 0,
+  sqliteWriteLatencyMs: 0,
+  sqliteErrors: 0,
 };
 
 export const useSyncMetricsStore = create<SyncMetricsState>()(
@@ -51,6 +59,15 @@ export const useSyncMetricsStore = create<SyncMetricsState>()(
           failedSyncCycles: state.failedSyncCycles + (status === 'failed' ? 1 : 0),
           maxQueueSize: Math.max(state.maxQueueSize, queueSize),
         });
+      },
+      recordSqliteWrite: (latencyMs) => {
+        set((s) => ({
+          sqliteWriteCount: s.sqliteWriteCount + 1,
+          sqliteWriteLatencyMs: s.sqliteWriteLatencyMs + latencyMs,
+        }));
+      },
+      recordSqliteError: () => {
+        set((s) => ({ sqliteErrors: s.sqliteErrors + 1 }));
       },
       reset: () => set(initial),
     }),
