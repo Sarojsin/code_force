@@ -62,13 +62,17 @@
 │  ┌──────────────────┴─────────────────────────┐   │
 │  │         TanStack Query Cache               │   │
 │  │  API responses, stale-while-revalidate     │   │
-│  └──────────────────┬─────────────────────────┘   │
-│                     │                              │
-│  ┌──────────────────┴─────────────────────────┐   │
-│  │         API Client (Axios)                 │   │
-│  │  Base URL → http://localhost:8000/api/v1/  │   │
-│  │  Interceptors → Bearer token, refresh, 401 │   │
-│  └──────────────────┬─────────────────────────┘   │
+│  │  + placeholderData from SQLite             │   │
+│  │  + write-through on mutation onSuccess     │   │
+│  └──────────┬────────────────────┬────────────┘   │
+│             │                    │                  │
+│             ▼                    ▼                  │
+│  ┌──────────────────┐  ┌──────────────────────┐   │
+│  │  SQLite Local DB │  │  API Client (Axios)  │   │
+│  │  Drizzle ORM     │  │  Base URL → ...      │   │
+│  │  18 tables       │  │  Interceptors →      │   │
+│  │  CRUD services   │  │  Bearer, refresh,401 │   │
+│  └──────────────────┘  └──────────┬───────────┘   │
 └─────────────────────┼──────────────────────────────┘
                       │ HTTPS
 ┌─────────────────────┼──────────────────────────────┐
@@ -231,6 +235,23 @@ mobile/src/
 ├── stores/
 │   ├── authStore.ts           # Zustand: user, isHydrated, hydrate(), login(), register(), reset()
 │   └── onboardingStore.ts     # Zustand+persist: 26-field state, setPersonalInfo/Lifestyle/CurrentCycle, addPastCycle, submitOnboarding()
+├── db/
+│   ├── schema.ts              # Drizzle ORM schema (18 tables)
+│   ├── connection.ts          # SQLite singleton (openDatabaseSync)
+│   └── migrations/            # Migration files
+├── services/localDb/
+│   ├── index.ts               # Barrel export
+│   ├── BaseLocalService.ts    # Abstract CRUD base class
+│   ├── cycle.ts               # CycleLocalService
+│   ├── journal.ts             # JournalLocalService
+│   ├── mood.ts                # MoodLocalService
+│   ├── emergencyContact.ts    # EmergencyContactLocalService
+│   ├── sosAlert.ts            # SosAlertLocalService
+│   ├── syncPlaceholders.ts    # 13 placeholder readers
+│   ├── writeThroughHelpers.ts # Merge-and-upsert helpers
+│   ├── pruneLocalDb.ts        # Hard-delete + VACUUM
+│   ├── backfillSqlite.ts      # Backfill RQ cache → SQLite
+│   └── cleanupObsoleteKeys.ts # Remove obsolete AsyncStorage keys
 └── types/
     └── auth.ts                # User, LoginResponse, TokenPair, RegisterRequest, etc.
 ```
@@ -1836,25 +1857,31 @@ SheCare follows an offline-first architecture:
 │  TanStack Query Cache (in-memory)            │
 │  - API response cache                        │
 │  - Stale-while-revalidate                    │
-│  - Background refetch on focus               │
+│  - placeholderData from SQLite               │
+├──────────────────────────────────────────────┤
+│  SQLite Local DB (Drizzle ORM)               │
+│  - 18 tables mirroring server schema         │
+│  - CRUD via BaseLocalService subclasses       │
+│  - placeholderData reads for instant UI      │
+│  - write-through on mutation onSuccess       │
+│  - Offline-first data store                  │
 ├──────────────────────────────────────────────┤
 │  EncryptedStorage (react-native-encrypted)   │
 │  - Auth tokens                               │
 │  - Cached user profile                       │
 │  - Encryption keys                           │
-│  - Sensitive health data                     │
 ├──────────────────────────────────────────────┤
 │  AsyncStorage                                │
-│  - Query cache persistence                   │
 │  - Offline action queue                      │
 │  - Non-sensitive preferences                 │
 │  - Push notification state                   │
+│  - Zustand persist (non-sensitive only)      │
 └──────────────────────────────────────────────┘
 ```
 
 ### 9.3 Offline Action Queue
 
-When offline, mutations are queued:
+When offline, mutations are queued for later sync. Local data is immediately written to SQLite:
 
 ```typescript
 interface OfflineAction {
@@ -1864,6 +1891,10 @@ interface OfflineAction {
   createdAt: string;
   retryCount: number;
 }
+
+// Local write happens immediately:
+await localDb.cycle.upsert(entry);  // ← SQLite write-through
+offlineStore.enqueue({ type: 'CYCLE_ENTRY', payload: entry, ... });  // ← Queue for sync
 ```
 
 The sync engine processes the queue when connectivity resumes:
@@ -1874,14 +1905,15 @@ Connection restored
 ├── Process queue in FIFO order
 ├── For each action:
 │   ├── Send API request
-│   ├── Success → remove from queue
-│   ├── 409 Conflict → apply last-write-wins
+│   ├── Success → hydrate server response into SQLite, remove from queue
+│   ├── 409 Conflict → hydrate server data into SQLite (LWW)
 │   └── Network error → keep in queue, retry later (exponential backoff)
 │
 ├── After all actions processed:
 │   ├── Pull server changes since last sync
 │   │   └── GET /api/v1/sync/changes?since=<timestamp>
-│   └── Update local cache
+│   ├── Hydrate changes into SQLite via syncHydrate.ts
+│   └── Invalidate TanStack Query cache
 ```
 
 ### 9.4 Onboarding Offline Flow
@@ -1889,8 +1921,11 @@ Connection restored
 ```
 User completes onboarding (no internet)
 │
-├── Save data to EncryptedStorage
-│   └── Key: "onboarding.pending"
+├── Save onboarding data to localDb (SQLite write)
+│   └── localDb.profile.upsert(onboardingData)
+│
+├── Queue for sync:
+│   { type: 'ONBOARDING_SUBMIT', payload: onboardingData }
 │
 ├── Show success screen
 ├── Navigate to MainTabs (optimistic)
@@ -1900,13 +1935,14 @@ User completes onboarding (no internet)
 ├── Sync engine picks up pending onboarding
 │
 ├── PUT /api/v1/onboarding
-│   ├── Success → remove pending data
+│   ├── Success → hydrate server response into SQLite, remove from queue
 │   └── Failure → retry with backoff
 │
 └── After successful sync:
     ├── Backend creates cycle entries
     ├── Initial prediction computed
-    └── Next time app hydrates → onboarding status = true
+    ├── Pull sync hydrates new prediction + cycles into SQLite
+    └── Next time app hydrates → onboarding status = true (from SQLite or API)
 ```
 
 ---
@@ -1965,7 +2001,28 @@ async def apply_operation(self, operation):
         return "conflict"
 ```
 
-### 10.3 Background Sync
+### 10.3 SQLite Hydration
+
+After every push success, pull batch, or 409 conflict, the sync engine hydrates the SQLite database via `syncHydrate.ts`:
+
+```typescript
+// mobile/src/services/sync/syncHydrate.ts
+
+// On push success — update SQLite with server response
+hydrateChangeItem(operation, responseData);
+// → localDb.cycle.upsert(responseData)
+
+// On pull — batch hydrate into SQLite
+hydrateChangeItems(operationType, serverChanges);
+// → maps operation type to localDb service, calls upsertMany
+
+// On 409 conflict — overwrite SQLite with server truth
+hydrateChangeItem(operation, conflict.serverData);
+```
+
+All hydrations are instrumented with timing metrics tracked in `syncMetricsStore`:
+
+### 10.4 Background Sync
 
 The background sync service (`mobile/src/services/sync/`) runs:
 
@@ -1982,6 +2039,10 @@ async function performSync(): Promise<void> {
   const queue = await getOfflineQueue();
   if (queue.length > 0) {
     const result = await syncEngine.pushBatch(queue);
+    // Hydrate accepted items into SQLite
+    for (const item of result.accepted) {
+      await hydrateChangeItem(item.operation, item.response);
+    }
     // Remove accepted items from queue
     // Keep failed items for retry
   }
@@ -1989,9 +2050,7 @@ async function performSync(): Promise<void> {
   // 2. Pull server changes
   const lastSync = await getLastSyncTimestamp();
   const changes = await syncEngine.pullChanges(lastSync);
-  for (const change of changes) {
-    await applyServerChange(change);
-  }
+  await hydrateChangeItems(operationType, changes);  // ← hydrate into SQLite
 
   // 3. Update last sync timestamp
   await setLastSyncTimestamp(new Date().toISOString());
@@ -2001,7 +2060,7 @@ async function performSync(): Promise<void> {
 }
 ```
 
-### 10.4 Retry Mechanism
+### 10.5 Retry Mechanism
 
 Failed sync operations follow exponential backoff:
 
@@ -2263,11 +2322,12 @@ HEADERS = {
 │    ├── Success → retry original request                                │
 │    └── Failure → session expired → force logout                        │
 │                                                                         │
-│  OFFLINE BEHAVIOR                                                       │
-│    ├── No connectivity → serve cached data (EncryptedStorage)          │
-│    ├── Mutations queued (AsyncStorage)                                 │
-│    ├── Background sync on reconnect                                    │
-│    └── Last-write-wins conflict resolution                             │
+│  OFFLINE BEHAVIOR (SQLite)                                              │
+│    ├── No connectivity → serve cached data from SQLite (placeholder)   │
+│    ├── Mutations write through to SQLite + queue in AsyncStorage       │
+│    ├── Background sync on reconnect → hydrate SQLite                   │
+│    ├── Last-write-wins conflict resolution                             │
+│    └── SQLite pruning: soft-delete purge >30d, sync_log trim to 500    │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -2285,6 +2345,12 @@ HEADERS = {
 | `mobile/src/services/api/onboarding.ts` | onboardingService: GET/PUT/status |
 | `mobile/src/services/queries/auth.ts` | TanStack Query hooks: useLogin, useRegister, etc. |
 | `mobile/src/services/storage/index.ts` | EncryptedStorage wrapper |
+| `mobile/src/db/schema.ts` | Drizzle ORM schema (18 tables + indexes) |
+| `mobile/src/db/connection.ts` | SQLite singleton via openDatabaseSync |
+| `mobile/src/services/localDb/BaseLocalService.ts` | Abstract SQLite CRUD base class |
+| `mobile/src/services/localDb/syncPlaceholders.ts` | SQLite placeholder readers |
+| `mobile/src/services/localDb/writeThroughHelpers.ts` | SQLite write-through helpers |
+| `mobile/src/services/sync/syncHydrate.ts` | Hydrate server responses → SQLite |
 | `mobile/src/components/ui/DatePickerField.tsx` | Reusable date picker with react-hook-form Controller |
 | `mobile/src/components/ui/Button.tsx` | Reusable button (primary/outline/danger, animated) |
 | `mobile/src/components/ui/FormField.tsx` | Reusable form field with validation |

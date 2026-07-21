@@ -73,16 +73,19 @@
 │  │                  TANSTACK QUERY                             │  │
 │  │  useCycleCalendar | useCyclePredictions | useCycleEntries  │  │
 │  │  useLogCorrection | useLogSnooze | useCycleAnalytics       │  │
-│  └──────────────────────┬─────────────────────────────────────┘  │
-│                         │                                        │
-│  ┌──────────────────────┴─────────────────────────────────────┐  │
-│  │                  API CLIENT (cycleService)                  │  │
-│  │  getCalendar | getPredictions | getEntries | getAnalytics  │  │
-│  │  logCorrection | logSnooze | createEntry                   │  │
-│  │  getModelStatus | downloadModel                            │  │
-│  └──────────────────────┬─────────────────────────────────────┘  │
-│                         │                                        │
-│  ┌──────────────────────┴─────────────────────────────────────┐  │
+│  │  placeholderData ← SQLite (read-through)                   │  │
+│  │  onSuccess → SQLite write-through                          │  │
+│  └──────────────┬─────────────────────────┬───────────────────┘  │
+│                 │                         │                       │
+│                 ▼                         ▼                       │
+│  ┌──────────────────────────┐  ┌──────────────────────────────┐  │
+│  │  LOCAL DB (SQLite)       │  │  API CLIENT (cycleService)   │  │
+│  │  CycleLocalService       │  │  getCalendar | getPredictions│  │
+│  │  placeholderData reads   │  │  logCorrection | logSnooze   │  │
+│  │  write-through onSuccess │  │  getModelStatus | download   │  │
+│  └──────────────────────────┘  └──────────────┬───────────────┘  │
+│                                                │                    │
+│  ┌─────────────────────────────────────────────┴────────────────┐  │
 │  │               PREDICTION ENGINE (MOBILE)                    │  │
 │  │  globalModel → linear regression + JSON scaler              │  │
 │  │  modelUpdater → downloads .onnx wellness classifier         │  │
@@ -165,10 +168,23 @@ mobile/src/
 │   └── CycleAnalyticsScreen.tsx      # Analytics + charts
 ├── screens/calendar/
 │   └── CalendarScreen.tsx            # Month calendar grid
+├── db/
+│   ├── schema.ts                     # Drizzle ORM schema (18 tables)
+│   ├── connection.ts                 # SQLite singleton (openDatabaseSync)
+│   └── migrations/                   # SQLite migrations
+│       ├── 0000_add_tables_v1.sql
+│       └── migrations.js
 ├── services/api/
 │   └── cycle.ts                      # cycleService: all cycle API calls
 ├── services/queries/
-│   └── cycle.ts                      # React Query hooks
+│   └── cycle.ts                      # React Query hooks + SQLite placeholderData
+├── services/localDb/
+│   ├── cycle.ts                      # CycleLocalService (CRUD)
+│   ├── syncPlaceholders.ts           # SQLite placeholder readers
+│   ├── writeThroughHelpers.ts        # Merge-and-upsert helpers
+│   ├── pruneLocalDb.ts               # Hard-delete + VACUUM
+│   ├── backfillSqlite.ts             # Backfill RQ cache → SQLite
+│   └── index.ts                      # Barrel export
 ├── components/ui/
 │   ├── Calendar.tsx                  # Month grid component
 │   ├── DatePickerField.tsx           # Date picker for react-hook-form
@@ -1985,28 +2001,68 @@ INSERT INTO system_config (key, value) VALUES ('global_model_version', '3');
 
 | Feature | Online | Offline |
 |---------|--------|---------|
-| Calendar view | API fetch + cache | Stale cache (TanStack Query) |
-| Predictions | API fetch | Cached prediction |
-| Log period | POST to API | Queue for sync |
-| Correction | POST to API | Queue for sync |
-| Analytics | API fetch | Cached analytics |
+| Calendar view | API fetch + cache | SQLite placeholderData (immediate) + stale RQ cache |
+| Predictions | API fetch | SQLite placeholderData (cached prediction row) |
+| Log period | POST to API + SQLite write-through | Queue for sync |
+| Correction | POST to API + SQLite write-through | Queue for sync |
+| Analytics | API fetch | SQLite cached analytics |
 | Model download | Download new model | Keep existing model |
-| StickyCard | Live prediction | Cached prediction |
-| Calendar Screen | Full data with phases | Stale encoded days |
+| StickyCard | Live prediction | SQLite cached prediction |
+| Calendar Screen | Full data with phases | SQLite encoded days placeholder |
 
-### 13.2 Cache Configuration
+### 13.2 Read-Through with SQLite PlaceholderData
+
+All cycle query hooks use `placeholderData` to read from SQLite synchronously while the API call is in-flight:
 
 ```typescript
-// TanStack Query cache times for cycle queries
-{
-  cycleCalendar: { staleTime: 5 * 60 * 1000, gcTime: 30 * 60 * 1000 },
-  cyclePredictions: { staleTime: 5 * 60 * 1000, gcTime: 30 * 60 * 1000 },
-  cycleEntries: { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 },
-  cycleAnalytics: { staleTime: 10 * 60 * 1000, gcTime: 60 * 60 * 1000 },
+// Each query provides instant data from SQLite
+export function useCycleCalendar(monthsBack = 3, monthsForward = 3) {
+  return useQuery({
+    queryKey: [...cycleKeys.calendar, monthsBack, monthsForward],
+    queryFn: () => cycleService.getCalendar(monthsBack, monthsForward),
+    placeholderData: () => placeholderCycleCalendar() as any,  // ← SQLite read
+  });
+}
+
+export function useCyclePredictions() {
+  return useQuery({
+    queryKey: cycleKeys.predictions,
+    queryFn: () => cycleService.getPredictions(),
+    placeholderData: () => placeholderCyclePredictions() as any,  // ← SQLite read
+  });
+}
+
+export function useCycleEntries(params?) {
+  return useQuery({
+    queryKey: [...cycleKeys.entries, params],
+    queryFn: () => cycleService.getEntries(params),
+    placeholderData: () => placeholderCycleEntries(params?.limit) as any,  // ← SQLite read
+  });
 }
 ```
 
-### 13.3 Offline Queue
+### 13.3 Write-Through on Mutation Success
+
+Every mutation writes back to SQLite on `onSuccess` so the local DB stays fresh:
+
+```typescript
+export function useCreateCycleEntry() {
+  return useMutation({
+    mutationFn: (data) => cycleService.createEntry(data),
+    onSuccess: (result) => {
+      upsertCycleEntry(result);  // ← SQLite write-through
+      queryClient.invalidateQueries({ queryKey: cycleKeys.entries });
+    },
+    onError: (error, data) => {
+      if (isNetworkError(error)) {
+        offlineStore.enqueue({ type: 'cycle/create', ... });  // Queue for later
+      }
+    },
+  });
+}
+```
+
+### 13.4 Offline Queue
 
 ```typescript
 interface OfflineMutation {
@@ -2021,22 +2077,24 @@ const OFFLINE_QUEUE_KEY = 'shecare.offlineQueue';
 
 // On reconnect:
 // 1. Process all queued mutations in FIFO order
-// 2. After each success → invalidate related queries
-// 3. After all processed → pull server changes
+// 2. After each success → SQLite write-through + invalidate queries
+// 3. After all processed → pull server changes → hydrate SQLite
 ```
 
-### 13.4 Conflict Resolution (Cycle Entries)
+### 13.5 Conflict Resolution (Cycle Entries)
 
 Since cycle entries have `UNIQUE(user_id, period_start_date)` constraint:
 
 1. If offline entry has the same `period_start_date` as an existing server entry:
    - Compare `client_updated_at` vs `updated_at`
    - Last-write-wins
+   - On 409, hydrate the server's data into SQLite
    - Return server record to client
 
 2. If the user corrected while offline and a new prediction was computed server-side:
    - The correction is applied after the prediction
    - Prediction is recomputed on server
+   - Pull sync hydrates new prediction into SQLite
 
 ---
 
@@ -2047,12 +2105,12 @@ Since cycle entries have `UNIQUE(user_id, period_start_date)` constraint:
 ```
 Cycle entry logged offline
 │
-├── Store in local SQLite (if applicable)
+├── Write-through to local SQLite (CycleLocalService.upsert)
 │
 ├── Add to offline queue:
 │   { type: 'CYCLE_ENTRY_CREATE', data: entryData, client_updated_at: now }
 │
-├── Show optimistic UI update
+├── Show optimistic UI update (TanStack Query cache + SQLite)
 │
 └── Wait for connectivity
     │
@@ -2060,28 +2118,58 @@ Cycle entry logged offline
     │
     ├── Sync engine processes queue
     │   ├── POST /api/v1/cycle/entries
-    │   ├── Success → remove from queue, update local
-    │   ├── 409 Conflict → resolve (LWW), update local
+    │   ├── Success → hydrate server response into SQLite, remove from queue
+    │   ├── 409 Conflict → hydrate server data into SQLite (LWW)
     │   └── Error → retry with backoff
     │
     └── After queue processed:
         ├── GET /api/v1/sync/changes?since=<lastSync>
-        ├── Apply server changes locally
+        ├── Hydrate server changes into SQLite via hydrateChangeItems()
+        ├── Invalidate TanStack Query cache → refetch
         └── Update last sync timestamp
 ```
 
-### 14.2 Sync Fields
+### 14.2 Hydration on Push/Pull
+
+The sync engine uses `syncHydrate.ts` to write server responses into SQLite:
+
+```typescript
+// On push success — hydrate server response
+import { hydrateChangeItem } from '../sync/syncHydrate';
+
+// Called after successful POST /cycle/entries:
+hydrateChangeItem(operation, responseData);
+
+// On pull — hydrate batch of server changes
+import { hydrateChangeItems } from '../sync/syncHydrate';
+
+// Called after GET /sync/changes:
+hydrateChangeItems(operationType, serverChanges);
+```
+
+The mapping from operation type to localDb service lives in `syncHydrate.ts`:
+
+| Operation Type | LocalDb Service | Method |
+|----------------|-----------------|--------|
+| `cycle/upsert` | `localDb.cycle` | `upsert` |
+| `cycle/hardDelete` | `localDb.cycle` | `hardDelete` |
+| `journal/upsert` | `localDb.journal` | `upsert` |
+| `mood/upsert` | `localDb.mood` | `upsert` |
+| `pregnancyProfile/upsert` | `localDb.pregnancyProfile` | `upsert` |
+| ... | ... | ... |
+
+### 14.3 Sync Fields
 
 Tables with offline sync support include a `client_updated_at` timestamp:
 
-| Table | client_updated_at | Sync Strategy |
-|-------|-------------------|---------------|
-| cycle_entries | Yes | Upsert + LWW |
-| user_onboarding | Yes | Upsert + LWW |
-| mood_logs | Yes | Upsert + LWW |
-| journal_entries | Yes | Upsert + LWW |
+| Table | client_updated_at | Sync Strategy | SQLite table |
+|-------|-------------------|---------------|--------------|
+| cycle_entries | Yes | Upsert + LWW | cycle_entries |
+| user_onboarding | Yes | Upsert + LWW | user_profiles |
+| mood_logs | Yes | Upsert + LWW | mood_logs |
+| journal_entries | Yes | Upsert + LWW | journal_entries |
 
-### 14.3 Backend Sync Endpoints
+### 14.4 Backend Sync Endpoints
 
 ```python
 # POST /api/v1/sync/batch
@@ -2221,60 +2309,90 @@ This flag signals the backend to include this user's data in the next global mod
 ```typescript
 // mobile/src/services/queries/cycle.ts
 
-// Calendar data (3 months back, 3 months forward)
+import { placeholderCycleEntries, placeholderCyclePredictions, placeholderCycleCalendar } from 'src/services/localDb/syncPlaceholders';
+import { upsertCycleEntry } from 'src/services/localDb/writeThroughHelpers';
+
+// Calendar data (3 months back, 3 months forward) + SQLite placeholder
 export function useCycleCalendar(monthsBack = 3, monthsForward = 3) {
   return useQuery({
-    queryKey: ['cycle', 'calendar', monthsBack, monthsForward],
+    queryKey: [...cycleKeys.calendar, monthsBack, monthsForward],
     queryFn: () => cycleService.getCalendar(monthsBack, monthsForward),
-    staleTime: 5 * 60 * 1000,
+    placeholderData: () => placeholderCycleCalendar() as any,  // ← instant from SQLite
   });
 }
 
-// Next prediction (single)
+// Next prediction (single) + SQLite placeholder
 export function useCyclePredictions() {
   return useQuery({
-    queryKey: ['cycle', 'predictions'],
+    queryKey: cycleKeys.predictions,
     queryFn: () => cycleService.getPredictions(),
-    staleTime: 5 * 60 * 1000,
+    placeholderData: () => placeholderCyclePredictions() as any,  // ← instant from SQLite
   });
 }
 
-// Cycle entries with pagination
+// Cycle entries with pagination + SQLite placeholder
 export function useCycleEntries(params?: { limit?: number; offset?: number }) {
   return useQuery({
-    queryKey: ['cycle', 'entries', params],
+    queryKey: [...cycleKeys.entries, params],
     queryFn: () => cycleService.getEntries(params),
-    staleTime: 2 * 60 * 1000,
+    placeholderData: () => placeholderCycleEntries(params?.limit) as any,  // ← instant from SQLite
   });
 }
 
-// Cycle analytics
+// Cycle analytics (no placeholder — analytics are computed server-side)
 export function useCycleAnalytics() {
   return useQuery({
-    queryKey: ['cycle', 'analytics'],
+    queryKey: cycleKeys.analytics,
     queryFn: () => cycleService.getAnalytics(),
     staleTime: 10 * 60 * 1000,
   });
 }
 
-// Log correction mutation
+// Log correction mutation with SQLite write-through
 export function useLogCorrection() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CorrectionData) => cycleService.logCorrection(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['cycle'] }); // Refresh ALL cycle queries
+    onMutate: async (variables) => {
+      // Optimistic update to calendar cache
+      await qc.cancelQueries({ queryKey: cycleKeys.calendar });
+      const previous = qc.getQueryData([...cycleKeys.calendar, 3, 3]);
+      qc.setQueryData([...cycleKeys.calendar, 3, 3], (old: any) => {
+        if (!old?.days) return old;
+        // Cancel old predicted days, apply confirmed phases, project next cycle
+        // ... (full optimistic update logic)
+        return { ...old, days, predictions, next_period_in_days, needs_checkin: false, _optimistic: true };
+      });
+      return { previousCalendar: previous };
+    },
+    onSuccess: (result) => {
+      upsertCycleEntry(result);  // ← SQLite write-through
+      qc.invalidateQueries({ queryKey: cycleKeys.calendar });
+      qc.invalidateQueries({ queryKey: cycleKeys.predictions });
+    },
+    onError: (error, variables, context) => {
+      if (isNetworkError(error)) {
+        offlineStore.enqueue({ type: 'cycle/correction', ... });  // Queue for sync
+      } else {
+        if (context?.previousCalendar) qc.setQueryData([...cycleKeys.calendar, 3, 3], context.previousCalendar);
+      }
     },
   });
 }
 
-// Log snooze mutation
+// Log snooze mutation with SQLite write-through
 export function useLogSnooze() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: SnoozeData) => cycleService.logSnooze(data.predictedCycleId, data.dayOffset),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['cycle', 'predictions'] });
+    onSuccess: (result) => {
+      if (result && result.id) upsertCycleEntry(result);  // ← SQLite write-through
+      qc.invalidateQueries({ queryKey: cycleKeys.calendar });
+    },
+    onError: (error, variables) => {
+      if (isNetworkError(error)) {
+        offlineStore.enqueue({ type: 'cycle/snooze', ... });  // Queue for sync
+      }
     },
   });
 }
@@ -2394,6 +2512,13 @@ for each day in range(months_back, months_forward):
 | `mobile/src/services/ml/heuristicScorer.ts` | Fallback prediction logic |
 | `mobile/src/navigation/CalendarStack.tsx` | Calendar tab navigation (7 routes) |
 | `mobile/src/navigation/types.ts` | Param list type definitions |
+| `mobile/src/services/queries/cycle.ts` | React Query hooks + SQLite placeholderData |
+| `mobile/src/services/localDb/cycle.ts` | CycleLocalService — SQLite CRUD for cycles |
+| `mobile/src/services/localDb/syncPlaceholders.ts` | SQLite placeholder readers (13 functions) |
+| `mobile/src/services/localDb/writeThroughHelpers.ts` | SQLite write-through on mutation success |
+| `mobile/src/services/sync/syncHydrate.ts` | Hydrate server responses into SQLite |
+| `mobile/src/db/schema.ts` | Drizzle ORM schema (18 tables + indexes) |
+| `mobile/src/db/connection.ts` | SQLite singleton via openDatabaseSync |
 | `backend/app/modules/cycle/routes.py` | 11 cycle HTTP endpoints |
 | `backend/app/modules/cycle/services.py` | Cycle, Prediction, Calendar services |
 | `backend/app/modules/cycle/models.py` | CycleEntry, PredictedCycle, SnoozeEvent tables |
