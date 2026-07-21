@@ -195,6 +195,7 @@ async function getHistory(userId: string) {
 | **Cache busting** | React Query buster `v1` in `providers.tsx` | Drizzle migrations + React Query buster |
 | **SOS priority** | Separate `safetySyncQueue` (EncryptedStorage), priority-based, max 5 retries | Same |
 | **Error fallback** | EncryptedStorage try-catch → Sentry → `networkMode: 'offlineFirst'` | EncryptedStorage try-catch → SQLite try-catch → React Query cache |
+| **React Query persist** | `PersistQueryClientProvider` with AsyncStorage persister (key `REACT_QUERY_OFFLINE_CACHE`, buster `v1`, maxAge 7d) | **Removed.** RQ is in-memory only. SQLite is the permanent cache. `QueryClientProvider` replaces `PersistQueryClientProvider`. |
 
 These rules define the exact "boundaries" so none of the storage layers step on each other's toes.
 
@@ -215,7 +216,7 @@ Each storage layer has one specific job, and they never overlap in function.
 | **EncryptedStorage** | Write Queue (Source of Truth for Pending) | Unsynced user actions (`journal/create`, `cycle/update`) | Until Synced |
 | **PostgreSQL (Server)** | Absolute Source of Truth | All finalized user data | Forever |
 | **SQLite** | Offline Historical Archive (Permanent Read Cache) | Read-only synced history (cycles, journals, moods) | Forever |
-| **AsyncStorage** | Volatile UI Cache (React Query) | Temporary, recent data for instant UI rendering | 7 days (gcTime) |
+| **React Query (in-memory)** | Ephemeral UI Cache | Recent data for instant UI rendering within a session | Lost on app kill |
 | **Zustand** | UI Ephemeral State | Screen navigation, form drafts, auth state | Lost on app restart |
 
 #### Phase 1 (Current) Hierarchy:
@@ -540,6 +541,8 @@ SQLite runs these queries natively in C++ without transferring thousands of reco
 3. Create `src/services/localDb/` service classes.
 4. Update `syncEngine.ts` to upsert SQLite on push success and pull.
 5. Update the read path in query hooks to fall through to SQLite.
-6. Add Drizzle migrations to app startup (blocking Splash screen).
-7. Update the Zustand stores that currently persist to AsyncStorage.
-8. Add `is_active` soft-delete awareness to all SQLite queries.
+6. **Remove `persistQueryClient`** — replace `PersistQueryClientProvider` with `QueryClientProvider`. RQ becomes in-memory only.
+7. Add Drizzle migrations to app startup (blocking Splash screen).
+8. Update the Zustand stores that currently persist to AsyncStorage.
+9. Add `is_active` soft-delete awareness to all SQLite queries.
+10. Add SQLite pruning (post-V1): hard-delete soft-deleted records >90d old.

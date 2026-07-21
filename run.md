@@ -217,7 +217,7 @@ or poetry run python run.py or directly python run.py
   npx expo run:android
   eas build --profile development
 
-  for eas used use this  npx expo start --dev-client
+  for eas used use this  ,npx expo start --dev-client or .\start.ps1
 
   or npx expo start --clear 
   or npx react-native run-ios 
