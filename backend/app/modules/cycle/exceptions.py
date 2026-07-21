@@ -27,3 +27,9 @@ class PredictionNotFoundError(CycleError):
 class CycleConflictError(CycleError):
     code = "CYCLE_CONFLICT"
     http_status = 409
+
+
+class PeriodEndDateRequiredError(CycleError):
+    """State C: today is past the predicted period end, so end_date is required."""
+    code = "PERIOD_END_DATE_REQUIRED"
+    http_status = 422

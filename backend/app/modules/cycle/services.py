@@ -24,6 +24,7 @@ from app.modules.cycle.exceptions import (
     CycleConflictError,
     CycleEntryNotFoundError,
     InsufficientDataError,
+    PeriodEndDateRequiredError,
     PredictionNotFoundError,
 )
 from app.modules.cycle.models import CycleEntry, PredictedCycle, SnoozeEvent, SystemConfig
@@ -37,13 +38,53 @@ class CycleService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
+    # ---- 3-state buffer logic ----
+
+    async def _determine_period_state(self, user_id: uuid.UUID, start_date: date) -> str:
+        """Return 'A' (future), 'B' (active/within avg), or 'C' (past avg).
+
+        State C is only enforced when the user has an active prediction that
+        covers *start_date* — without a prediction the system does not know
+        whether this period has exceeded the expected window.
+        """
+        today = date.today()
+        if today < start_date:
+            return "A"
+        # Check for an active prediction covering this start_date
+        stmt = (
+            select(PredictedCycle)
+            .where(PredictedCycle.user_id == user_id)
+            .where(PredictedCycle.is_active.is_(True))
+            .where(PredictedCycle.actual_cycle_entry_id.is_(None))
+            .order_by(PredictedCycle.predicted_next_period_start.asc())
+        )
+        predictions = (await self.db.execute(stmt)).scalars().all()
+        entries = await self._get_recent_entries(user_id, limit=12)
+        avg_length = self._compute_average_period_length(entries) if entries else get_settings().cycle.period_default_length
+        for pred in predictions:
+            pred_end = pred.predicted_next_period_start + timedelta(days=avg_length - 1)
+            if pred.predicted_next_period_start <= start_date <= pred_end:
+                if today > pred_end:
+                    return "C"
+                break
+        return "B"
+
     # ---- CRUD ----
 
     async def create_entry(self, user_id: uuid.UUID, data: CycleEntryCreate) -> CycleEntry:
+        state = await self._determine_period_state(user_id, data.period_start_date)
+        period_end_date = data.period_end_date
+        if state in ("A", "B") and period_end_date is None:
+            avg_length = await self.get_avg_period_length(user_id)
+            period_end_date = data.period_start_date + timedelta(days=avg_length - 1)
+        elif state == "C" and period_end_date is None:
+            raise PeriodEndDateRequiredError(
+                "Your period appears to have ended already. Please provide the end date."
+            )
         entry = CycleEntry(
             user_id=user_id,
             period_start_date=data.period_start_date,
-            period_end_date=data.period_end_date,
+            period_end_date=period_end_date,
             flow_intensity=data.flow_intensity,
             symptoms=data.symptoms,
             mood_tags=data.mood_tags,
@@ -60,9 +101,14 @@ class CycleService:
                 extra={"user_id": str(user_id), "period_start": str(data.period_start_date)},
             )
             existing = await self._get_entry_by_user_and_date(user_id, data.period_start_date)
+            # Apply caller-provided fields first
             update_data = data.model_dump(exclude_unset=True, exclude={"period_start_date"})
             for key, value in update_data.items():
                 setattr(existing, key, value)
+            # Auto-fill end_date for State A/B if still missing
+            if state in ("A", "B") and existing.period_end_date is None:
+                avg_length = await self.get_avg_period_length(user_id)
+                existing.period_end_date = data.period_start_date + timedelta(days=avg_length - 1)
             await self.db.commit()
             await self.db.refresh(existing)
             await self._auto_close_open_entry(user_id, data.period_start_date)
