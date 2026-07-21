@@ -3,14 +3,14 @@
  */
 
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
-import { Button, FormField, Text as Txt } from 'src/components/ui';
+import { Button, FormField, KeyboardAvoidingWrapper, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { logger } from 'src/utils';
 import type { ProfileStackParamList } from 'src/navigation/types';
@@ -48,27 +48,23 @@ export function ChangePasswordScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={[styles.scroll, { padding: theme.spacing.lg }]} keyboardShouldPersistTaps="handled">
-          <Txt variant="h1" style={{ marginBottom: theme.spacing.sm }}>Change Password</Txt>
-          <Txt variant="body" color="secondary" style={{ marginBottom: theme.spacing.xl }}>Enter your current and new password.</Txt>
+      <KeyboardAvoidingWrapper contentContainerStyle={{ padding: theme.spacing.lg }}>
+        <Txt variant="h1" style={{ marginBottom: theme.spacing.sm }}>Change Password</Txt>
+        <Txt variant="body" color="secondary" style={{ marginBottom: theme.spacing.xl }}>Enter your current and new password.</Txt>
 
-          <FormField control={control} name="currentPassword" label="Current password" placeholder="Enter current password" secureTextEntry accessibilityLabel="Current password" />
-          <View style={{ height: theme.spacing.md }} />
-          <FormField control={control} name="newPassword" label="New password" placeholder="At least 8 characters" secureTextEntry accessibilityLabel="New password" />
-          <View style={{ height: theme.spacing.md }} />
-          <FormField control={control} name="confirmPassword" label="Confirm new password" placeholder="Re-enter new password" secureTextEntry accessibilityLabel="Confirm new password" />
+        <FormField control={control} name="currentPassword" label="Current password" placeholder="Enter current password" secureTextEntry accessibilityLabel="Current password" />
+        <View style={{ height: theme.spacing.md }} />
+        <FormField control={control} name="newPassword" label="New password" placeholder="At least 8 characters" secureTextEntry accessibilityLabel="New password" />
+        <View style={{ height: theme.spacing.md }} />
+        <FormField control={control} name="confirmPassword" label="Confirm new password" placeholder="Re-enter new password" secureTextEntry accessibilityLabel="Confirm new password" />
 
-          <View style={{ height: theme.spacing.xl }} />
-          <Button label="Update password" onPress={handleSubmit(onSubmit)} disabled={!formState.isValid} fullWidth />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <View style={{ height: theme.spacing.xl }} />
+        <Button label="Update password" onPress={handleSubmit(onSubmit)} disabled={!formState.isValid} fullWidth />
+      </KeyboardAvoidingWrapper>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  flex: { flex: 1 },
-  scroll: { flexGrow: 1 },
 });

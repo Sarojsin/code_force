@@ -1,12 +1,12 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
-import { Button, FormField, Text as Txt } from 'src/components/ui';
+import { Button, FormField, KeyboardAvoidingWrapper, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { logger } from 'src/utils';
 import { useCreateEmergencyContact, useUpdateEmergencyContact, useEmergencyContacts } from 'src/services/queries';
@@ -72,37 +72,33 @@ export function EmergencyContactEditScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={[styles.scroll, { padding: theme.spacing.lg }]} keyboardShouldPersistTaps="handled">
-          <Txt variant="h1" style={{ marginBottom: theme.spacing.sm }}>
-            {isEditing ? 'Edit Contact' : 'Add Contact'}
-          </Txt>
-          <Txt variant="body" color="secondary" style={{ marginBottom: theme.spacing.xl }}>
-            {isEditing ? 'Update emergency contact details.' : 'Add someone to notify in an emergency.'}
-          </Txt>
+      <KeyboardAvoidingWrapper contentContainerStyle={{ padding: theme.spacing.lg }}>
+        <Txt variant="h1" style={{ marginBottom: theme.spacing.sm }}>
+          {isEditing ? 'Edit Contact' : 'Add Contact'}
+        </Txt>
+        <Txt variant="body" color="secondary" style={{ marginBottom: theme.spacing.xl }}>
+          {isEditing ? 'Update emergency contact details.' : 'Add someone to notify in an emergency.'}
+        </Txt>
 
-          <FormField control={control} name="name" label="Full name" placeholder="Jane Doe" accessibilityLabel="Contact full name" />
-          <View style={{ height: theme.spacing.md }} />
-          <FormField control={control} name="phone" label="Phone number" placeholder="+9779812345678" keyboardType="phone-pad" accessibilityLabel="Phone number with country code" />
-          <View style={{ height: theme.spacing.md }} />
-          <FormField control={control} name="relationship" label="Relationship" placeholder="Mother, Partner, Doctor..." accessibilityLabel="Relationship to you" />
+        <FormField control={control} name="name" label="Full name" placeholder="Jane Doe" accessibilityLabel="Contact full name" />
+        <View style={{ height: theme.spacing.md }} />
+        <FormField control={control} name="phone" label="Phone number" placeholder="+9779812345678" keyboardType="phone-pad" accessibilityLabel="Phone number with country code" />
+        <View style={{ height: theme.spacing.md }} />
+        <FormField control={control} name="relationship" label="Relationship" placeholder="Mother, Partner, Doctor..." accessibilityLabel="Relationship to you" />
 
-          <View style={{ height: theme.spacing.xl }} />
-          <Button
-            label={isEditing ? 'Save changes' : 'Add contact'}
-            onPress={handleSubmit(onSubmit)}
-            disabled={!formState.isValid}
-            loading={createMutation.isPending || updateMutation.isPending}
-            fullWidth
-          />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <View style={{ height: theme.spacing.xl }} />
+        <Button
+          label={isEditing ? 'Save changes' : 'Add contact'}
+          onPress={handleSubmit(onSubmit)}
+          disabled={!formState.isValid}
+          loading={createMutation.isPending || updateMutation.isPending}
+          fullWidth
+        />
+      </KeyboardAvoidingWrapper>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  flex: { flex: 1 },
-  scroll: { flexGrow: 1 },
 });
