@@ -2,6 +2,22 @@ import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
+jest.mock('expo', () => ({ requireNativeModule: jest.fn(), default: {}, isRunningInExpoGo: jest.fn() }));
+jest.mock('expo-sqlite', () => ({
+  openDatabaseSync: jest.fn(() => ({ execSync: jest.fn(), runSync: jest.fn() })),
+}));
+jest.mock('drizzle-orm/expo-sqlite', () => ({
+  drizzle: jest.fn(() => ({ select: jest.fn(), insert: jest.fn(), update: jest.fn(), delete: jest.fn() })),
+}));
+jest.mock('expo-notifications', () => ({
+  setNotificationHandler: jest.fn(),
+  requestPermissionsAsync: jest.fn(),
+  getPermissionsAsync: jest.fn(),
+  scheduleNotificationAsync: jest.fn(),
+  cancelScheduledNotificationAsync: jest.fn(),
+  getAllScheduledNotificationsAsync: jest.fn(),
+  AndroidImportance: { DEFAULT: 3 },
+}));
 jest.mock('@react-native-community/netinfo', () => ({ fetch: jest.fn(), addEventListener: jest.fn() }));
 jest.mock('expo-background-fetch', () => ({ BackgroundFetch: { registerTaskAsync: jest.fn(), unregisterTaskAsync: jest.fn() } }));
 jest.mock('expo-task-manager', () => ({ defineTask: jest.fn(), isTaskRegisteredAsync: jest.fn() }));
@@ -13,6 +29,9 @@ jest.mock('src/services/api', () => ({
     updateEntry: jest.fn(),
     logCorrection: jest.fn(),
     logSnooze: jest.fn(),
+    getPredictions: jest.fn(),
+    getEntries: jest.fn(),
+    getCalendar: jest.fn(),
   },
 }));
 jest.mock('@react-native-async-storage/async-storage', () => ({ setItem: jest.fn(), getItem: jest.fn(), removeItem: jest.fn(), clear: jest.fn() }));
@@ -24,7 +43,7 @@ jest.mock('src/utils', () => ({
   logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
-import { useCreateCycleEntry, useUpdateCycleEntry, useLogCorrection, useLogSnooze } from '../cycle';
+import { useCreateCycleEntry, useUpdateCycleEntry, useLogCorrection, useLogSnooze, useCyclePredictions, useCycleEntries, useCycleCalendar } from '../cycle';
 import { cycleService } from 'src/services/api';
 import { useOfflineStore } from 'src/stores/offlineStore';
 
@@ -253,10 +272,69 @@ describe('409 conflict handling', () => {
 // ─── Calendar display with old period (Scenario 5b) ────────────
 
 describe('Scenario 5b: old period in calendar', () => {
-  it('useCycleCalendar queries with months_back param', () => {
-    // Just verify the hook constructs the correct query key
-    // The actual "P" marker rendering is validated by the Calendar component
+  it('useCycleCalendar queries with months_back param', async () => {
+    (cycleService.getCalendar as jest.Mock).mockResolvedValue({ days: {} });
     renderHook(() => useCycleCalendar(6, 3), { wrapper });
-    expect(cycleService.getCalendar).not.toHaveBeenCalled(); // query is lazy
+    await waitFor(() => expect(cycleService.getCalendar).toHaveBeenCalledWith(6, 3));
+  });
+});
+
+// ─── Scenario 9: 60-day gap (irregular cycle) ───────────────────
+
+describe('Scenario 9: 60-day gap', () => {
+  it('useCreateCycleEntry sends entry with large cycle_gap >45 days', async () => {
+    (cycleService.createEntry as jest.Mock).mockResolvedValue({
+      id: 'entry-gap', cycle_length: 60,
+    });
+    const { result } = renderHook(() => useCreateCycleEntry(), { wrapper });
+    await act(async () => {
+      result.current.mutate({
+        period_start_date: '2026-03-02',
+        period_end_date: '2026-03-06',
+      });
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(cycleService.createEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ period_start_date: '2026-03-02' }),
+    );
+  });
+});
+
+// ─── Scenario 10: No data / empty state ─────────────────────────
+
+describe('Scenario 10: empty state', () => {
+  it('useCyclePredictions returns null when API returns null', async () => {
+    (cycleService.getPredictions as jest.Mock).mockResolvedValue(null);
+    const { result } = renderHook(() => useCyclePredictions(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toBeNull();
+  });
+
+  it('useCycleEntries returns empty array when API returns empty', async () => {
+    (cycleService.getEntries as jest.Mock).mockResolvedValue([]);
+    const { result } = renderHook(() => useCycleEntries(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([]);
+  });
+});
+
+// ─── Scenario 11: Future date acceptance ────────────────────────
+
+describe('Scenario 11: future date', () => {
+  it('useCreateCycleEntry accepts a future start date', async () => {
+    const futureDate = new Date();
+    futureDate.setFullYear(futureDate.getFullYear() + 1);
+    const futureStr = futureDate.toISOString().split('T')[0];
+    (cycleService.createEntry as jest.Mock).mockResolvedValue({
+      id: 'entry-future', period_start_date: futureStr,
+    });
+    const { result } = renderHook(() => useCreateCycleEntry(), { wrapper });
+    await act(async () => {
+      result.current.mutate({ period_start_date: futureStr });
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(cycleService.createEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ period_start_date: futureStr }),
+    );
   });
 });

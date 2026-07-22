@@ -475,6 +475,47 @@ describe('Scenario 2B: override end date', () => {
   });
 });
 
+// ─── cycle: Scenario 12 — End before start rejected ─────────────
+
+describe('Scenario 12: end date before start date', () => {
+  it('rejects endDate before startDate in logPeriodSchema', () => {
+    const result = logPeriodSchema.safeParse({
+      startDate: '2026-06-10',
+      endDate: '2026-06-08',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path).toContain('endDate');
+    }
+  });
+
+  it('rejects periodEndDate before periodStartDate in correctionSchema', () => {
+    const result = correctionSchema.safeParse({
+      periodStartDate: '2026-07-15',
+      periodEndDate: '2026-07-14',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path).toContain('periodEndDate');
+    }
+  });
+
+  it('accepts endDate equal to startDate (1-day period)', () => {
+    const result = logPeriodSchema.safeParse({ startDate: '2026-06-10', endDate: '2026-06-10' });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts endDate after startDate', () => {
+    const result = logPeriodSchema.safeParse({ startDate: '2026-06-10', endDate: '2026-06-15' });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts no endDate (State A/B)', () => {
+    const result = logPeriodSchema.safeParse({ startDate: '2026-06-10' });
+    expect(result.success).toBe(true);
+  });
+});
+
 // ─── cycle: Scenario 1 — Confirm on predicted date ──────────────
 
 describe('Scenario 1: confirm on predicted date', () => {

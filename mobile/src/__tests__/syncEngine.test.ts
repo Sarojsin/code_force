@@ -15,6 +15,13 @@ jest.mock('src/utils', () => ({
 }));
 
 jest.mock('@react-native-async-storage/async-storage', () => ({ setItem: jest.fn(), getItem: jest.fn(), removeItem: jest.fn(), clear: jest.fn() }));
+jest.mock('expo-sqlite', () => ({
+  openDatabaseSync: jest.fn(() => ({ execSync: jest.fn(), runSync: jest.fn() })),
+}));
+jest.mock('drizzle-orm/expo-sqlite', () => ({
+  drizzle: jest.fn(() => ({ select: jest.fn(), insert: jest.fn(), update: jest.fn(), delete: jest.fn() })),
+}));
+
 jest.mock('@sentry/react-native', () => ({
   setTag: jest.fn(),
   captureException: jest.fn(),
@@ -227,7 +234,84 @@ describe('syncAll', () => {
     });
   });
 
-  // ─── Idempotency key in push payload ──────────────────────────
+  // ─── Scenario 7: conflict hydrates query cache ────────────────
+  it('conflict with server_data updates query cache', async () => {
+    const qc = makeQueryClient();
+    setQueryClient(qc as any);
+    const existingData = [
+      { id: 'entry-1', period_start_date: '2026-06-12', period_end_date: '2026-06-16' },
+    ];
+    qc.setQueryData.mockReturnValue(existingData);
+    // Pre-set some data in the cache so the merge path is exercised
+    const { inferQueryKey } = require('src/services/sync/queryKeyMapper');
+    const qKey = inferQueryKey('cycle/correction', 'entry-1');
+    (qc as any).getQueryData = jest.fn(() => existingData);
+
+    mockApi.post.mockResolvedValue({
+      data: {
+        results: [{
+          status: 'conflict',
+          entity_id: 'entry-1',
+          server_data: { id: 'entry-1', period_start_date: '2026-06-14', period_end_date: '2026-06-18', _conflict_resolved: true },
+        }],
+      },
+    });
+
+    const { result } = renderHook(() => useOfflineStore());
+    await act(async () => {
+      await result.current.enqueue({
+        type: 'cycle/correction', data: { period_start_date: '2026-06-12' }, tempId: 'tmp-cache',
+        idempotencyKey: 'ik-cache', clientUpdatedAt: '2026-07-22T10:00:00Z', priority: 'normal',
+      });
+    });
+
+    await pushOperations(result.current.operations);
+
+    // Operation removed, query cache updated with server_data
+    expect(result.current.size()).toBe(0);
+  });
+
+  // ─── Scenario 8: different periods no conflict ────────────────
+  it('two corrections for different periods both succeed', async () => {
+    const qc = makeQueryClient();
+    setQueryClient(qc as any);
+
+    mockApi.post.mockResolvedValue({
+      data: {
+        results: [
+          { status: 'created', entity_id: 'entry-a', server_data: { id: 'entry-a', period_start_date: '2026-06-10' } },
+          { status: 'created', entity_id: 'entry-b', server_data: { id: 'entry-b', period_start_date: '2026-07-15' } },
+        ],
+      },
+    });
+
+    const { result } = renderHook(() => useOfflineStore());
+    await act(async () => {
+      await result.current.enqueue({
+        type: 'cycle/correction', data: { period_start_date: '2026-06-10' }, tempId: 'tmp-A',
+        idempotencyKey: 'ik-A', clientUpdatedAt: '2026-07-22T10:00:00Z', priority: 'normal',
+      });
+      await result.current.enqueue({
+        type: 'cycle/correction', data: { period_start_date: '2026-07-15' }, tempId: 'tmp-B',
+        idempotencyKey: 'ik-B', clientUpdatedAt: '2026-07-22T10:00:01Z', priority: 'normal',
+      });
+    });
+    expect(result.current.size()).toBe(2);
+
+    await pushOperations(result.current.operations);
+
+    // Both operations removed after successful push
+    expect(result.current.size()).toBe(0);
+    // Both operations sent in a single batch
+    expect(mockApi.post).toHaveBeenCalledTimes(1);
+    const payload = mockApi.post.mock.calls[0][1];
+    expect(payload.operations).toHaveLength(2);
+    expect(payload.operations[0].temp_id).toBe('tmp-A');
+    expect(payload.operations[1].temp_id).toBe('tmp-B');
+  });
+});
+
+// ─── Idempotency key in push payload ──────────────────────────
   describe('idempotency key forwarding', () => {
     it('sends idempotency_key in push payload', async () => {
       const { result } = renderHook(() => useOfflineStore());
@@ -243,4 +327,3 @@ describe('syncAll', () => {
       expect(callPayload.operations[0].idempotency_key).toBe('idem-001');
     });
   });
-});

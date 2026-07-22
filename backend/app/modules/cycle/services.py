@@ -789,7 +789,13 @@ class CycleService:
                 try:
                     from datetime import datetime as dt
                     client_ts = dt.fromisoformat(client_updated_at.replace("Z", "+00:00"))
-                    if latest.created_at > client_ts:
+                    # Strip tzinfo if server's stored datetime is naive (SQLite)
+                    server_ts = latest.created_at
+                    if server_ts.tzinfo is None and client_ts.tzinfo is not None:
+                        client_ts = client_ts.replace(tzinfo=None)
+                    elif server_ts.tzinfo is not None and client_ts.tzinfo is None:
+                        client_ts = client_ts.replace(tzinfo=server_ts.tzinfo)
+                    if server_ts > client_ts:
                         raise CycleConflictError(
                             "Data has been modified since you last synced. The server has newer data."
                         )

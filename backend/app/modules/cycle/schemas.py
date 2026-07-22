@@ -10,6 +10,8 @@ import uuid
 from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic.functional_validators import model_validator
+from typing_extensions import Self
 
 
 class CycleEntryCreate(BaseModel):
@@ -21,6 +23,12 @@ class CycleEntryCreate(BaseModel):
     energy_level: int | None = Field(None, ge=1, le=5)
     notes: str | None = None
     cycle_type: str = "menstrual"
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> Self:
+        if self.period_end_date is not None and self.period_end_date < self.period_start_date:
+            raise ValueError("period_end_date must be on or after period_start_date")
+        return self
 
 
 class CycleEntryUpdate(BaseModel):
