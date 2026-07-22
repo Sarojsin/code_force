@@ -51,7 +51,7 @@ celery_app.conf.update(
         },
         "train-global-model-monthly": {
             "task": "app.modules.cycle.tasks.train_global_model",
-            "schedule": crontab(day=1, hour=3, minute=0),
+            "schedule": crontab(day_of_month=1, hour=3, minute=0),
         },
         "checkin-daily": {
             "task": "app.tasks.checkin.daily_checkin",

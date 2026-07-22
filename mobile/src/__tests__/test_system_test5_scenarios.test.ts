@@ -25,6 +25,7 @@ jest.mock('src/services/storage', () => {
 
 const mockIds = (function*() { let i = 0; while (true) { yield `test-uuid-${++i}`; } })();
 jest.mock('src/utils', () => ({
+  ...jest.requireActual('src/utils'),
   generateId: jest.fn(() => mockIds.next().value),
   logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
@@ -57,6 +58,7 @@ jest.mock('src/services/api/client', () => {
   };
 });
 
+import { getRowColor } from 'src/utils';
 import { pushOperations } from 'src/services/sync/syncEngine';
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { useAuthStore } from 'src/stores/authStore';
@@ -65,13 +67,6 @@ const mockApi = jest.requireMock('src/services/api/client').api;
 const mockStorage = jest.requireMock('src/services/storage').EncryptedStorage;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getRowColor(delta: number): string {
-  const abs = Math.abs(delta);
-  if (abs <= 1) return '#D4F0E0';   // Mint
-  if (abs === 2) return '#FFDAB9';   // Peach
-  return '#FFB3C6';                   // Blush
-}
 
 function fmtMonth(d: string): string {
   const m = new Date(d + 'T00:00:00').toLocaleString('en-US', { month: 'short' });
