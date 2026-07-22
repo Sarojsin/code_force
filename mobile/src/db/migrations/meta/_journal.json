@@ -8,6 +8,13 @@
       "when": 1784554343915,
       "tag": "0000_add_tables_v1",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785678900000,
+      "tag": "0001_add_snooze_events",
+      "breakpoints": true
     }
   ]
 }

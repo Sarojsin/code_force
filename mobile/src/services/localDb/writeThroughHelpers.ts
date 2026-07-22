@@ -50,6 +50,16 @@ export async function upsertSosAlert(serverData: Record<string, unknown>): Promi
   } as any);
 }
 
+export async function upsertSnoozeEvent(serverData: Record<string, unknown>): Promise<void> {
+  const id = serverData.id as string | undefined;
+  const existing = id ? await localDb.snoozeEvent.getById(id) : null;
+  await localDb.snoozeEvent.upsert({
+    ...(existing ?? {}),
+    ...serverData,
+    synced_at: new Date().toISOString(),
+  } as any);
+}
+
 export async function upsertPregnancyProfile(serverData: Record<string, unknown>): Promise<void> {
   const id = serverData.id as string | undefined;
   const existing = id ? await localDb.pregnancyProfile.getById(id) : null;

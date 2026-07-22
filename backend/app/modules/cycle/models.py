@@ -40,6 +40,9 @@ class CycleEntry(Base):
 
     cycle_type: Mapped[str] = mapped_column(String(20), default="menstrual", nullable=False)
 
+    # Idempotency key for dedup on retries (project invariant §5)
+    idempotency_key: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+
     # Phase 1: correction linking
     corrected_prediction_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("predicted_cycles.id", ondelete="SET NULL"), nullable=True, index=True

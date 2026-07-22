@@ -221,9 +221,20 @@ async def create_correction(
     current_user: CurrentUser,
     svc: CycleServiceDep,
     x_client_updated_at: str | None = Header(None, alias="X-Client-Updated-At"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> CorrectionResponse:
     import uuid as _uuid
     corrected_id = _uuid.UUID(payload.corrected_prediction_id) if payload.corrected_prediction_id else None
+
+    # Idempotency check (project invariant §5)
+    if idempotency_key:
+        existing = await svc.find_by_idempotency_key(current_user.id, idempotency_key)
+        if existing:
+            avg_period_length = await svc.get_avg_period_length(current_user.id)
+            resp = CorrectionResponse.model_validate(existing)
+            resp.avg_period_length = avg_period_length
+            return resp
+
     try:
         entry = await svc.log_correction(
             user_id=current_user.id,
@@ -233,6 +244,7 @@ async def create_correction(
             corrected_prediction_id=corrected_id,
             client_updated_at=x_client_updated_at,
             cycle_type=payload.cycle_type,
+            idempotency_key=idempotency_key,
         )
     except CycleConflictError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.details) from e

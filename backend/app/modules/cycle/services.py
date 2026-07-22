@@ -167,6 +167,16 @@ class CycleService:
             raise CycleEntryNotFoundError("Cycle entry not found")
         return entry
 
+    async def find_by_idempotency_key(self, user_id: uuid.UUID, key: str) -> CycleEntry | None:
+        stmt = (
+            select(CycleEntry)
+            .where(CycleEntry.user_id == user_id)
+            .where(CycleEntry.idempotency_key == key)
+            .where(CycleEntry.is_active.is_(True))
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
     async def get_entry(self, entry_id: uuid.UUID, user_id: uuid.UUID) -> CycleEntry:
         stmt = (
             select(CycleEntry)
@@ -594,6 +604,21 @@ class CycleService:
                     )
                     needs_checkin = not has_recent_period
 
+                # If user has snoozed this prediction today, suppress checkin
+                if needs_checkin:
+                    snooze_stmt = (
+                        select(SnoozeEvent)
+                        .where(SnoozeEvent.user_id == user_id)
+                        .where(SnoozeEvent.predicted_cycle_id == active_pred.id)
+                        .order_by(SnoozeEvent.snoozed_at.desc())
+                        .limit(1)
+                    )
+                    last_snooze = (await self.db.execute(snooze_stmt)).scalar_one_or_none()
+                    if last_snooze and last_snooze.snoozed_at:
+                        snooze_until = last_snooze.snoozed_at + timedelta(days=last_snooze.day_offset)
+                        if today_ref <= snooze_until.date():
+                            needs_checkin = False
+
         return {
             "days": days,
             "predictions": prediction_detail,
@@ -738,6 +763,7 @@ class CycleService:
         corrected_prediction_id: uuid.UUID | None = None,
         client_updated_at: str | None = None,
         cycle_type: str = "menstrual",
+        idempotency_key: str | None = None,
     ) -> CycleEntry:
         if client_updated_at:
             latest_stmt = (
@@ -767,6 +793,7 @@ class CycleService:
             is_correction=corrected_prediction_id is not None,
             corrected_prediction_id=corrected_prediction_id,
             cycle_type=cycle_type,
+            idempotency_key=idempotency_key,
         )
         self.db.add(entry)
         await self.db.flush()

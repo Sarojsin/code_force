@@ -377,7 +377,27 @@ export type Prediction = typeof predictions.$inferSelect;
 export type NewPrediction = typeof predictions.$inferInsert;
 
 // ---------------------------------------------------------------------------
-// 18. Sync Log (audit trail)
+// 18. Snooze Events
+// ---------------------------------------------------------------------------
+export const snoozeEvents = sqliteTable('snooze_events', {
+  id: text('id').primaryKey(),
+  user_id: text('user_id').notNull(),
+  predicted_cycle_id: text('predicted_cycle_id').notNull(),
+  snoozed_at: isoDatetime('snoozed_at'),
+  day_offset: integer('day_offset').notNull(),
+  created_at: isoDatetime('created_at'),
+  updated_at: isoDatetime('updated_at'),
+  synced_at: isoDatetime('synced_at'),
+}, (table) => ({
+  userIdIdx: index('idx_snooze_events_user_id').on(table.user_id),
+  predictedCycleIdIdx: index('idx_snooze_events_predicted_cycle_id').on(table.predicted_cycle_id),
+}));
+
+export type SnoozeEvent = typeof snoozeEvents.$inferSelect;
+export type NewSnoozeEvent = typeof snoozeEvents.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// 19. Sync Log (audit trail)
 // ---------------------------------------------------------------------------
 export const syncLog = sqliteTable('sync_log', {
   id: text('id').primaryKey(),

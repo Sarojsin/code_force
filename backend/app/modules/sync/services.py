@@ -122,7 +122,7 @@ class SyncService:
         )
         self.db.add(entry)
         await self.db.flush()
-        return SyncResultItem(index=index, status="created", entity_id=str(entry.id), temp_id=op.temp_id)
+        return SyncResultItem(index=index, status="created", entity_id=str(entry.id), temp_id=op.temp_id, server_data=self._serialize(entry))
 
     async def _journal_update(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
         from app.modules.wellness.models import JournalEntry
@@ -143,7 +143,7 @@ class SyncService:
         if client_ts:
             row.client_updated_at = client_ts
         await self.db.flush()
-        return SyncResultItem(index=index, status="updated", entity_id=str(entity_id), temp_id=op.temp_id)
+        return SyncResultItem(index=index, status="updated", entity_id=str(entity_id), temp_id=op.temp_id, server_data=self._serialize(row))
 
     async def _journal_delete(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
         from app.modules.wellness.models import JournalEntry
@@ -174,7 +174,7 @@ class SyncService:
         )
         self.db.add(mood)
         await self.db.flush()
-        return SyncResultItem(index=index, status="created", entity_id=str(mood.id), temp_id=op.temp_id)
+        return SyncResultItem(index=index, status="created", entity_id=str(mood.id), temp_id=op.temp_id, server_data=self._serialize(mood))
 
     # ------------------------------------------------------------------
     # Cycle handlers
@@ -198,7 +198,7 @@ class SyncService:
         )
         self.db.add(entry)
         await self.db.flush()
-        return SyncResultItem(index=index, status="created", entity_id=str(entry.id), temp_id=op.temp_id)
+        return SyncResultItem(index=index, status="created", entity_id=str(entry.id), temp_id=op.temp_id, server_data=self._serialize(entry))
 
     async def _cycle_update(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
         from app.modules.cycle.models import CycleEntry
@@ -218,7 +218,7 @@ class SyncService:
         if client_ts:
             row.client_updated_at = client_ts
         await self.db.flush()
-        return SyncResultItem(index=index, status="updated", entity_id=str(entity_id), temp_id=op.temp_id)
+        return SyncResultItem(index=index, status="updated", entity_id=str(entity_id), temp_id=op.temp_id, server_data=self._serialize(row))
 
     async def _cycle_delete(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
         from app.modules.cycle.models import CycleEntry
@@ -255,6 +255,7 @@ class SyncService:
         )
         return SyncResultItem(
             index=index, status="created", entity_id=str(entry.id), temp_id=op.temp_id,
+            server_data=self._serialize(entry),
         )
 
     async def _cycle_snooze(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
@@ -277,6 +278,7 @@ class SyncService:
         )
         return SyncResultItem(
             index=index, status="created", entity_id=str(snooze.id), temp_id=op.temp_id,
+            server_data=self._serialize(snooze),
         )
 
     # ------------------------------------------------------------------

@@ -9,8 +9,8 @@ import { scheduleEndDateNotification } from 'src/services/endDateNotifications';
 import { calculateCyclePhases, applyPhaseToDays } from 'src/utils';
 import { generateId } from 'src/utils';
 import { placeholderCycleEntries, placeholderCyclePredictions, placeholderCycleCalendar } from 'src/services/localDb/syncPlaceholders';
-import { upsertCycleEntry } from 'src/services/localDb/writeThroughHelpers';
 
+import { upsertCycleEntry, upsertSnoozeEvent } from 'src/services/localDb/writeThroughHelpers';
 export const cycleKeys = {
   all: ['cycle'] as const,
   entries: ['cycle', 'entries'] as const,
@@ -297,6 +297,7 @@ export function useLogSnooze() {
     onSuccess: (result) => {
       if (result && result.id) {
         upsertCycleEntry(result);
+        upsertSnoozeEvent(result);
       }
       qc.invalidateQueries({ queryKey: cycleKeys.calendar });
     },

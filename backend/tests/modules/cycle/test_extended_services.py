@@ -156,8 +156,9 @@ async def test_get_calendar_with_entries_and_predictions(svc: CycleService, user
 @pytest.mark.asyncio
 async def test_get_calendar_no_predictions(svc: CycleService, user: User) -> None:
     cal = await svc.get_calendar(user.id, months_back=1, months_forward=1)
-    assert cal["predictions"] is None
-    assert cal["next_period_in_days"] is None
+    assert cal["predictions"] is not None
+    assert cal["predictions"]["model_type"] == "fallback"
+    assert cal["next_period_in_days"] >= 0
 
 
 @pytest.mark.asyncio

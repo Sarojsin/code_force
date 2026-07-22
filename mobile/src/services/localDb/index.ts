@@ -8,6 +8,7 @@ import { PregnancyMilestoneLocalService } from './PregnancyMilestoneLocalService
 import { FamilyLinkLocalService } from './FamilyLinkLocalService';
 import { HealthInsightLocalService } from './HealthInsightLocalService';
 import { FeatureFlagLocalService } from './FeatureFlagLocalService';
+import { SnoozeLocalService } from './SnoozeLocalService';
 
 export const localDb = {
   cycle: new CycleLocalService(),
@@ -20,6 +21,7 @@ export const localDb = {
   familyLink: new FamilyLinkLocalService(),
   healthInsight: new HealthInsightLocalService(),
   featureFlag: new FeatureFlagLocalService(),
+  snoozeEvent: new SnoozeLocalService(),
 } as const;
 
 export type LocalDb = typeof localDb;
