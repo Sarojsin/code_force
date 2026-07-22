@@ -44,6 +44,8 @@ class CycleEntryResponse(BaseModel):
     mood_tags: list[str]
     energy_level: int | None
     notes: str | None
+    is_correction: bool
+    corrected_prediction_id: uuid.UUID | None
     created_at: datetime
 
 

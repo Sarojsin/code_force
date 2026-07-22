@@ -408,6 +408,7 @@ async def test_route_scenario1_confirm_on_predicted_date(
     assert resp.status_code == 201
     body = resp.json()
     assert body["period_end_date"] == "2026-06-19"
+    assert body["corrected_prediction_id"] is not None
 
     calendar = await app_client.get("/api/v1/cycle/calendar")
     assert calendar.status_code == 200
@@ -430,7 +431,9 @@ async def test_route_scenario2a_manual_log_within_window(
         "period_start_date": "2026-06-15",
     })
     assert resp.status_code == 201
-    assert resp.json()["period_end_date"] == "2026-06-19"
+    body = resp.json()
+    assert body["period_end_date"] == "2026-06-19"
+    assert body["corrected_prediction_id"] is not None
 
 
 @freeze_time("2026-06-22")
@@ -463,7 +466,17 @@ async def test_route_scenario2c_forgot_ended_past_average(
         "period_end_date": "2026-06-21",
     })
     assert resp.status_code == 201
-    assert resp.json()["period_end_date"] == "2026-06-21"
+    body = resp.json()
+    assert body["period_end_date"] == "2026-06-21"
+    assert body["corrected_prediction_id"] is not None
+
+    calendar = await app_client.get("/api/v1/cycle/calendar")
+    assert calendar.status_code == 200
+    cal = calendar.json()
+    for d in ("2026-06-15", "2026-06-16", "2026-06-18", "2026-06-19", "2026-06-20", "2026-06-21"):
+        assert cal["days"].get(d) == "P", f"{d} should be dark pink"
+    # today is "T"
+    assert cal["days"].get("2026-06-25") == "T"
 
 
 @freeze_time("2026-06-15")
@@ -480,7 +493,9 @@ async def test_route_scenario4_early_period(
         "period_start_date": "2026-06-15",
     })
     assert resp.status_code == 201
-    assert resp.json()["period_end_date"] == "2026-06-19"
+    body = resp.json()
+    assert body["period_end_date"] == "2026-06-19"
+    assert body["corrected_prediction_id"] is not None
 
     calendar = await app_client.get("/api/v1/cycle/calendar")
     assert calendar.status_code == 200
@@ -489,6 +504,9 @@ async def test_route_scenario4_early_period(
         assert cal["days"].get(d) == "P", f"{d} should be dark pink"
     # today is "T"
     assert cal["days"].get("2026-06-15") == "T"
+    # cancelled prediction period shows as "c"
+    for d in ("2026-06-20", "2026-06-21", "2026-06-22"):
+        assert cal["days"].get(d) == "c", f"{d} should be cancelled grey"
 
 
 @freeze_time("2026-06-25")
@@ -506,6 +524,12 @@ async def test_route_scenario5_forgot_last_month(
     body = resp.json()
     assert body["period_start_date"] == "2026-05-10"
     assert body["period_end_date"] == "2026-05-14"
+
+    calendar = await app_client.get("/api/v1/cycle/calendar")
+    assert calendar.status_code == 200
+    cal = calendar.json()
+    for d in ("2026-05-10", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14"):
+        assert cal["days"].get(d) == "P", f"{d} should be dark pink"
 
 
 @freeze_time("2026-06-22")

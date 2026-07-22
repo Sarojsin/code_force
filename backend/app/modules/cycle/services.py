@@ -116,6 +116,7 @@ class CycleService:
         await self.db.refresh(entry)
         await self._try_auto_link_prediction(user_id, entry)
         await self._auto_close_open_entry(user_id, data.period_start_date)
+        await self.db.commit()
         return entry
 
     async def _try_auto_link_prediction(self, user_id: uuid.UUID, entry: CycleEntry) -> None:
