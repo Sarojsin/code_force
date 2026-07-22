@@ -67,6 +67,45 @@ describe('enqueue', () => {
   });
 });
 
+// ─── Idempotency / De-duplication (Scenario 3c) ────────────────
+
+describe('idempotency dedup', () => {
+  it('stores idempotencyKey on enqueued operations', async () => {
+    const { result } = renderHook(() => useOfflineStore());
+    await act(async () => {
+      await result.current.enqueue({
+        type: 'cycle/correction', data: { period_start_date: '2026-06-14' }, tempId: 't1',
+        idempotencyKey: 'idem-cycle-correction-001',
+        clientUpdatedAt: new Date().toISOString(), priority: 'normal',
+      });
+    });
+    expect(result.current.operations[0].idempotencyKey).toBe('idem-cycle-correction-001');
+  });
+
+  it('removeCascading removes all operations sharing tempId', async () => {
+    const { result } = renderHook(() => useOfflineStore());
+    await act(async () => {
+      await result.current.enqueue({ type: 'cycle/create', data: {}, tempId: 'cycle-1', idempotencyKey: 'ik1', clientUpdatedAt: new Date().toISOString(), priority: 'normal' });
+      await result.current.enqueue({ type: 'cycle/correction', data: {}, tempId: 'cycle-1', idempotencyKey: 'ik2', clientUpdatedAt: new Date().toISOString(), priority: 'normal' });
+      await result.current.enqueue({ type: 'mood/create', data: {}, tempId: 'other', idempotencyKey: 'ik3', clientUpdatedAt: new Date().toISOString(), priority: 'normal' });
+      await result.current.removeCascading('cycle-1');
+    });
+    expect(result.current.size()).toBe(1);
+    expect(result.current.operations[0].tempId).toBe('other');
+  });
+
+  it('remove cascading only affects matching tempId', async () => {
+    const { result } = renderHook(() => useOfflineStore());
+    await act(async () => {
+      await result.current.enqueue({ type: 'cycle/create', data: {}, tempId: 'a', idempotencyKey: 'ik1', clientUpdatedAt: new Date().toISOString(), priority: 'normal' });
+      await result.current.enqueue({ type: 'cycle/create', data: {}, tempId: 'b', idempotencyKey: 'ik2', clientUpdatedAt: new Date().toISOString(), priority: 'normal' });
+      await result.current.removeCascading('a');
+    });
+    expect(result.current.size()).toBe(1);
+    expect(result.current.operations[0].tempId).toBe('b');
+  });
+});
+
 describe('remove', () => {
   it('removes operation by id', async () => {
     const { result } = renderHook(() => useOfflineStore());

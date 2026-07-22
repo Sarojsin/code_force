@@ -708,7 +708,18 @@ class CycleService:
     # ---- Analytics ----
 
     async def compute_initial_prediction(self, user_id: uuid.UUID) -> PredictedCycle | None:
-        # Check anovulatory state before any fallback
+        # Check anovulatory state before any fallback — use a broader query
+        # that catches entries without period_end_date (e.g. corrections).
+        broader = (
+            select(CycleEntry)
+            .where(CycleEntry.user_id == user_id)
+            .where(CycleEntry.is_active.is_(True))
+            .order_by(CycleEntry.period_start_date.desc())
+            .limit(1)
+        )
+        latest = (await self.db.execute(broader)).scalar_one_or_none()
+        if latest and latest.cycle_type == "anovulatory":
+            return None
         recent = await self._get_recent_entries(user_id, limit=1)
         if recent and recent[0].cycle_type == "anovulatory":
             return None

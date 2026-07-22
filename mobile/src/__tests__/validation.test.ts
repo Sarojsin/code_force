@@ -431,3 +431,111 @@ describe('correctionSchema', () => {
     expect(result.success).toBe(false);
   });
 });
+
+// ─── cycle: Scenario 2C — Forgot both dates (backfill) ────────────
+
+describe('Scenario 2C: forgot both dates', () => {
+  it('accepts period log with both start and end dates for past period', () => {
+    const result = logPeriodSchema.safeParse({
+      startDate: '2026-05-10',
+      endDate: '2026-05-14',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts endDate matching startDate (1-day period)', () => {
+    const result = logPeriodSchema.safeParse({ startDate: '2026-06-01', endDate: '2026-06-01' });
+    expect(result.success).toBe(true);
+  });
+
+  it('endDate is optional in schema (backend enforces State C)', () => {
+    const result = logPeriodSchema.safeParse({ startDate: '2026-05-10' });
+    expect(result.success).toBe(true);
+  });
+});
+
+// ─── cycle: Scenario 2B — Override end date ──────────────────────
+
+describe('Scenario 2B: override end date', () => {
+  it('correction schema accepts explicit periodEndDate', () => {
+    const result = correctionSchema.safeParse({
+      periodStartDate: '2026-06-15',
+      periodEndDate: '2026-06-21',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('logPeriod schema accepts endDate longer than default', () => {
+    const result = logPeriodSchema.safeParse({
+      startDate: '2026-07-10',
+      endDate: '2026-07-16',
+      symptoms: ['cramps'],
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+// ─── cycle: Scenario 1 — Confirm on predicted date ──────────────
+
+describe('Scenario 1: confirm on predicted date', () => {
+  it('correction schema accepts startDate matching predicted date', () => {
+    const result = correctionSchema.safeParse({
+      periodStartDate: '2026-06-15',
+      correctedPredictionId: 'pred-123',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('correction schema accepts all fields for a full confirmation', () => {
+    const result = correctionSchema.safeParse({
+      periodStartDate: '2026-06-15',
+      periodEndDate: '2026-06-19',
+      symptoms: ['cramps', 'bloating'],
+      correctedPredictionId: 'pred-123',
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+// ─── cycle: Anovulatory cycle type ──────────────────────────────
+
+describe('anovulatory cycle type', () => {
+  it('logPeriod schema accepts cycle_type field', () => {
+    const result = logPeriodSchema.safeParse({
+      startDate: '2026-06-01',
+      endDate: '2026-06-05',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('correction schema accepts cycle_type for anovulatory correction', () => {
+    const result = correctionSchema.safeParse({
+      periodStartDate: '2026-06-14',
+      periodEndDate: '2026-06-18',
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+// ─── cycle: 3-state buffer schema-level ─────────────────────────
+
+describe('3-state buffer schema', () => {
+  it('State A: future start date is accepted without end date', () => {
+    const future = new Date();
+    future.setFullYear(future.getFullYear() + 1);
+    const result = logPeriodSchema.safeParse({
+      startDate: future.toISOString().split('T')[0],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('State B: start date within window is accepted without end date', () => {
+    const result = logPeriodSchema.safeParse({ startDate: '2026-07-22' });
+    expect(result.success).toBe(true);
+  });
+
+  it('State C: past start date is accepted without end date in schema (backend enforces)', () => {
+    const result = logPeriodSchema.safeParse({ startDate: '2026-05-01' });
+    expect(result.success).toBe(true);
+  });
+});

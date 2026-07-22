@@ -317,6 +317,8 @@ class SyncService:
             val = getattr(row, col.name)
             if isinstance(val, datetime):
                 val = val.isoformat()
+            elif isinstance(val, date):
+                val = val.isoformat()
             elif isinstance(val, uuid.UUID):
                 val = str(val)
             data[col.name] = val

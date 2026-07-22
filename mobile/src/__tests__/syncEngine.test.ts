@@ -41,6 +41,11 @@ import { syncAll, setQueryClient, pushOperations, pullServerData } from 'src/ser
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { useAuthStore } from 'src/stores/authStore';
 
+// Helpers for tests that need queryCache
+function makeQueryClient() {
+  return { invalidateQueries: jest.fn(), setQueryData: jest.fn() };
+}
+
 const mockApi = jest.requireMock('src/services/api/client').api;
 const mockLogger = jest.requireMock('src/utils').logger;
 const mockSentry = jest.requireMock('@sentry/react-native');
@@ -166,5 +171,76 @@ describe('syncAll', () => {
     await syncAll();
     expect(mockLogger.error).toHaveBeenCalledWith('sync.push_failed', expect.any(Object));
     expect(mockLogger.info).toHaveBeenCalledWith('sync.cycle.completed', expect.any(Object));
+  });
+
+  // ─── 409 Conflict resolution ─────────────────────────────────
+  describe('409 conflict resolution', () => {
+    it('push with conflict status removes the op and hydrates server_data', async () => {
+      const qc = makeQueryClient();
+      setQueryClient(qc as any);
+      mockApi.post.mockResolvedValue({
+        data: {
+          results: [{
+            status: 'conflict',
+            entity_id: 'entry-1',
+            server_data: { id: 'entry-1', period_start_date: '2026-06-14', period_end_date: '2026-06-18', _conflict_resolved: true },
+          }],
+        },
+      });
+
+      const { result } = renderHook(() => useOfflineStore());
+      await act(async () => {
+        await result.current.enqueue({
+          type: 'cycle/correction', data: { period_start_date: '2026-06-14' }, tempId: 'tmp-1',
+          idempotencyKey: 'ik-conflict', clientUpdatedAt: new Date().toISOString(), priority: 'normal',
+        });
+      });
+      expect(result.current.size()).toBe(1);
+
+      await pushOperations(result.current.operations);
+
+      // Operation removed after successful conflict resolution
+      expect(result.current.size()).toBe(0);
+    });
+
+    it('push 401 non-retryable discards the operation', async () => {
+      mockApi.post.mockResolvedValue({
+        data: {
+          results: [{
+            status: 'failed',
+            error: '401 UNAUTHORIZED',
+          }],
+        },
+      });
+
+      const { result } = renderHook(() => useOfflineStore());
+      await act(async () => {
+        await result.current.enqueue({
+          type: 'cycle/create', data: {}, tempId: 'tmp-auth',
+          idempotencyKey: 'ik-auth', clientUpdatedAt: new Date().toISOString(), priority: 'normal',
+        });
+      });
+      expect(result.current.size()).toBe(1);
+
+      await pushOperations(result.current.operations);
+      expect(result.current.size()).toBe(0);
+    });
+  });
+
+  // ─── Idempotency key in push payload ──────────────────────────
+  describe('idempotency key forwarding', () => {
+    it('sends idempotency_key in push payload', async () => {
+      const { result } = renderHook(() => useOfflineStore());
+      await act(async () => {
+        await result.current.enqueue({
+          type: 'cycle/correction', data: { period_start_date: '2026-06-14' }, tempId: 'tmp-idem',
+          idempotencyKey: 'idem-001', clientUpdatedAt: new Date().toISOString(), priority: 'normal',
+        });
+      });
+
+      await pushOperations(result.current.operations);
+      const callPayload = mockApi.post.mock.calls[0][1];
+      expect(callPayload.operations[0].idempotency_key).toBe('idem-001');
+    });
   });
 });
