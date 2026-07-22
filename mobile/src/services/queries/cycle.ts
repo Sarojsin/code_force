@@ -38,6 +38,9 @@ export function useCreateCycleEntry() {
     onSuccess: (result) => {
       upsertCycleEntry(result as unknown as Record<string, unknown>);
       qc.invalidateQueries({ queryKey: cycleKeys.entries });
+      qc.invalidateQueries({ queryKey: cycleKeys.calendar });
+      qc.invalidateQueries({ queryKey: cycleKeys.predictions });
+      qc.invalidateQueries({ queryKey: cycleKeys.analytics });
     },
     onError: (error, data) => {
       if (isNetworkError(error)) {
@@ -58,7 +61,14 @@ export function useCreateCycleEntry() {
           return old;
         });
       } else {
-        Toast.show({ type: 'error', text1: error instanceof Error ? error.message : 'Failed to save' });
+        const errPayload = (error as any)?.response?.data;
+        const details = errPayload?.error?.details;
+        const code = errPayload?.error?.code;
+        if (code === 'PERIOD_END_DATE_REQUIRED' || (details && details.length > 0)) {
+          Toast.show({ type: 'error', text1: details || code || 'Failed to save' });
+        } else {
+          Toast.show({ type: 'error', text1: error instanceof Error ? error.message : 'Failed to save' });
+        }
       }
     },
   });
@@ -140,6 +150,7 @@ export function useLogCorrection() {
       period_end_date?: string;
       symptoms?: string[];
       corrected_prediction_id?: string | null;
+      cycle_type?: string;
     }) => cycleService.logCorrection(
       data,
       generateId(),

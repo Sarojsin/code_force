@@ -73,6 +73,7 @@ export const cycleEntries = sqliteTable('cycle_entries', {
   mood_tags: jsonCol<string[]>('mood_tags').default(sql`'[]'`),
   energy_level: integer('energy_level'),
   notes: text('notes'),
+  cycle_type: text('cycle_type').notNull().default('menstrual'),
   is_correction: booleanCol('is_correction').default(false),
   corrected_prediction_id: text('corrected_prediction_id'),
   created_at: isoDatetime('created_at'),

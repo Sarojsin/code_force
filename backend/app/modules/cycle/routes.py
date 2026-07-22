@@ -232,6 +232,7 @@ async def create_correction(
             symptoms=payload.symptoms,
             corrected_prediction_id=corrected_id,
             client_updated_at=x_client_updated_at,
+            cycle_type=payload.cycle_type,
         )
     except CycleConflictError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.details) from e

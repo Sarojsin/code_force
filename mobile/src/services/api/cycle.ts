@@ -10,6 +10,9 @@ export interface CycleEntry {
   mood_tags?: string[];
   energy_level?: number | null;
   notes?: string | null;
+  cycle_type?: string;
+  is_correction?: boolean;
+  corrected_prediction_id?: string | null;
   created_at: string;
 }
 
@@ -134,6 +137,7 @@ export const cycleService = {
       period_end_date?: string;
       symptoms?: string[];
       corrected_prediction_id?: string | null;
+      cycle_type?: string;
     },
     idempotencyKey?: string,
     clientUpdatedAt?: string,

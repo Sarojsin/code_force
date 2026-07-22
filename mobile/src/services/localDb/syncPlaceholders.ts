@@ -173,6 +173,15 @@ export function placeholderCyclePredictions(): any | undefined {
     [userId],
   );
   if (!latest) return undefined;
+  // If the most recent entry is anovulatory, suspend predictions offline too
+  if (latest.cycle_type === 'anovulatory') {
+    return {
+      prediction: null,
+      days_until: null,
+      model_used: 'local',
+      data_quality: 'insufficient',
+    };
+  }
   const predictedStart = latest.period_end_date
     ? new Date(new Date(latest.period_end_date).getTime() + 28 * 86400000)
     : null;

@@ -20,6 +20,7 @@ class CycleEntryCreate(BaseModel):
     mood_tags: list[str] = Field(default_factory=list)
     energy_level: int | None = Field(None, ge=1, le=5)
     notes: str | None = None
+    cycle_type: str = "menstrual"
 
 
 class CycleEntryUpdate(BaseModel):
@@ -30,6 +31,7 @@ class CycleEntryUpdate(BaseModel):
     mood_tags: list[str] | None = None
     energy_level: int | None = Field(None, ge=1, le=5)
     notes: str | None = None
+    cycle_type: str | None = None
 
 
 class CycleEntryResponse(BaseModel):
@@ -46,6 +48,7 @@ class CycleEntryResponse(BaseModel):
     notes: str | None
     is_correction: bool
     corrected_prediction_id: uuid.UUID | None
+    cycle_type: str
     created_at: datetime
 
 
@@ -66,6 +69,7 @@ class CorrectionCreate(BaseModel):
     symptoms: list[str] = Field(default_factory=list)
     corrected_prediction_id: str | None = None
     client_updated_at: str | None = None
+    cycle_type: str = "menstrual"
 
 
 class CorrectionResponse(BaseModel):
@@ -77,6 +81,7 @@ class CorrectionResponse(BaseModel):
     symptoms: list[str]
     is_correction: bool
     corrected_prediction_id: uuid.UUID | None
+    cycle_type: str
     created_at: datetime
     avg_period_length: int = 5
 

@@ -38,6 +38,8 @@ class CycleEntry(Base):
     energy_level: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     notes: Mapped[str | None] = mapped_column(String, nullable=True)  # encrypted
 
+    cycle_type: Mapped[str] = mapped_column(String(20), default="menstrual", nullable=False)
+
     # Phase 1: correction linking
     corrected_prediction_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("predicted_cycles.id", ondelete="SET NULL"), nullable=True, index=True

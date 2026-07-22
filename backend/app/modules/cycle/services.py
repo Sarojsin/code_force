@@ -90,6 +90,7 @@ class CycleService:
             mood_tags=data.mood_tags,
             energy_level=data.energy_level,
             notes=data.notes,
+            cycle_type=data.cycle_type,
         )
         self.db.add(entry)
         try:
@@ -115,6 +116,8 @@ class CycleService:
             return existing
         await self.db.refresh(entry)
         await self._try_auto_link_prediction(user_id, entry)
+        if entry.cycle_type == "anovulatory":
+            await self._suspend_predictions(user_id)
         await self._auto_close_open_entry(user_id, data.period_start_date)
         await self.db.commit()
         return entry
@@ -139,6 +142,18 @@ class CycleService:
                 await self.db.flush()
                 await self._update_user_ml_metrics(user_id, diff)
                 break
+
+    async def _suspend_predictions(self, user_id: uuid.UUID) -> None:
+        """Deactivate all active predictions — used when the last entry is anovulatory."""
+        stmt = (
+            select(PredictedCycle)
+            .where(PredictedCycle.user_id == user_id)
+            .where(PredictedCycle.is_active.is_(True))
+        )
+        preds = (await self.db.execute(stmt)).scalars().all()
+        for p in preds:
+            p.is_active = False
+        await self.db.flush()
 
     async def _get_entry_by_user_and_date(self, user_id: uuid.UUID, period_start: date) -> CycleEntry:
         stmt = (
@@ -203,6 +218,13 @@ class CycleService:
 
         if len(entries) < 1:
             raise InsufficientDataError("Need at least 1 cycle entry")
+
+        # If the most recent entry is anovulatory (postpartum/medical),
+        # suspend predictions until a real period is logged.
+        if entries[0].cycle_type == "anovulatory":
+            raise InsufficientDataError(
+                "Last logged period is anovulatory — predictions suspended until a menstrual entry is logged."
+            )
 
         from app.modules.auth.models import User
         user_obj = (
@@ -407,6 +429,11 @@ class CycleService:
     # ---- Get predictions ----
 
     async def get_predictions(self, user_id: uuid.UUID) -> PredictedCycle | None:
+        # If the most recent entry is anovulatory, suspend predictions
+        entries = await self._get_recent_entries(user_id, limit=1)
+        if entries and entries[0].cycle_type == "anovulatory":
+            return None
+
         stmt = (
             select(PredictedCycle)
             .where(PredictedCycle.user_id == user_id)
@@ -414,14 +441,12 @@ class CycleService:
             .order_by(PredictedCycle.predicted_next_period_start.asc())
         )
         latest = (await self.db.execute(stmt)).scalar_one_or_none()
-        if latest is None:
-            entries = await self._get_recent_entries(user_id, limit=1)
-            if entries:
-                try:
-                    await self.compute_predictions(user_id)
-                    latest = (await self.db.execute(stmt)).scalar_one_or_none()
-                except InsufficientDataError:
-                    pass
+        if latest is None and entries:
+            try:
+                await self.compute_predictions(user_id)
+                latest = (await self.db.execute(stmt)).scalar_one_or_none()
+            except InsufficientDataError:
+                pass
         return latest
 
     async def get_prediction_history(
@@ -658,6 +683,10 @@ class CycleService:
     # ---- Analytics ----
 
     async def compute_initial_prediction(self, user_id: uuid.UUID) -> PredictedCycle | None:
+        # Check anovulatory state before any fallback
+        recent = await self._get_recent_entries(user_id, limit=1)
+        if recent and recent[0].cycle_type == "anovulatory":
+            return None
         try:
             return await self.compute_predictions(user_id)
         except InsufficientDataError:
@@ -708,6 +737,7 @@ class CycleService:
         symptoms: list[str] | None = None,
         corrected_prediction_id: uuid.UUID | None = None,
         client_updated_at: str | None = None,
+        cycle_type: str = "menstrual",
     ) -> CycleEntry:
         if client_updated_at:
             latest_stmt = (
@@ -736,6 +766,7 @@ class CycleService:
             symptoms=symptoms or [],
             is_correction=corrected_prediction_id is not None,
             corrected_prediction_id=corrected_prediction_id,
+            cycle_type=cycle_type,
         )
         self.db.add(entry)
         await self.db.flush()
@@ -752,6 +783,9 @@ class CycleService:
                 prediction.checkin_sent = True
             await self.db.flush()
             await self._update_user_ml_metrics(user_id, error)
+
+        if entry.cycle_type == "anovulatory":
+            await self._suspend_predictions(user_id)
 
         await self.db.commit()
         await self.db.refresh(entry)

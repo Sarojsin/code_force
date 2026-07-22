@@ -10,10 +10,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Toast from 'react-native-toast-message';
 
-import { Button, Calendar, Card, DatePickerField, BottomSheet, EndDatePromptCard, MarkEndDateModal, StickyCard, Text, Skeleton } from 'src/components/ui';
+import { BackfillCard, Button, Calendar, Card, DatePickerField, BottomSheet, EndDatePromptCard, MarkEndDateModal, StickyCard, Text, Skeleton } from 'src/components/ui';
 import { PredictionDetailCard } from 'src/components/ui/PredictionDetailCard';
 import { useTheme, shadow } from 'src/theme';
-import { useCycleCalendar, useLogCorrection, useLogSnooze, useUpdateCycleEntry } from 'src/services/queries';
+import { useCycleCalendar, useCycleEntries, useCreateCycleEntry, useLogCorrection, useLogSnooze, useUpdateCycleEntry } from 'src/services/queries';
 import { useEndDateStore } from 'src/stores/endDateStore';
 import { cancelEndDateNotification } from 'src/services/endDateNotifications';
 import { globalModelClient } from 'src/services/ml/globalModel';
@@ -53,11 +53,89 @@ export function CycleDashboardScreen() {
   const logSnooze = useLogSnooze();
   const updateEntry = useUpdateCycleEntry();
   const { isConnected } = useNetworkStatus();
+  const { data: entries } = useCycleEntries({ limit: 1 });
+  const createEntry = useCreateCycleEntry();
 
   const [snoozeState, setSnoozeState] = useState<SnoozeState | null>(null);
   const [showOverride, setShowOverride] = useState(false);
   const [showEndDateModal, setShowEndDateModal] = useState(false);
+  const [backfillDone, setBackfillDone] = useState<string[]>([]);
+  const [backfillSkipped, setBackfillSkipped] = useState<string[]>([]);
+  const [backfillBusy, setBackfillBusy] = useState<string | null>(null);
   const route = useRoute<any>();
+
+  // ---- Backfill detection ----
+  const backfillCards = (() => {
+    const lastEntry = entries?.[0];
+    if (!lastEntry) return [];
+    if (lastEntry.cycle_type === 'anovulatory') return [];
+    const lastStart = new Date(lastEntry.period_start_date + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysSince = Math.round((today.getTime() - lastStart.getTime()) / 86400000);
+    if (daysSince < 56) return []; // < 2 missed cycles → no cards
+
+    const avgCycle = 28;
+    const missedCycles = Math.min(3, Math.floor(daysSince / avgCycle) - 1);
+    if (missedCycles <= 0) return [];
+
+    const cards: Array<{ monthLabel: string; expectedStart: string; expectedEnd: string }> = [];
+    for (let i = 0; i < missedCycles; i++) {
+      const cycleStart = new Date(lastStart.getTime() + (missedCycles - i) * avgCycle * 86400000);
+      const cycleEnd = new Date(cycleStart.getTime() + 4 * 86400000);
+      const monthLabel = cycleStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      cards.push({
+        monthLabel,
+        expectedStart: cycleStart.toISOString().split('T')[0],
+        expectedEnd: cycleEnd.toISOString().split('T')[0],
+      });
+    }
+    return cards;
+  })();
+
+  const handleBackfillFill = useCallback(
+    (expectedStart: string, expectedEnd: string, monthLabel: string) => {
+      setBackfillBusy(monthLabel);
+      createEntry.mutate(
+        {
+          period_start_date: expectedStart,
+          period_end_date: expectedEnd,
+          cycle_type: 'menstrual',
+        },
+        {
+          onSuccess: () => {
+            setBackfillDone((prev) => [...prev, monthLabel]);
+            setBackfillBusy(null);
+          },
+          onError: () => setBackfillBusy(null),
+        },
+      );
+    },
+    [createEntry],
+  );
+
+  const handleBackfillSkip = useCallback(
+    (expectedStart: string, expectedEnd: string, monthLabel: string) => {
+      setBackfillBusy(monthLabel);
+      createEntry.mutate(
+        {
+          period_start_date: expectedStart,
+          period_end_date: expectedEnd,
+          cycle_type: 'anovulatory',
+        },
+        {
+          onSuccess: () => {
+            setBackfillSkipped((prev) => [...prev, monthLabel]);
+            setBackfillBusy(null);
+          },
+          onError: () => setBackfillBusy(null),
+        },
+      );
+    },
+    [createEntry],
+  );
+
+  const doneOrSkipped = (ml: string) => backfillDone.includes(ml) || backfillSkipped.includes(ml);
   const endDateStore = useEndDateStore();
 
   useEffect(() => {
@@ -209,8 +287,48 @@ export function CycleDashboardScreen() {
           Your Cycle
         </Text>
 
+        {backfillCards.map((card, idx) => {
+          const filled = doneOrSkipped(card.monthLabel);
+          const previousDone = idx === 0 || doneOrSkipped(backfillCards[idx - 1].monthLabel);
+          return (
+            <BackfillCard
+              key={card.monthLabel}
+              monthLabel={card.monthLabel}
+              cardNumber={idx + 1}
+              disabled={!previousDone && !filled}
+              isSkipped={backfillSkipped.includes(card.monthLabel)}
+              onFill={(s, e) => handleBackfillFill(s, e, card.monthLabel)}
+              onSkip={() => handleBackfillSkip(card.expectedStart, card.expectedEnd, card.monthLabel)}
+              loading={backfillBusy === card.monthLabel}
+            />
+          );
+        })}
+
         {prediction && nextPeriodDate && (
           <PredictionDetailCard prediction={prediction} />
+        )}
+
+        {!prediction && (
+          <Card
+            style={[
+              styles.statCard,
+              shadow.lg,
+              {
+                backgroundColor: theme.colors.surface,
+                borderRadius: theme.radius.xl,
+                marginHorizontal: theme.spacing.lg,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <Text variant="h2" align="center" color="textSecondary">
+              No active prediction
+            </Text>
+            <Text variant="body" align="center" style={{ marginTop: 8, opacity: 0.7 }}>
+              We'll start predicting again when you log your next period.
+            </Text>
+          </Card>
         )}
 
         {prediction && (
