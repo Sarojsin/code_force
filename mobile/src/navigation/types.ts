@@ -50,6 +50,7 @@ export type ProfileStackParamList = {
   ChangePassword: undefined;
   Settings: undefined;
   LinkedFamily: undefined;
+  CompanionInstall: undefined;
 };
 
 export type ChatStackParamList = {
@@ -66,6 +67,7 @@ export type HomeStackParamList = {
   JournalList: undefined;
   JournalEntry: { id: string };
   WellnessHub: undefined;
+  HealthHub: undefined;
   MoodHistory: undefined;
   BreathingList: undefined;
   Insights: undefined;

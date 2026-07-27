@@ -216,6 +216,10 @@ class SyncService:
         if not row:
             return SyncResultItem(index=index, status="failed", entity_id=str(entity_id), temp_id=op.temp_id, error="Not found")
         client_ts = self._clamp_client_ts(op.client_updated_at)
+        if "period_start_date" in op.data:
+            parsed = self._parse_date(op.data["period_start_date"])
+            if parsed:
+                row.period_start_date = parsed
         for field in ("period_end_date", "flow_intensity", "symptoms", "mood_tags", "energy_level", "notes"):
             if field in op.data:
                 setattr(row, field, op.data[field])
@@ -250,6 +254,7 @@ class SyncService:
         corrected_id = op.data.get("corrected_prediction_id")
         parsed_id = uuid.UUID(corrected_id) if corrected_id else None
 
+        client_ts_str = op.client_updated_at.isoformat() if op.client_updated_at else None
         svc = CycleService(self.db)
         entry = await svc.log_correction(
             user_id=user_id,
@@ -257,6 +262,7 @@ class SyncService:
             period_end_date=self._parse_date(op.data.get("period_end_date")),
             symptoms=op.data.get("symptoms"),
             corrected_prediction_id=parsed_id,
+            client_updated_at=client_ts_str,
         )
         return SyncResultItem(
             index=index, status="created", entity_id=str(entry.id), temp_id=op.temp_id,

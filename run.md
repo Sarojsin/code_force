@@ -224,3 +224,5 @@ or poetry run python run.py or directly python run.py
   or npx react-native run-android 
 
 my log file location #C:/User/U S E R/AppData/Roaming/Code/User/workspaceStorage/c95bbe9dc516bdbe7656911793b956b8/redhat.java/jdt_ws/.metadata/.log
+
+🔁 Command ComparisonActionExpo (npx expo)React Native CLI (npx react-native)Initial Build & Install over USBnpx expo run:androidnpx react-native run-androidDaily Dev Server Startnpx expo startnpx react-native start (or npm start)Local Backend Port Forwardingadb reverse tcp:8000 tcp:8000adb reverse tcp:8000 tcp:8000

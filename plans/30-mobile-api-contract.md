@@ -510,7 +510,34 @@ On `304 Not Modified` → use cached data.
 
 ---
 
-## 10. Security Notes
+## 10. Health Tips
+
+### `GET /api/v1/wellness/health-tips`
+
+**Query params:**
+- `metric_type` (optional): `sleep` | `water` | `food` | `exercise` | `medication`
+- `limit` (optional, default 3, max 10)
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "metric_type": "sleep",
+      "tip": "Consistent sleep schedule improves your cycle regularity.",
+      "priority": 1
+    }
+  ],
+  "total": 1
+}
+```
+
+**Errors:** None — returns empty `data: []` when no tips match.
+
+---
+
+## 11. Security Notes
 
 - Access tokens expire in 60 min (configurable via `JWT__ACCESS_TOKEN_EXPIRE_MINUTES`)
 - Refresh tokens expire in 14 days (configurable via `JWT__REFRESH_TOKEN_EXPIRE_DAYS`)

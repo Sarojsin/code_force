@@ -130,6 +130,20 @@ class JournalAnalysisResponse(BaseModel):
     created_at: datetime
 
 
+class HealthTipResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    metric_type: str
+    tip: str
+    priority: int
+
+
+class HealthTipListResponse(BaseModel):
+    data: list[HealthTipResponse]
+    total: int
+
+
 class ModelVersionResponse(BaseModel):
     version: str
     size_mb: int

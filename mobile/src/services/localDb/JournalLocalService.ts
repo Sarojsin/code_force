@@ -3,10 +3,20 @@ import { journalEntries } from '../../db/schema';
 import type { JournalEntry } from '../../db/schema';
 import { eq, desc, and, inArray, sql } from 'drizzle-orm';
 import { BaseLocalService } from './BaseLocalService';
+import { eventBus } from '../eventBus';
 
 export class JournalLocalService extends BaseLocalService<JournalEntry> {
   protected table = journalEntries;
   protected tableName = 'journal_entries';
+
+  async upsert(record: JournalEntry): Promise<void> {
+    await super.upsert(record);
+    eventBus.emit('journal_saved', {
+      userId: record.user_id,
+      journalId: record.id,
+      sentiment: (record as any).sentiment_label,
+    });
+  }
 
   async getRecent(userId: string, limit: number = 20): Promise<JournalEntry[]> {
     try {

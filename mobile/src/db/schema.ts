@@ -416,3 +416,44 @@ export const syncLog = sqliteTable('sync_log', {
 
 export type SyncLog = typeof syncLog.$inferSelect;
 export type NewSyncLog = typeof syncLog.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// 20. Companion Metadata (Luna the cat — purely local, no sync)
+// ---------------------------------------------------------------------------
+export const companionMetadata = sqliteTable('companion_metadata', {
+  user_id: text('user_id').primaryKey(),
+  xp: integer('xp').notNull().default(0),
+  coins: integer('coins').notNull().default(0),
+  level: integer('level').notNull().default(1),
+  current_outfit_id: text('current_outfit_id'),
+  owned_outfits: jsonCol<string[]>('owned_outfits').notNull().default(sql`'[]'`),
+  memory: jsonCol<Record<string, unknown>>('memory').notNull().default(sql`'{}'`),
+  is_hidden: booleanCol('is_hidden').notNull().default(false),
+  reduce_animations: booleanCol('reduce_animations').notNull().default(false),
+  mute_sounds: booleanCol('mute_sounds').notNull().default(false),
+  assets_version: text('assets_version'),
+  install_status: text('install_status', { enum: ['none', 'downloading', 'extracting', 'ready', 'error'] }).notNull().default('none'),
+  last_active_at: isoDatetimeOptional('last_active_at'),
+  created_at: isoDatetime('created_at').default(sql`(datetime('now'))`),
+  updated_at: isoDatetime('updated_at').default(sql`(datetime('now'))`),
+});
+
+export type CompanionMetadata = typeof companionMetadata.$inferSelect;
+export type NewCompanionMetadata = typeof companionMetadata.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// 21. Health Metrics (Luna Health Hub — purely local, no sync)
+// ---------------------------------------------------------------------------
+export const healthMetrics = sqliteTable('health_metrics', {
+  id: text('id').primaryKey(),
+  user_id: text('user_id').notNull(),
+  metric_type: text('metric_type', {
+    enum: ['sleep', 'water', 'food', 'exercise', 'medication'],
+  }).notNull(),
+  value: text('value').notNull(),
+  logged_at: text('logged_at').notNull(),
+  created_at: isoDatetime('created_at').default(sql`(datetime('now'))`),
+});
+
+export type HealthMetric = typeof healthMetrics.$inferSelect;
+export type NewHealthMetric = typeof healthMetrics.$inferInsert;

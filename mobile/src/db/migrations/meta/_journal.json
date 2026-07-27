@@ -15,6 +15,20 @@
       "when": 1785678900000,
       "tag": "0001_add_snooze_events",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786000000000,
+      "tag": "0002_add_companion_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786800000000,
+      "tag": "0003_add_health_metrics",
+      "breakpoints": true
     }
   ]
 }

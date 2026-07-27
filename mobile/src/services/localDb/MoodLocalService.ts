@@ -3,10 +3,21 @@ import { moodLogs } from '../../db/schema';
 import type { MoodLog } from '../../db/schema';
 import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
 import { BaseLocalService } from './BaseLocalService';
+import { eventBus } from '../eventBus';
 
 export class MoodLocalService extends BaseLocalService<MoodLog> {
   protected table = moodLogs;
   protected tableName = 'mood_logs';
+
+  async upsert(record: MoodLog): Promise<void> {
+    await super.upsert(record);
+    eventBus.emit('mood_logged', {
+      userId: record.user_id,
+      moodLogId: record.id,
+      mood: record.mood,
+      intensity: record.intensity,
+    });
+  }
 
   async getByDateRange(userId: string, startDate: string, endDate: string): Promise<MoodLog[]> {
     try {

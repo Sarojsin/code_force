@@ -6,6 +6,11 @@ import Svg, { Path } from 'react-native-svg';
 import { Card, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { logger } from 'src/utils';
+import { useNavigation } from '@react-navigation/native';
+import { useCompanionStore } from '../../stores/companionStore';
+import { useAuthStore } from '../../stores/authStore';
+import { uninstallLuna } from '../../services/assetDownloader';
+import { LunaSprite } from '../../services/companion';
 
 interface SettingRowProps {
   label: string;
@@ -105,6 +110,54 @@ function SettingsSection({ title, children }: { title: string; children: React.R
 
 export function SettingsScreen() {
   const theme = useTheme();
+  const navigation = useNavigation<any>();
+  const companionHidden = useCompanionStore((s) => s.isHidden);
+  const companionReduceAnimations = useCompanionStore((s) => s.reduceAnimations);
+  const companionMuteSounds = useCompanionStore((s) => s.muteSounds);
+  const companionLevel = useCompanionStore((s) => s.level);
+  const companionTitle = useCompanionStore((s) => s.levelTitle);
+  const companionXp = useCompanionStore((s) => s.xp);
+  const companionHydrated = useCompanionStore((s) => s.isHydrated);
+  const installStatus = useCompanionStore((s) => s.installStatus);
+  const assetsVersion = useCompanionStore((s) => s.assetsVersion);
+
+  const handleLunaToggle = (key: 'isHidden' | 'reduceAnimations' | 'muteSounds') => async (value: boolean) => {
+    const store = useCompanionStore.getState();
+    switch (key) {
+      case 'isHidden':
+        await store.setHidden(value);
+        logger.info('Luna hidden:', value);
+        break;
+      case 'reduceAnimations':
+        await store.setReduceAnimations(value);
+        logger.info('Luna reduceAnimations:', value);
+        break;
+      case 'muteSounds':
+        await store.setMuteSounds(value);
+        logger.info('Luna muteSounds:', value);
+        break;
+    }
+  };
+
+  const handleLunaUninstall = () => {
+    Alert.alert(
+      'Uninstall Luna',
+      "This removes Luna's sprites, sounds, and dialogues from your device (~4.5 MB). Your XP and level are saved.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Uninstall',
+          style: 'destructive',
+          onPress: async () => {
+            const user = useAuthStore.getState().user;
+            if (user) await uninstallLuna(user.id);
+            useCompanionStore.getState().reset();
+          },
+        },
+      ]
+    );
+  };
+
   const [settings, setSettings] = useState({
     pushNotifications: true,
     emailNotifications: false,
@@ -205,6 +258,77 @@ export function SettingsScreen() {
           <SettingRow label="Dark Mode" value={settings.darkMode} onToggle={toggle('darkMode')} accessibilityLabel="Toggle dark mode" />
           <SettingRow label="Language" description="English" showDisclosure onPress={() => {}} accessibilityLabel="Change language" />
           <SettingRow label="Text Size" description="Medium" showDisclosure onPress={() => {}} accessibilityLabel="Change text size" />
+        </SettingsSection>
+
+        {/* Companion */}
+        <SettingsSection title="Companion">
+          {companionHydrated && installStatus === 'ready' && (
+            <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#D4A5B540' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 }}>
+                <Txt style={{ fontSize: 24, marginRight: 10 }}>{'🐱'}</Txt>
+                <View style={{ flex: 1 }}>
+                  <Txt variant="bodySmall" style={{ fontWeight: '600' }}>Luna — {companionTitle}</Txt>
+                  <Txt variant="caption" color="muted">
+                    Level {companionLevel} · {companionXp} XP
+                    {assetsVersion && ` · v${assetsVersion}`}
+                  </Txt>
+                </View>
+              </View>
+              {!companionHidden && (
+                <View style={{ alignItems: 'center', paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#D4A5B540' }}>
+                  <LunaSprite size={60} />
+                  <Txt variant="caption" color="muted" style={{ marginTop: 4 }}>
+                    {companionReduceAnimations ? 'Static mode' : 'Animations enabled'}
+                  </Txt>
+                </View>
+              )}
+            </View>
+          )}
+
+          <SettingRow
+            label={installStatus === 'ready' ? 'Uninstall Luna' : 'Download Luna'}
+            description={
+              installStatus === 'ready'
+                ? 'Remove assets (XP saved)'
+                : 'Download sprites, sounds (~4.5 MB)'
+            }
+            destructive={installStatus === 'ready'}
+            showDisclosure
+            onPress={() => {
+              if (installStatus === 'ready') {
+                handleLunaUninstall();
+              } else {
+                navigation.navigate('CompanionInstall');
+              }
+            }}
+            accessibilityLabel="Luna install or uninstall"
+          />
+
+          {installStatus === 'ready' && (
+            <>
+              <SettingRow
+                label="Hide Companion"
+                description="Luna disappears from the dashboard"
+                value={companionHidden}
+                onToggle={handleLunaToggle('isHidden')}
+                accessibilityLabel="Toggle hide Luna companion"
+              />
+              <SettingRow
+                label="Reduce Animations"
+                description="Static cat only (no movement)"
+                value={companionReduceAnimations}
+                onToggle={handleLunaToggle('reduceAnimations')}
+                accessibilityLabel="Toggle reduce Luna animations"
+              />
+              <SettingRow
+                label="Mute Sounds"
+                description="Disable meows and purrs"
+                value={companionMuteSounds}
+                onToggle={handleLunaToggle('muteSounds')}
+                accessibilityLabel="Toggle mute Luna sounds"
+              />
+            </>
+          )}
         </SettingsSection>
 
         {/* Support */}

@@ -4,3 +4,4 @@ export * from './onboardingStore';
 export * from './cycleStore';
 export * from './safetyStore';
 export * from './offlineStore';
+export * from './companionStore';

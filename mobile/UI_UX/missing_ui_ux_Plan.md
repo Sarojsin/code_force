@@ -201,7 +201,57 @@
 
 ---
 
-## Phase 5: Remaining Small Fixes
+## Phase 5: Luna AI Chat — Visual Identity Overhaul
+
+> Source: `SheCare_Mobile_App_Design/src/App.tsx:1596-1717` (Figma Make prototype)
+> Detailed breakdown: `UI_UX/missing_features/` — 5 files prefixed `missing_Luna_AI_*`
+> Comparison: `UI_UX/missing_features/compare_Luna_AI_Chat.md`
+
+### 5.1 Branding — Rename to "Luna AI"
+- **Spec**: Chat branded as "Luna AI" with warm, personal tone
+- **Current**: "SheCare AI" — generic, clinical
+- **Files**: `screens/chat/AIChatScreen.tsx`
+- **Details**: `missing_Luna_AI_branding_and_visual_design.md`
+
+### 5.2 Header — Gradient Background + Online Avatar
+- **Spec**: Blush gradient header overlay, 46px gradient avatar with 🤖, green online dot, "Online · Cycle-aware · Always here" subtitle
+- **Current**: Solid theme background, SVG brain icon, "Health Assistant" subtitle
+- **Files**: `screens/chat/AIChatScreen.tsx`
+- **Details**: `missing_Luna_AI_header_and_avatar.md`
+
+### 5.3 Chat Bubbles — Tail Radius + Color Values
+- **Spec**: AI `18px 18px 18px 5px` with `rgba(255,255,255,0.90)` bg + rose border; User `18px 18px 5px 18px` with blush gradient
+- **Current**: `20px` radius with `borderTop*Radius: 4`, solid primary for user
+- **Files**: `screens/chat/AIChatScreen.tsx`
+- **Details**: `missing_Luna_AI_chat_bubble_tail_and_styles.md`
+
+### 5.4 Input Bar — Glassmorphism + Blush Send Button
+- **Spec**: `backdrop-filter: blur(16px)` frosted glass input bar, rose border, blush gradient send button with ↑ arrow
+- **Current**: Solid background, theme-colored send button
+- **Files**: `screens/chat/AIChatScreen.tsx`
+- **Details**: `missing_Luna_AI_input_bar_and_suggestions.md`
+
+### 5.5 Floral Decorative Overlay
+- **Spec**: Delicate floral SVG in top-right corner at ~0.10 opacity
+- **Current**: None
+- **Files**: `screens/chat/AIChatScreen.tsx`
+- **Details**: `missing_Luna_AI_floral_overlay_and_atmosphere.md`
+
+### 5.6 Voice Button Relocation
+- **Spec**: Voice/mic button in input bar area (not header)
+- **Current**: In header, right side
+- **Files**: `screens/chat/AIChatScreen.tsx`
+- **Fix**: Move mic button from header to input bar row, left of send button
+
+### 5.7 Screen Background Fix
+- **Spec**: Warm cream `#FFF8F0`
+- **Current**: `#FFF8FB` (slightly pinker)
+- **Files**: `screens/chat/AIChatScreen.tsx`
+- **Fix**: Change to `#FFF8F0`
+
+---
+
+## Phase 6: Remaining Small Fixes
 
 ### 5.1 Home Dashboard — Greeting with User Name
 - **Spec**: "Good morning, [Name]" with user's name

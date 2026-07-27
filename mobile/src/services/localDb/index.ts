@@ -10,6 +10,9 @@ import { HealthInsightLocalService } from './HealthInsightLocalService';
 import { FeatureFlagLocalService } from './FeatureFlagLocalService';
 import { SnoozeLocalService } from './SnoozeLocalService';
 
+export { CompanionLocalService, companionLocalService, calculateLevel } from './CompanionLocalService';
+export { HealthMetricsLocalService, healthMetricsLocalService } from './HealthMetricsLocalService';
+
 export const localDb = {
   cycle: new CycleLocalService(),
   journal: new JournalLocalService(),

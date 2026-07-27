@@ -3,10 +3,10 @@
  * Route: MainTabs → Home tab
  */
 
-import React, { useCallback } from 'react';
-import { ScrollView, StyleSheet, View, Pressable, Dimensions } from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { ScrollView, StyleSheet, View, Pressable, Dimensions, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withDelay, withSequence } from 'react-native-reanimated';
 import Svg, { Path, Circle as SvgCircle } from 'react-native-svg';
 
@@ -15,6 +15,13 @@ import { useTheme } from 'src/theme';
 import { useCycleCalendar } from 'src/services/queries';
 import { useAuthStore } from 'src/stores/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
+import { LunaOverlay } from '../companion/LunaOverlay';
+import { initEventEngine } from '../../services/companion/EventEngine';
+import { useSpeechBubble } from '../../services/companion/EventEngine';
+import { useCompanionStore } from '../../stores/companionStore';
+import { useAchievementStore } from '../../stores/achievementStore';
+import { AchievementPopup } from '../../components/ui/AchievementPopup';
+import { eventBus } from '../../services/eventBus';
 
 type Nav = any;
 
@@ -106,6 +113,50 @@ export function HomeDashboardScreen() {
   const nextPeriodDate = calData?.next_period_in_days != null
     ? new Date(Date.now() + calData.next_period_in_days * 86400000)
     : null;
+
+  const isFocused = useIsFocused();
+  const lunaEnabled = useCompanionStore((s) => s.installStatus === 'ready');
+  const lunaInitialized = useRef(false);
+  const eventCleanupRef = useRef<(() => void) | null>(null);
+  const { show: showBubble } = useSpeechBubble();
+  const showPopup = useAchievementStore((s) => s.showPopup);
+  const dismissPopup = useAchievementStore((s) => s.dismissPopup);
+  const currentPopup = useAchievementStore((s) => s.currentPopup);
+  const hydrateCompanion = useCompanionStore((s) => s.hydrate);
+
+  useEffect(() => {
+    if (lunaEnabled && !lunaInitialized.current) {
+      lunaInitialized.current = true;
+      eventCleanupRef.current = initEventEngine(showBubble, (achievement) => {
+        showPopup(achievement);
+      });
+    }
+
+    return () => {
+      if (eventCleanupRef.current) {
+        eventCleanupRef.current();
+        eventCleanupRef.current = null;
+        lunaInitialized.current = false;
+      }
+    };
+  }, [lunaEnabled, showBubble]);
+
+  useEffect(() => {
+    if (lunaEnabled && user) {
+      hydrateCompanion(user.id);
+    }
+  }, [lunaEnabled, user, hydrateCompanion]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        eventBus.emit('app_foregrounded', {});
+      } else if (state === 'background') {
+        eventBus.emit('app_backgrounded', {});
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   const bellRotation = useSharedValue(0);
   const bellAnimStyle = useAnimatedStyle(() => ({
@@ -310,6 +361,9 @@ export function HomeDashboardScreen() {
                     <Pressable onPress={() => navigation.navigate('Insights')} style={[styles.miniChip, { backgroundColor: '#FCE7F3', borderRadius: theme.radius.pill }]}>
                       <Text variant="caption" color="primary">💡 Insights</Text>
                     </Pressable>
+                    <Pressable onPress={() => navigation.navigate('HealthHub')} style={[styles.miniChip, { backgroundColor: '#D1FAE5', borderRadius: theme.radius.pill }]}>
+                      <Text variant="caption" style={{ color: '#059669' }}>🌸 Health Hub</Text>
+                    </Pressable>
                   </View>
                 </View>
               </Pressable>
@@ -319,6 +373,9 @@ export function HomeDashboardScreen() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {isFocused && lunaEnabled && <LunaOverlay />}
+      {lunaEnabled && <AchievementPopup achievement={currentPopup} onDismiss={dismissPopup} />}
     </SafeAreaView>
   );
 }

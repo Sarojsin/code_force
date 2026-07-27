@@ -1,0 +1,10 @@
+{
+  "description": "Empowering women with a wellness and safety platform, this app offers cycle tracking, mood journaling, and personalized insights for holistic health.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

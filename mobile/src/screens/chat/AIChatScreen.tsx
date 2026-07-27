@@ -2,11 +2,19 @@ import React, { useState, useRef, useCallback } from 'react';
 import { FlatList, StyleSheet, View, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withRepeat, withTiming, Easing, withSequence } from 'react-native-reanimated';
-import Svg, { Path, Line } from 'react-native-svg';
+import Svg, { Path, Line, Circle } from 'react-native-svg';
 
 import { Text } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useNetworkStatus } from 'src/services/sync';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const LUNA_BLUSH = '#FF6B8A';
+const LUNA_ROSE = '#F7C5CC';
+const LUNA_CREAM = '#FFF8F0';
+const LUNA_DARK = '#2D1B26';
+const LUNA_MID = '#6B4D5A';
+const LUNA_GREEN = '#3CC87A';
 
 interface ChatMessage {
   id: string;
@@ -22,20 +30,30 @@ const TYPING_INDICATOR_ID = '__typing__';
 const INITIAL_MESSAGES: ChatMessage[] = [
   {
     id: 'welcome',
-    text: "Hello! I'm your SheCare health assistant. I can help you track your cycle, log symptoms, and answer health questions. Remember that I'm AI-powered and not a substitute for professional medical advice.",
+    text: "Hi there! 🌸 I'm Luna, your cycle-aware wellness companion. I can help you track your period, log symptoms, and support you through every phase of your cycle. How are you feeling today?",
     sender: 'ai',
     timestamp: 'Just now',
   },
 ];
 
-function AIIcon({ theme }: { theme: any }) {
+function LunaAvatar({ size = 46 }: { size?: number }) {
   return (
-    <View style={[styles.aiAvatar, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radius.pill }]}>
-      <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <Path d="M12 2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V4a2 2 0 012-2z" stroke={theme.colors.accent} strokeWidth="1.5" />
-        <Path d="M12 14l-2-3 2-3 2 3-2 3z" fill={theme.colors.accent} opacity="0.6" />
-        <Path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" stroke={theme.colors.accent} strokeWidth="1.5" strokeLinecap="round" />
-      </Svg>
+    <View style={{
+      width: size, height: size, borderRadius: size / 2,
+      alignItems: 'center', justifyContent: 'center',
+      shadowColor: LUNA_BLUSH, shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.32, shadowRadius: 16, elevation: 8,
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      <LinearGradient colors={[LUNA_BLUSH, '#E8D5F5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <Text style={{ fontSize: size * 0.52 }}>🤖</Text>
+      <View style={{
+        position: 'absolute', bottom: 0, right: 0,
+        width: 12, height: 12, borderRadius: 6,
+        backgroundColor: LUNA_GREEN,
+        borderWidth: 2, borderColor: '#fff',
+      }} />
     </View>
   );
 }
@@ -169,12 +187,12 @@ export function AIChatScreen() {
 
     setIsTyping(true);
     const responses: Record<string, string> = {
-      'track my period': "I'll help you log your period! Head to the Calendar tab to log start/end dates, or tell me the date it started and I'll navigate you there.",
-      'log a symptom': "Which symptom are you experiencing? Common ones include: Cramps, Bloating, Fatigue, Headache, Nausea, or Back pain. You can also log them from the Calendar tab.",
-      'cycle education': "The menstrual cycle has 4 phases:\n\n🩸 Menstrual (Days 1-5): Your period\n🌱 Follicular (Days 6-13): Energy rises\n✨ Ovulation (Days 14-16): Peak fertility\n🌙 Luteal (Days 17-28): PMS symptoms\n\nWould you like to learn more about any phase?",
-      'feeling anxious': "I'm sorry you're feeling anxious. Here are some things that might help:\n\n🧘 Deep breathing exercises\n🚶 Short walk in nature\n📝 Journaling your thoughts\n🗣️ Talking to a friend\n\nWould you like me to guide you through a breathing exercise?",
+      'track my period': "Of course! 🌸 Head over to the **Calendar** tab to log your start and end dates. Or just tell me when it started and I'll guide you there step by step. Tracking regularly helps me give you better cycle insights!",
+      'log a symptom': "I'm here for you! 💕 Which symptom are you noticing today? Common ones include: Cramps 🫨, Bloating 🫧, Fatigue 😴, Headache 🤕, Nausea 🤢, or Back pain. You can also tap the Calendar tab and log them right there. Every log helps us spot your patterns!",
+      'cycle education': "Let's explore your cycle together! 🌙\n\n🩸 **Menstrual** (Days 1–5): Your period arrives — time to rest and restore\n🌱 **Follicular** (Days 6–13): Energy is rising, you're glowing!\n✨ **Ovulation** (Days 14–16): Peak fertility, vibrant and confident\n🌙 **Luteal** (Days 17–28): PMS may show up — be gentle with yourself\n\nWant to dive deeper into any phase? I've got plenty more to share! 💫",
+      'feeling anxious': "I hear you, and it's okay to feel this way. 💗 Let me share a few things that might help you find some calm:\n\n🧘‍♀️ **Breathe with me** — try 4 seconds in, hold 4, out 4\n🚶‍♀️ A short walk outdoors can work wonders\n📝 Write it out — journaling helps release what's inside\n🗣️ Reach out to someone you trust\n\nWould you like me to guide you through a breathing exercise right now? 🌸",
     };
-    const response = (responses[userText.toLowerCase()] ?? `Thank you for sharing that. I'm here to help with period tracking, symptom logging, and wellness tips. Could you tell me more about what you'd like to know?`) + "\n\n⚕️ I'm AI-powered and not a substitute for professional medical advice.";
+    const response = (responses[userText.toLowerCase()] ?? `Thank you for sharing that, lovely. 💕 I'm here for all things cycle tracking, symptom logging, and wellness. Could you tell me a bit more about what's on your mind? I'd love to help!`) + "\n\n⚕️ I'm AI-powered and not a substitute for professional medical advice.";
 
     const msg: ChatMessage = {
       id: `ai-${Date.now()}`,
@@ -210,10 +228,10 @@ export function AIChatScreen() {
     if (item.id === TYPING_INDICATOR_ID) {
       return (
         <View style={[styles.messageRow, styles.aiRow]}>
-          <AIIcon theme={theme} />
-          <View style={[styles.bubble, { backgroundColor: '#F5F5F5', borderRadius: 20, borderTopLeftRadius: 4 }]}>
-            <TypingDots />
-          </View>
+          <LunaAvatar size={32} />
+<View style={[styles.bubble, { backgroundColor: 'rgba(255,255,255,0.90)', borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomLeftRadius: 5, borderBottomRightRadius: 18, borderWidth: 1, borderColor: LUNA_ROSE + '55' }]}>
+              <TypingDots />
+            </View>
         </View>
       );
     }
@@ -221,15 +239,47 @@ export function AIChatScreen() {
     const isStreamed = streamed[item.id] != null;
     return (
       <View style={[styles.messageRow, isAI ? styles.aiRow : styles.userRow]}>
-        {isAI && <AIIcon theme={theme} />}
-        <View style={[
-          styles.bubble,
-          isAI ? { backgroundColor: '#F5F5F5', borderTopLeftRadius: 4 } : { backgroundColor: theme.colors.primary, borderTopRightRadius: 4 },
-          { borderRadius: 20 },
-        ]}>
-          {isAI && isStreamed ? <StreamText text={item.text} /> : <Text variant="body" style={{ color: isAI ? theme.colors.textPrimary : '#fff' }}>{item.text}</Text>}
-          <Text variant="caption" style={{ color: isAI ? theme.colors.textMuted : 'rgba(255,255,255,0.7)', marginTop: 4 }}>{item.timestamp}</Text>
-        </View>
+        {isAI && <LunaAvatar size={32} />}
+        {isAI ? (
+          <View style={[
+            styles.bubble,
+            {
+              backgroundColor: 'rgba(255,255,255,0.90)',
+              borderTopLeftRadius: 18,
+              borderTopRightRadius: 18,
+              borderBottomLeftRadius: 5,
+              borderBottomRightRadius: 18,
+              borderWidth: 1,
+              borderColor: LUNA_ROSE + '55',
+              shadowColor: LUNA_MID,
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.14,
+              shadowRadius: 12,
+              elevation: 2,
+            },
+          ]}>
+            {isStreamed ? <StreamText text={item.text} /> : <Text variant="body" style={{ color: LUNA_DARK }}>{item.text}</Text>}
+            <Text variant="caption" style={{ color: LUNA_MID, marginTop: 4 }}>{item.timestamp}</Text>
+          </View>
+        ) : (
+          <View style={{
+            padding: 14, maxWidth: '100%',
+            borderTopLeftRadius: 18,
+            borderTopRightRadius: 18,
+            borderBottomLeftRadius: 18,
+            borderBottomRightRadius: 5,
+            shadowColor: LUNA_BLUSH,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.30,
+            shadowRadius: 16,
+            elevation: 6,
+            overflow: 'hidden',
+          }}>
+            <LinearGradient colors={['#FF6B8A', '#D4507A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+            <Text variant="body" style={{ color: '#fff' }}>{item.text}</Text>
+            <Text variant="caption" style={{ color: 'rgba(255,255,255,0.7)', marginTop: 4 }}>{item.timestamp}</Text>
+          </View>
+        )}
       </View>
     );
   }, [theme, streamed]);
@@ -239,36 +289,37 @@ export function AIChatScreen() {
     : messages;
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: '#FFF8FB' }]} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: LUNA_CREAM }]} edges={['top']}>
+        {/* Floral decorative overlay */}
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, right: 0, width: 120, height: 120, zIndex: 0, opacity: 0.08 }}>
+          <Svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+            <Circle cx="90" cy="30" r="18" stroke={LUNA_BLUSH} strokeWidth="1" fill="none" />
+            <Circle cx="82" cy="22" r="8" stroke={LUNA_BLUSH} strokeWidth="0.8" fill="none" />
+            <Circle cx="98" cy="22" r="8" stroke={LUNA_BLUSH} strokeWidth="0.8" fill="none" />
+            <Circle cx="82" cy="38" r="8" stroke={LUNA_BLUSH} strokeWidth="0.8" fill="none" />
+            <Circle cx="98" cy="38" r="8" stroke={LUNA_BLUSH} strokeWidth="0.8" fill="none" />
+            <Path d="M90 48 L90 60" stroke={LUNA_BLUSH} strokeWidth="1" />
+            <Path d="M78 36 L70 28" stroke={LUNA_BLUSH} strokeWidth="0.8" />
+            <Path d="M102 36 L110 28" stroke={LUNA_BLUSH} strokeWidth="0.8" />
+            <Path d="M75 20 L73 10" stroke={LUNA_BLUSH} strokeWidth="0.6" />
+            <Path d="M105 20 L107 10" stroke={LUNA_BLUSH} strokeWidth="0.6" />
+          </Svg>
+        </View>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
-        <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
+        <View style={[styles.header, { borderBottomColor: LUNA_ROSE + '55' }]}>
+          <LinearGradient colors={['rgba(255,248,240,0.96)', 'rgba(255,255,255,0.92)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           <View style={styles.headerLeft}>
-            <AIIcon theme={theme} />
+            <LunaAvatar size={46} />
             <View style={{ marginLeft: 10 }}>
-              <Text variant="h3">SheCare AI</Text>
-              <Text variant="caption" color="muted">Health Assistant</Text>
+              <Text variant="h3">Luna AI</Text>
+              <Text variant="caption" style={{ color: '#1A6B45', fontWeight: '700' }}>Online · Cycle-aware · Always here</Text>
             </View>
           </View>
-          <Pressable
-            onPress={() => setIsRecording(v => !v)}
-            accessibilityLabel={isRecording ? 'Stop recording' : 'Voice input'}
-            style={[styles.voiceBtn, { backgroundColor: isRecording ? '#FFE5E5' : theme.colors.accentMuted, borderRadius: theme.radius.pill }]}
-          >
-            <View>
-              {isRecording && <PulseRing active={isRecording} />}
-              <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <Path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" stroke={isRecording ? '#FF3B30' : theme.colors.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <Path d="M19 10v2a7 7 0 01-14 0v-2" stroke={isRecording ? '#FF3B30' : theme.colors.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <Line x1="12" y1="19" x2="12" y2="23" stroke={isRecording ? '#FF3B30' : theme.colors.accent} strokeWidth="2" strokeLinecap="round" />
-                <Line x1="8" y1="23" x2="16" y2="23" stroke={isRecording ? '#FF3B30' : theme.colors.accent} strokeWidth="2" strokeLinecap="round" />
-              </Svg>
-            </View>
-          </Pressable>
         </View>
 
         {!isConnected && (
-          <View style={[styles.offlineBanner, { backgroundColor: theme.colors.warning + '20' }]}>
-            <Text variant="caption" style={{ color: theme.colors.warning }}>You're offline — messages will be sent when reconnected</Text>
+          <View style={[styles.offlineBanner, { backgroundColor: LUNA_ROSE + '44' }]}>
+            <Text variant="caption" style={{ color: LUNA_MID }}>Offline mode — messages will sync when you reconnect</Text>
           </View>
         )}
 
@@ -283,17 +334,17 @@ export function AIChatScreen() {
           removeClippedSubviews={true}
           initialNumToRender={7}
           ListHeaderComponent={!disclaimerShown ? (
-            <Pressable onPress={() => setDisclaimerShown(true)} style={[styles.disclaimerBanner, { backgroundColor: theme.colors.warning + '12', borderColor: theme.colors.warning + '30', borderRadius: theme.radius.md }]}>
-              <Text variant="caption" style={{ color: theme.colors.warning, flex: 1 }}>
+            <Pressable onPress={() => setDisclaimerShown(true)} style={[styles.disclaimerBanner, { backgroundColor: LUNA_ROSE + '33', borderColor: LUNA_ROSE + '55', borderRadius: 12 }]}>
+              <Text variant="caption" style={{ color: LUNA_MID, flex: 1 }}>
                 AI-powered insights — not a substitute for professional medical advice
               </Text>
               <Svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <Path d="M18 6L6 18M6 6l12 12" stroke={theme.colors.warning} strokeWidth="2" strokeLinecap="round" />
+                <Path d="M18 6L6 18M6 6l12 12" stroke={LUNA_MID} strokeWidth="2" strokeLinecap="round" />
               </Svg>
             </Pressable>
           ) : null}
           ListEmptyComponent={
-            <Text variant="body" color="muted" align="center" style={{ marginTop: 40 }}>Start a conversation with SheCare AI</Text>
+            <Text variant="body" color="muted" align="center" style={{ marginTop: 40 }}>Start a conversation with Luna AI 🌸</Text>
           }
         />
 
@@ -302,29 +353,28 @@ export function AIChatScreen() {
             <Pressable
               key={s}
               onPress={() => handleSend(s)}
-              style={[styles.chip, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderRadius: theme.radius.pill }]}
+              style={[styles.chip, { backgroundColor: 'rgba(255,255,255,0.75)', borderColor: LUNA_ROSE }]}
             >
-              <Text variant="caption" color="primary">{s}</Text>
+              <Text variant="caption" style={{ color: LUNA_BLUSH }}>{s}</Text>
             </Pressable>
           ))}
         </View>
 
-        <View style={[styles.inputBar, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
+        <View style={[styles.inputBar, { backgroundColor: 'rgba(255,248,240,0.96)', borderTopColor: LUNA_ROSE + '55' }]}>
           <TextInput
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Type a message..."
-            placeholderTextColor={theme.colors.textMuted}
+            placeholder="Ask Luna anything…"
+            placeholderTextColor={LUNA_MID}
             multiline
             maxLength={500}
             accessibilityLabel="Message input"
             style={[
               styles.input,
               {
-                color: theme.colors.textPrimary,
-                backgroundColor: theme.colors.background,
-                borderColor: theme.colors.border,
-                borderRadius: theme.radius.pill,
+                color: LUNA_DARK,
+                backgroundColor: 'rgba(255,255,255,0.85)',
+                borderColor: LUNA_ROSE,
               },
             ]}
           />
@@ -332,12 +382,17 @@ export function AIChatScreen() {
             <Pressable
               onPress={() => setIsRecording(v => !v)}
               accessibilityLabel={isRecording ? 'Stop recording' : 'Voice input'}
-              style={[styles.iconAction, { borderRadius: theme.radius.pill }]}
+              style={[styles.iconAction, { backgroundColor: isRecording ? '#FFE5E5' : '#E8D5F5', borderRadius: 20 }]}
             >
-              <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <Path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" stroke={isRecording ? '#FF3B30' : theme.colors.accent} strokeWidth="2" strokeLinecap="round" />
-                <Path d="M19 10v2a7 7 0 01-14 0v-2" stroke={isRecording ? '#FF3B30' : theme.colors.accent} strokeWidth="2" strokeLinecap="round" />
-              </Svg>
+              <View>
+                {isRecording && <PulseRing active={isRecording} />}
+                <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <Path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <Path d="M19 10v2a7 7 0 01-14 0v-2" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <Line x1="12" y1="19" x2="12" y2="23" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" />
+                  <Line x1="8" y1="23" x2="16" y2="23" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" />
+                </Svg>
+              </View>
             </Pressable>
             <Pressable
               onPress={() => handleSend()}
@@ -346,15 +401,16 @@ export function AIChatScreen() {
               style={[
                 styles.sendBtn,
                 {
-                  backgroundColor: inputText.trim() ? theme.colors.primary : theme.colors.border,
-                  borderRadius: theme.radius.pill,
+                  backgroundColor: inputText.trim() ? LUNA_BLUSH : LUNA_ROSE,
+                  shadowColor: inputText.trim() ? LUNA_BLUSH : 'transparent',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: inputText.trim() ? 0.35 : 0,
+                  shadowRadius: 16,
+                  elevation: inputText.trim() ? 8 : 0,
                 },
               ]}
             >
-              <Svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <Path d="M22 2L11 13" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                <Path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </Svg>
+              <Text style={{ fontSize: 20, color: '#fff', lineHeight: 22 }}>↑</Text>
             </Pressable>
           </View>
         </View>
@@ -374,15 +430,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  voiceBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   messageRow: { marginBottom: 12, maxWidth: '80%', flexDirection: 'row', alignItems: 'flex-end' },
   aiRow: { alignSelf: 'flex-start', gap: 8 },
   userRow: { alignSelf: 'flex-end' },
-  aiAvatar: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   offlineBanner: { paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center' },
   bubble: { padding: 14, maxWidth: '100%' },
   typingRow: { flexDirection: 'row', gap: 4, padding: 4 },
-  typingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#999' },
+  typingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: LUNA_BLUSH + '88' },
   suggestionRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -393,13 +447,15 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1.5,
+    borderRadius: 20,
   },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 8,
     paddingHorizontal: 12,
+    paddingBottom: 22,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   input: {
@@ -407,8 +463,9 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderWidth: 1,
+    borderWidth: 1.5,
     fontSize: 15,
+    borderRadius: 16,
   },
   inputActions: {
     flexDirection: 'row',
@@ -417,6 +474,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   iconAction: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  sendBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  sendBtn: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
   disclaimerBanner: { flexDirection: 'row', alignItems: 'center', padding: 10, marginBottom: 12, borderWidth: 1, gap: 8 },
 });

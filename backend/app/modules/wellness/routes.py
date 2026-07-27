@@ -32,6 +32,8 @@ from app.modules.wellness.dependencies import WellnessServiceDep
 from app.modules.wellness.schemas import (
     BreathingExerciseResponse,
     ExerciseSessionResponse,
+    HealthTipListResponse,
+    HealthTipResponse,
     InsightResponse,
     JournalAnalysisCreate,
     JournalAnalysisResponse,
@@ -210,6 +212,23 @@ async def get_journal_analysis(
     return JournalAnalysisResponse.model_validate(analysis)
 
 
+@router.get(
+    "/health-tips",
+    response_model=HealthTipListResponse,
+    summary="Get health tips (static, no AI). Supports metric_type filter and limit.",
+)
+async def get_health_tips(
+    svc: WellnessServiceDep,
+    metric_type: str | None = Query(None, description="Filter by metric type (sleep, water, food, exercise, medication)"),
+    limit: int = Query(3, ge=1, le=10),
+) -> HealthTipListResponse:
+    tips = await svc.get_health_tips(metric_type=metric_type, limit=limit)
+    return HealthTipListResponse(
+        data=[HealthTipResponse.model_validate(t) for t in tips],
+        total=len(tips),
+    )
+
+
 @model_router.get(
     "/wellness-classifier/version",
     response_model=ModelVersionResponse,
@@ -276,3 +295,11 @@ async def download_model(
 def init_module(app, event_bus) -> None:
     app.include_router(router, prefix="/api/v1")
     app.include_router(model_router, prefix="/api/v1")
+    from app.modules.wellness.seed import seed_health_tips
+
+    @app.on_event("startup")
+    async def seed_tips_on_startup():
+        from app.core.database import async_session_maker
+
+        async with async_session_maker() as session:
+            await seed_health_tips(session)

@@ -13,6 +13,7 @@ from app.integrations.huggingface_client import HuggingFaceClient
 from app.modules.wellness.exceptions import ExerciseNotFoundError, JournalEntryNotFoundError
 from app.modules.wellness.models import (
     BreathingExercise,
+    HealthTip,
     JournalAnalysis,
     JournalEntry,
     MoodLog,
@@ -175,6 +176,30 @@ class WellnessService:
             "most_common_mood": most_common_mood,
             "recommendation": recommendation,
         }
+
+
+    async def get_health_tips(
+        self,
+        metric_type: str | None = None,
+        limit: int = 3,
+    ) -> list[HealthTip]:
+        query = select(HealthTip).where(HealthTip.is_active == True)  # noqa: E712
+        if metric_type:
+            query = query.where(HealthTip.metric_type == metric_type)
+        query = query.order_by(HealthTip.priority).limit(limit)
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
+    async def get_random_tip(
+        self,
+        metric_type: str | None = None,
+    ) -> HealthTip | None:
+        query = select(HealthTip).where(HealthTip.is_active == True)  # noqa: E712
+        if metric_type:
+            query = query.where(HealthTip.metric_type == metric_type)
+        query = query.order_by(func.random()).limit(1)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
 
 
 class JournalAnalysisService:

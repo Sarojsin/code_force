@@ -6,7 +6,7 @@ module.exports = {
     '^src/(.*)$': '<rootDir>/src/$1',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|@react-navigation|@tanstack|@sentry|react-native-reanimated|react-native-gesture-handler|react-native-encrypted-storage|expo|expo-sqlite|drizzle-orm)/)',
+    'node_modules/(?!(react-native|@react-native|@react-navigation|@tanstack|@sentry|react-native-reanimated|react-native-gesture-handler|react-native-encrypted-storage|expo|expo-modules-core|expo-sqlite|expo-file-system|drizzle-orm)/)',
   ],
   testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/', '/e2e/'],
   testMatch: ['**/__tests__/**/*.test.{ts,tsx,js,jsx}', '**/?(*.)+(spec|test).{ts,tsx,js,jsx}'],

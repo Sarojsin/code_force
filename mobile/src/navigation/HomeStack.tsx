@@ -12,6 +12,7 @@ import { JournalEntryScreen } from 'src/screens/wellness/JournalEntryScreen';
 import { MoodHistoryScreen } from 'src/screens/wellness/MoodHistoryScreen';
 import { BreathingListScreen } from 'src/screens/wellness/BreathingListScreen';
 import { InsightsScreen } from 'src/screens/wellness/InsightsScreen';
+import { HealthHubScreen } from 'src/screens/companion/HealthHubScreen';
 
 import type { HomeStackParamList } from './types';
 
@@ -38,6 +39,7 @@ export function HomeStack() {
       <Stack.Screen name="JournalEntry" component={JournalEntryScreen} options={{ title: 'Journal Entry' }} />
       <Stack.Screen name="BreathingList" component={BreathingListScreen} options={{ title: 'Breathing' }} />
       <Stack.Screen name="Insights" component={InsightsScreen} options={{ title: 'Insights' }} />
+      <Stack.Screen name="HealthHub" component={HealthHubScreen} options={{ title: 'Health Hub' }} />
     </Stack.Navigator>
   );
 }

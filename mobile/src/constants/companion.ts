@@ -1,0 +1,1 @@
+export const VOLATILITY_THRESHOLD = 3.5;

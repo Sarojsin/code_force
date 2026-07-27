@@ -29,6 +29,7 @@ import { EditProfileScreen } from 'src/screens/profile/EditProfileScreen';
 import { ChangePasswordScreen } from 'src/screens/profile/ChangePasswordScreen';
 import { SettingsScreen } from 'src/screens/profile/SettingsScreen';
 import { LinkedFamilyScreen } from 'src/screens/profile/LinkedFamilyScreen';
+import { LunaInstallScreen } from 'src/screens/companion/LunaInstallScreen';
 
 import type {
   CycleStackParamList,
@@ -116,6 +117,7 @@ export function ProfileStack() {
       <ProfileNav.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'Change Password' }} />
       <ProfileNav.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
       <ProfileNav.Screen name="LinkedFamily" component={LinkedFamilyScreen} options={{ title: 'Linked Family' }} />
+      <ProfileNav.Screen name="CompanionInstall" component={LunaInstallScreen} options={{ title: 'Luna Companion' }} />
     </ProfileNav.Navigator>
   );
 }

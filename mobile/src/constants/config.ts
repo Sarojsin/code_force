@@ -23,6 +23,7 @@ export interface FeatureFlags {
   pregnancyMode: boolean;
   aiSentiment: boolean;
   familyLinking: boolean;
+  lunaEnabled: boolean;
 }
 
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
@@ -30,4 +31,5 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   pregnancyMode: true,
   aiSentiment: true,
   familyLinking: true,
+  lunaEnabled: true,
 };

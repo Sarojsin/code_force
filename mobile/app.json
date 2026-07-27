@@ -31,7 +31,24 @@
       "expo-secure-store",
       "expo-notifications",
       "expo-dev-client",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesHermes": true,
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0",
+            "newArchEnabled": true
+          },
+          "ios": {
+            "newArchEnabled": true
+          }
+        }
+      ],
+      "expo-image",
+      "expo-status-bar"
     ],
     "doctor": {
       "reactNativeDirectoryCheck": {

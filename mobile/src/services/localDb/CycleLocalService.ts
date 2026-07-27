@@ -3,10 +3,20 @@ import { cycleEntries } from '../../db/schema';
 import type { CycleEntry } from '../../db/schema';
 import { eq, desc, and, gte, sql } from 'drizzle-orm';
 import { BaseLocalService } from './BaseLocalService';
+import { eventBus } from '../eventBus';
 
 export class CycleLocalService extends BaseLocalService<CycleEntry> {
   protected table = cycleEntries;
   protected tableName = 'cycle_entries';
+
+  async upsert(record: CycleEntry): Promise<void> {
+    await super.upsert(record);
+    eventBus.emit('period_logged', {
+      userId: record.user_id,
+      cycleEntryId: record.id,
+      date: record.period_start_date,
+    });
+  }
 
   async getHistory(
     userId: string,
