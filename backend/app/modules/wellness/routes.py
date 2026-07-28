@@ -12,20 +12,14 @@ Endpoints:
   GET    /api/v1/wellness/insights
   POST   /api/v1/wellness/journal/analysis
   GET    /api/v1/wellness/journal/{entry_id}/analysis
-  GET    /api/v1/models/wellness-classifier/version
-  GET    /api/v1/models/wellness-classifier/{version}.onnx
 """
 
 from __future__ import annotations
 
-import os
 import uuid
-from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import FileResponse, Response
+from fastapi import APIRouter, Depends, Query, status
 
-from app.core.config import get_settings
 from app.core.database import get_db
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.wellness.dependencies import WellnessServiceDep
@@ -40,14 +34,12 @@ from app.modules.wellness.schemas import (
     JournalEntryCreate,
     JournalEntryMetadata,
     JournalEntryResponse,
-    ModelVersionResponse,
     MoodLogCreate,
     MoodLogResponse,
 )
 from app.modules.wellness.services import JournalAnalysisService
 
 router = APIRouter(prefix="/wellness", tags=["wellness"])
-model_router = APIRouter(prefix="/models", tags=["models"])
 
 
 @router.post(
@@ -229,72 +221,8 @@ async def get_health_tips(
     )
 
 
-@model_router.get(
-    "/wellness-classifier/version",
-    response_model=ModelVersionResponse,
-    summary="Get current model version metadata",
-)
-async def get_model_version() -> ModelVersionResponse:
-    settings = get_settings()
-    return ModelVersionResponse(
-        version=settings.wellness_model.version,
-        size_mb=0,
-        checksum_sha256=settings.wellness_model.checksum_sha256,
-    )
-
-
-@model_router.get(
-    "/wellness-classifier/{version}.onnx",
-    summary="Download model binary by version (supports Range requests for resumable download)",
-)
-async def download_model(
-    version: str,
-    request: Request,
-    current_user: CurrentUser,
-) -> Response:
-    settings = get_settings()
-    if version != settings.wellness_model.version:
-        raise HTTPException(status_code=404, detail="Model version not found")
-    model_path = Path(settings.wellness_model.model_dir) / settings.wellness_model.onnx_filename
-    if not model_path.exists():
-        raise HTTPException(status_code=404, detail="Model file not found")
-
-    file_size = os.path.getsize(model_path)
-    range_header = request.headers.get("range")
-
-    if range_header:
-        start_str = range_header.strip().lower().replace("bytes=", "")
-        start = int(start_str.split("-")[0]) if start_str else 0
-        end = int(start_str.split("-")[1]) if "-" in start_str and start_str.split("-")[1] else file_size - 1
-        if start >= file_size:
-            return Response(status_code=416, headers={"Content-Range": f"bytes */{file_size}"})
-        content_length = end - start + 1
-        with open(model_path, "rb") as f:
-            f.seek(start)
-            body = f.read(content_length)
-        return Response(
-            content=body,
-            status_code=206,
-            media_type="application/octet-stream",
-            headers={
-                "Content-Range": f"bytes {start}-{end}/{file_size}",
-                "Content-Length": str(content_length),
-                "Accept-Ranges": "bytes",
-                "Content-Disposition": f'attachment; filename="{model_path.name}"',
-            },
-        )
-
-    return FileResponse(
-        path=model_path,
-        media_type="application/octet-stream",
-        filename=model_path.name,
-        headers={"Accept-Ranges": "bytes"},
-    )
-
-
 def init_module(app, event_bus) -> None:
     app.include_router(router, prefix="/api/v1")
-    app.include_router(model_router, prefix="/api/v1")
     from app.modules.wellness.seed import seed_health_tips
 
     @app.on_event("startup")

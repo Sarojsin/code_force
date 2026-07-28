@@ -71,13 +71,6 @@ class EncryptionSettings(BaseSettings):
     pbkdf2_iterations: int = 600_000
 
 
-class WellnessModelSettings(BaseSettings):
-    version: str = "1.0.0"
-    model_dir: str = "./models/wellness-classifier"
-    checksum_sha256: str = ""
-    onnx_filename: str = "wellness_classifier.onnx"
-
-
 class SafetySettings(BaseSettings):
     escalation_email: str = "safety-alerts@shecare.example"
     pagerduty_routing_key: str = ""
@@ -123,7 +116,6 @@ class Settings(BaseSettings):
     encryption: EncryptionSettings = Field(default_factory=EncryptionSettings)
     safety: SafetySettings = Field(default_factory=SafetySettings)
     sentry: SentrySettings = Field(default_factory=SentrySettings)
-    wellness_model: WellnessModelSettings = Field(default_factory=WellnessModelSettings)
     cycle: CycleSettings = Field(default_factory=CycleSettings)
 
 

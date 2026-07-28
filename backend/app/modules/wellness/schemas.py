@@ -143,8 +143,3 @@ class HealthTipListResponse(BaseModel):
     data: list[HealthTipResponse]
     total: int
 
-
-class ModelVersionResponse(BaseModel):
-    version: str
-    size_mb: int
-    checksum_sha256: str
