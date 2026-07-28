@@ -29,6 +29,9 @@ android/local.properties
 *.apk
 *.aab
 
+# Coverage reports
+coverage/
+
 # Bundle artifacts
 *.jsbundle
 
