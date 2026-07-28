@@ -33,7 +33,6 @@ import { RootNavigator } from 'src/navigation';
 import { ConnectivityBanner } from 'src/components/ui/ConnectivityBanner';
 import { ErrorBoundary } from 'src/components/ui/ErrorBoundary';
 import { logger } from 'src/utils';
-import { useWellnessHydration } from 'src/services/ml';
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { navigate } from 'src/navigation/rootNavigation';
 import { syncAll, setQueryClient } from 'src/services/sync';
@@ -106,7 +105,6 @@ function MigrationGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  useWellnessHydration();
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const hydrate = useOfflineStore((s) => s.hydrate);
 

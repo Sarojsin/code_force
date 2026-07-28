@@ -8,7 +8,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import Toast from 'react-native-toast-message';
 
 import { BackfillCard, Button, Calendar, Card, DatePickerField, BottomSheet, EndDatePromptCard, MarkEndDateModal, StickyCard, Text, Skeleton } from 'src/components/ui';
 import { PredictionDetailCard } from 'src/components/ui/PredictionDetailCard';
@@ -17,8 +16,6 @@ import { useCycleCalendar, useCycleEntries, useCreateCycleEntry, useLogCorrectio
 import { useEndDateStore } from 'src/stores/endDateStore';
 import { cancelEndDateNotification } from 'src/services/endDateNotifications';
 import { globalModelClient } from 'src/services/ml/globalModel';
-import { modelUpdater } from 'src/services/ml';
-import { useNetworkStatus } from 'src/services/sync';
 import type { CycleStackParamList } from 'src/navigation/types';
 
 type Nav = StackNavigationProp<CycleStackParamList, 'CycleDashboard'>;
@@ -52,7 +49,6 @@ export function CycleDashboardScreen() {
   const logCorrection = useLogCorrection();
   const logSnooze = useLogSnooze();
   const updateEntry = useUpdateCycleEntry();
-  const { isConnected } = useNetworkStatus();
   const { data: entries } = useCycleEntries({ limit: 1 });
   const createEntry = useCreateCycleEntry();
 
@@ -151,16 +147,6 @@ export function CycleDashboardScreen() {
   useEffect(() => {
     globalModelClient.ensureLatest().catch(() => null);
   }, []);
-
-  useEffect(() => {
-    if (isConnected) {
-      modelUpdater.checkForUpdate().then((result) => {
-        if (result.wellness || result.minilm) {
-          Toast.show({ type: 'success', text1: 'Wellness model updated — predictions improved' });
-        }
-      }).catch(() => {});
-    }
-  }, [isConnected]);
 
   useEffect(() => {
     AsyncStorage.getItem(SNOOZE_KEY).then((val) => {
