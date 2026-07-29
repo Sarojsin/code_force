@@ -2,7 +2,7 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 
 import { useTheme } from 'src/theme';
-import { HomeDashboardScreen } from 'src/screens/home/HomeDashboardScreen';
+import { HomeScreenRouter } from './screenRouters';
 import { MoodLogScreen } from 'src/screens/wellness/MoodLogScreen';
 import { CyclePredictionsScreen } from 'src/screens/cycle/CyclePredictionsScreen';
 import { VideoLibraryScreen } from 'src/screens/home/VideoLibraryScreen';
@@ -34,7 +34,7 @@ export function HomeStack() {
         cardStyle: { backgroundColor: theme.colors.background },
       }}
     >
-      <Stack.Screen name="HomeDashboard" component={HomeDashboardScreen} options={{ title: 'Home', headerShown: false }} />
+      <Stack.Screen name="HomeDashboard" component={HomeScreenRouter} options={{ title: 'Home', headerShown: false }} />
       <Stack.Screen name="MoodLog" component={MoodLogScreen} options={{ title: 'Log Mood' }} />
       <Stack.Screen name="MoodHistory" component={MoodHistoryScreen} options={{ title: 'Mood History' }} />
       <Stack.Screen name="CyclePredictions" component={CyclePredictionsScreen} options={{ title: 'Predictions' }} />

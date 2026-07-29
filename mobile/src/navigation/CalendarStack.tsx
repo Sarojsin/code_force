@@ -2,7 +2,7 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 
 import { useTheme } from 'src/theme';
-import { CalendarScreen } from 'src/screens/calendar/CalendarScreen';
+import { CalendarScreenRouter } from './screenRouters';
 import { CycleDashboardScreen } from 'src/screens/cycle/CycleDashboardScreen';
 import { MenstrualPhasesScreen } from 'src/screens/cycle/MenstrualPhasesScreen';
 import { LogPeriodScreen } from 'src/screens/cycle/LogPeriodScreen';
@@ -25,7 +25,7 @@ export function CalendarStack() {
         cardStyle: { backgroundColor: theme.colors.background },
       }}
     >
-      <Stack.Screen name="CalendarMain" component={CalendarScreen} options={{ title: 'Calendar', headerShown: false }} />
+      <Stack.Screen name="CalendarMain" component={CalendarScreenRouter} options={{ title: 'Calendar', headerShown: false }} />
       <Stack.Screen name="PhaseDetail" component={MenstrualPhasesScreen} options={{ title: 'Phase Details' }} />
       <Stack.Screen name="CycleDashboard" component={CycleDashboardScreen} options={{ title: 'Cycle Dashboard' }} />
       <Stack.Screen name="LogPeriod" component={LogPeriodScreen} options={{ title: 'Log Period' }} />

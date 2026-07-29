@@ -14,6 +14,7 @@ import { LunaOverlay } from '../companion/LunaOverlay';
 import { initEventEngine } from '../../services/companion/EventEngine';
 import { useSpeechBubble } from '../../services/companion/EventEngine';
 import { useCompanionStore } from '../../stores/companionStore';
+import { usePregnancyModeStore } from '../../stores/pregnancyModeStore';
 import { useAchievementStore } from '../../stores/achievementStore';
 import { AchievementPopup } from '../../components/ui/AchievementPopup';
 import { eventBus } from '../../services/eventBus';
@@ -90,6 +91,8 @@ export function HomeDashboardScreen() {
 
   const isFocused = useIsFocused();
   const lunaEnabled = useCompanionStore((s) => s.installStatus === 'ready');
+  const pregnancyMode = usePregnancyModeStore((s) => s.isActive);
+  const pregWeek = usePregnancyModeStore((s) => s.currentWeek);
   const lunaInitialized = useRef(false);
   const eventCleanupRef = useRef<(() => void) | null>(null);
   const { show: showBubble } = useSpeechBubble();
@@ -417,7 +420,14 @@ export function HomeDashboardScreen() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
-      {isFocused && lunaEnabled && <LunaOverlay />}
+      {isFocused && lunaEnabled && (
+        <LunaOverlay
+          screen="home"
+          pregnancyMode={pregnancyMode}
+          week={pregWeek}
+          trimester={pregWeek <= 13 ? 1 : pregWeek <= 26 ? 2 : 3}
+        />
+      )}
       {lunaEnabled && <AchievementPopup achievement={currentPopup} onDismiss={dismissPopup} />}
     </SafeAreaView>
   );

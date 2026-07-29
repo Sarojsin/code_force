@@ -5,6 +5,7 @@ import Animated, { useAnimatedStyle, withSpring, useSharedValue } from 'react-na
 
 import { Card, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
+import { usePregnancyModeStore } from 'src/stores/pregnancyModeStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
 
@@ -69,10 +70,28 @@ function ActionCard({ icon, label, color }: { icon: string; label: string; color
   );
 }
 
-export function PregnancyHomeScreen() {
+export interface PregnancyHomeScreenProps {
+  onWeekChange?: (week: number) => void;
+  onTrimesterChange?: (trimester: number) => void;
+  onBabySizeChange?: (size: { fruit: string; emoji: string }) => void;
+}
+
+export function PregnancyHomeScreen(props: PregnancyHomeScreenProps = {}) {
   const theme = useTheme();
-  const [currentWeek, setCurrentWeek] = useState(14);
-  const dueDate = new Date(2026, 1, 15);
+  const storeDueDate = usePregnancyModeStore((s) => s.dueDate);
+  const storeSetWeek = usePregnancyModeStore((s) => s.setWeek);
+  const [_week, _setWeek] = useState(storeDueDate ? 14 : 14);
+  const currentWeek = _week;
+  const setCurrentWeek = (w: number | ((prev: number) => number)) => {
+    const resolved = typeof w === 'function' ? w(currentWeek) : w;
+    const clamped = Math.max(1, Math.min(40, resolved));
+    _setWeek(clamped);
+    storeSetWeek(clamped);
+    props.onWeekChange?.(clamped);
+    props.onTrimesterChange?.(getTrimester(clamped));
+    props.onBabySizeChange?.(getBabySize(clamped));
+  };
+  const dueDate = storeDueDate ? new Date(storeDueDate) : new Date(2026, 1, 15);
   const trimester = getTrimester(currentWeek);
   const baby = getBabySize(currentWeek);
 
@@ -131,12 +150,6 @@ export function PregnancyHomeScreen() {
                 style={[styles.weekNavBtn, { borderColor: theme.colors.mauve, borderRadius: 12 }]}>
                 <Txt variant="body" color="muted">Next week →</Txt>
               </Pressable>
-            <Pressable
-              onPress={() => setCurrentWeek(w => Math.min(40, w + 1))}
-              style={[styles.weekNavBtn, { borderColor: '#D4A5B5', borderRadius: 12 }]}
-            >
-              <Txt variant="body" color="muted">Next week →</Txt>
-            </Pressable>
           </View>
         </Card>
 

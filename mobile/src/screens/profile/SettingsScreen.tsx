@@ -9,6 +9,7 @@ import { logger } from 'src/utils';
 import { useNavigation } from '@react-navigation/native';
 import { useCompanionStore } from '../../stores/companionStore';
 import { useAuthStore } from '../../stores/authStore';
+import { usePregnancyModeStore } from '../../stores/pregnancyModeStore';
 import { uninstallLuna } from '../../services/assetDownloader';
 import { LunaSprite } from '../../services/companion';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -91,6 +92,9 @@ function SettingsSection({ title, children }: { title: string; children: React.R
 export function SettingsScreen() {
   const theme = useTheme();
   const navigation = useNavigation<any>();
+  const pregnancyIsActive = usePregnancyModeStore((s) => s.isActive);
+  const pregnancyEnable = usePregnancyModeStore((s) => s.enable);
+  const pregnancyDisable = usePregnancyModeStore((s) => s.disable);
   const companionHidden = useCompanionStore((s) => s.isHidden);
   const companionReduceAnimations = useCompanionStore((s) => s.reduceAnimations);
   const companionMuteSounds = useCompanionStore((s) => s.muteSounds);
@@ -212,7 +216,10 @@ export function SettingsScreen() {
           <SettingRow label="Push Notifications" description="Period reminders, wellness tips" value={settings.pushNotifications} onToggle={toggle('pushNotifications')} accessibilityLabel="Toggle push notifications" />
           <SettingRow label="Period Reminders" description="3 days before predicted" value={true} onToggle={(v) => toggle('pushNotifications')(v)} accessibilityLabel="Toggle period reminders" />
           <SettingRow label="Luna AI Insights" description="Daily at 8:00 AM" value={true} onToggle={(v) => toggle('pushNotifications')(v)} accessibilityLabel="Toggle Luna AI insights" />
-          <SettingRow label="Pregnancy Mode" description="Track trimester updates" value={false} onToggle={(v) => toggle('emailNotifications')(v)} accessibilityLabel="Toggle pregnancy mode" />
+        </SettingsSection>
+
+        <SettingsSection title="PREGNANCY">
+          <SettingRow label="Pregnancy Mode 🤰" description="Switch to baby tracking" value={pregnancyIsActive} onToggle={(v) => v ? pregnancyEnable() : pregnancyDisable()} accessibilityLabel="Toggle pregnancy mode" />
         </SettingsSection>
 
         <SettingsSection title="PRIVACY & SECURITY">
