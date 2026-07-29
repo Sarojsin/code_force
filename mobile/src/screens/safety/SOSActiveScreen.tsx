@@ -1,19 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, Vibration, View } from 'react-native';
+import { Platform, StyleSheet, Vibration, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Svg, { Circle as SvgCircle } from 'react-native-svg';
 
 import Toast from 'react-native-toast-message';
 
-import { Button, Card, Text as Txt } from 'src/components/ui';
+import { Button, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useActiveSos, useCancelSos, useResolveSos, useTriggerSos, useEmergencyContacts } from 'src/services/queries';
 import { sendSmsFallback } from 'src/services/api/safety';
-import { enqueueSos, enqueueResolve, enqueueCancel } from 'src/services/safetySyncQueue';
+import { enqueueSos, enqueueResolve } from 'src/services/safetySyncQueue';
 import { useAuthStore } from 'src/stores/authStore';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const LAST_LOCATION_KEY = 'shecare.last_known_location';
 
@@ -45,6 +47,7 @@ async function getLocation(): Promise<{
 }
 
 const SOS_TRIGGER_DELAY_MS = 2000;
+const CIRCUMFERENCE = 2 * Math.PI * 80;
 
 export function SOSActiveScreen() {
   const theme = useTheme();
@@ -60,10 +63,8 @@ export function SOSActiveScreen() {
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const cancelledRef = useRef(false);
 
-  // --- Countdown phase: 2-second hold before SOS fires ---
   useEffect(() => {
     if (phase !== 'countdown') return;
-
     const interval = setInterval(() => {
       setCountdown((prev) => {
         const next = prev - 0.1;
@@ -74,7 +75,6 @@ export function SOSActiveScreen() {
         return next;
       });
     }, 100);
-
     return () => clearInterval(interval);
   }, [phase]);
 
@@ -97,10 +97,8 @@ export function SOSActiveScreen() {
     handleTriggerSos();
   }, [countdown, phase]);
 
-  // --- Active phase: elapsed timer ---
   useEffect(() => {
     if (phase !== 'active') return;
-
     const interval = setInterval(() => {
       setSecondsElapsed(prev => prev + 1);
     }, 1000);
@@ -160,35 +158,36 @@ export function SOSActiveScreen() {
     }
   };
 
-  const handleCancelSos = async () => {
-    if (!activeAlert) return;
-    try {
-      await cancelMutation.mutateAsync(activeAlert.id);
-      navigation.goBack();
-    } catch (err) {
-      await enqueueCancel(activeAlert.id).catch(() => {});
-      Toast.show({
-        type: 'info',
-        text1: 'Cancel will sync when online.',
-      });
-      navigation.goBack();
-    }
-  };
+  const progress = 1 - countdown / (SOS_TRIGGER_DELAY_MS / 1000);
+  const strokeOffset = CIRCUMFERENCE * (1 - progress);
 
-  // --- Countdown UI (pre-trigger) ---
+  const minutes = Math.floor(secondsElapsed / 60);
+  const seconds = secondsElapsed % 60;
+  const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
   if (phase === 'countdown') {
-    const progress = 1 - countdown / (SOS_TRIGGER_DELAY_MS / 1000);
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.danger }]}>
+      <SafeAreaView style={styles.safe}>
+        <LinearGradient colors={['#7F0000', '#C0392B', '#8B1A1A']} style={StyleSheet.absoluteFill} />
         <View style={styles.container}>
           <View style={styles.countdownContainer}>
-            <Txt variant="display" color="inverse" align="center" style={styles.bigCountdown}>
-              {Math.ceil(countdown)}
-            </Txt>
-            <Txt variant="h3" color="inverse" align="center">Hold — SOS will trigger</Txt>
-            <View style={[styles.progressBar, { backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: theme.radius.pill }]}>
-              <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: '#fff', borderRadius: theme.radius.pill }]} />
+            <View style={{ width: 200, height: 200, alignItems: 'center', justifyContent: 'center' }}>
+              <Svg width={200} height={200} viewBox="0 0 200 200" style={{ position: 'absolute' }}>
+                <SvgCircle cx="100" cy="100" r="80" stroke="rgba(255,255,255,0.2)" strokeWidth="8" fill="none" />
+                <SvgCircle
+                  cx="100" cy="100" r="80"
+                  stroke="#fff"
+                  strokeWidth="8"
+                  fill="none"
+                  strokeDasharray={CIRCUMFERENCE}
+                  strokeDashoffset={strokeOffset}
+                  strokeLinecap="round"
+                  transform="rotate(-90, 100, 100)"
+                />
+              </Svg>
+              <Txt style={styles.bigCountdown}>{Math.ceil(countdown)}</Txt>
             </View>
+            <Txt variant="h3" color="inverse" align="center" style={{ marginTop: 16 }}>Hold — SOS will trigger</Txt>
           </View>
           <View style={styles.actions}>
             <Button label="Cancel" variant="outline" onPress={handleCancelCountdown} fullWidth />
@@ -200,76 +199,75 @@ export function SOSActiveScreen() {
 
   if (phase === 'resolved') {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.success }]}>
-        <View style={styles.center}>
-          <Txt variant="h2" color="inverse" align="center">You're safe ✓</Txt>
-          <Txt variant="body" color="inverse" align="center" style={{ marginTop: 8 }}>Contacts notified</Txt>
-        </View>
-      </SafeAreaView>
+      <LinearGradient colors={['#059669', '#10B981']} style={[styles.safe, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Txt variant="h2" color="inverse" align="center">✓ You're safe</Txt>
+        <Txt variant="body" color="inverse" align="center" style={{ marginTop: 8 }}>Contacts notified</Txt>
+      </LinearGradient>
     );
   }
 
-  // --- Active SOS UI (post-trigger) ---
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.center}>
-          <Txt variant="h2" color="secondary">Loading...</Txt>
-        </View>
+        <View style={styles.center}><Txt variant="h2" color="secondary">Loading...</Txt></View>
       </SafeAreaView>
     );
   }
 
-  const minutes = Math.floor(secondsElapsed / 60);
-  const seconds = secondsElapsed % 60;
-  const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.danger }]}>
+    <SafeAreaView style={styles.safe}>
+      <LinearGradient colors={['#7F0000', '#C0392B', '#8B1A1A']} style={StyleSheet.absoluteFill} />
       <View style={styles.container}>
         <View style={styles.countdownContainer}>
-          <Txt variant="h1" color="inverse" align="center" style={styles.countdown}>
+          <Txt style={{ fontSize: 72, marginBottom: 8 }}>🚨</Txt>
+          <Txt variant="h2" color="inverse" align="center" accessibilityRole="header" accessibilityLiveRegion="polite">SOS Alert Sent</Txt>
+          <Txt variant="body" color="inverse" align="center" style={{ marginTop: 4, opacity: 0.9 }}>
             {timeStr}
-          </Txt>
-          <Txt variant="h3" color="inverse" align="center">SOS ACTIVE</Txt>
-          <Txt variant="body" color="inverse" align="center" style={{ marginTop: theme.spacing.sm, opacity: 0.9 }}>
-            Emergency contacts are being notified
           </Txt>
         </View>
 
-        <Card elevated style={styles.infoCard}>
-          <Txt variant="h3" color="danger">Help is on the way</Txt>
-          <Txt variant="body" color="secondary" style={{ marginTop: theme.spacing.sm }}>
-            Your emergency contacts have been alerted with your current location.
-          </Txt>
-          {(activeAlert?.manual_intervention_needed) && (
-            <Txt variant="bodySmall" color="danger" style={{ marginTop: theme.spacing.sm }}>
-              SMS delivery failed for all contacts. Manual intervention may be needed.
-            </Txt>
-          )}
-        </Card>
+        {(contacts ?? []).length > 0 && (
+          <View style={styles.contactSection}>
+            {(contacts ?? []).slice(0, 3).map((c: any, idx: number) => (
+              <View key={c.id || idx} style={styles.activeContactRow}>
+                <View style={[styles.activeContactAvatar, { borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                  <Txt style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>{(c.name || '?')[0]}</Txt>
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Txt style={{ color: '#fff', fontWeight: '600' }}>{c.name}</Txt>
+                  <Txt style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>{c.relationship || 'Emergency contact'}</Txt>
+                </View>
+                <Txt style={{ color: '#4ADE80', fontSize: 12, fontWeight: '600' }}>✓ Notified</Txt>
+              </View>
+            ))}
+          </View>
+        )}
 
         <View style={styles.actions}>
-          <Button
-            label="I'm Safe"
-            variant="primary"
+          <Pressable
             onPress={handleImSafe}
-            fullWidth
-            loading={resolveMutation.isPending}
-            disabled={cancelMutation.isPending}
-            style={{ marginBottom: theme.spacing.md }}
-          />
-          <Button
-            label="Cancel SOS (false alarm)"
-            variant="outline"
-            onPress={handleCancelSos}
-            fullWidth
-            loading={cancelMutation.isPending}
-            disabled={resolveMutation.isPending}
-          />
-          {cancelMutation.isSuccess && (
-            <Txt variant="caption" color="inverse" align="center" style={{ marginTop: theme.spacing.sm }}>
-              Contacts notified of false alarm
+            style={[styles.imSafeBtn, { borderColor: 'rgba(255,255,255,0.5)', borderRadius: 16 }]}
+            accessibilityLabel="Cancel SOS alert"
+            accessibilityRole="button"
+            accessibilityHint="Notifies contacts that you are safe"
+          >
+            <Txt style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+              I'm Safe — Cancel Alert
+            </Txt>
+          </Pressable>
+          <Pressable
+            onPress={() => {}}
+            style={[styles.callEmergencyBtn, { backgroundColor: '#fff', borderRadius: 16 }]}
+            accessibilityLabel="Call emergency services"
+            accessibilityRole="button"
+          >
+            <Txt style={{ color: '#EF4444', fontSize: 16, fontWeight: '700' }}>
+              📞 Call Emergency Services
+            </Txt>
+          </Pressable>
+          {cancelMutation.isPending && (
+            <Txt variant="caption" color="inverse" align="center" style={{ marginTop: 8 }}>
+              Cancelling...
             </Txt>
           )}
         </View>
@@ -283,10 +281,20 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   container: { flex: 1, paddingHorizontal: 24, justifyContent: 'space-between', paddingBottom: 48 },
   countdownContainer: { alignItems: 'center', marginTop: 60 },
-  countdown: { fontSize: 64, fontWeight: '700', fontVariant: ['tabular-nums'], marginBottom: 8 },
-  bigCountdown: { fontSize: 96, fontWeight: '800', fontVariant: ['tabular-nums'], marginBottom: 16 },
-  progressBar: { height: 6, width: '80%', maxWidth: 240, marginTop: 24, overflow: 'hidden' },
-  progressFill: { height: '100%' },
-  infoCard: { marginVertical: 32 },
+  bigCountdown: { color: '#fff', fontSize: 54, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  contactSection: { marginVertical: 16 },
+  activeContactRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
+  activeContactAvatar: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   actions: { gap: 8 },
+  imSafeBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderWidth: 1.5,
+  },
+  callEmergencyBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
 });

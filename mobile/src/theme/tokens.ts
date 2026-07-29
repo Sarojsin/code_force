@@ -4,12 +4,13 @@
  */
 
 export const palette = {
-  // Brand — UI_UX Global_Design_Prompt spec
-  primary50: '#FFF1F4',
-  primary100: '#FFD9E1',
-  primary300: '#FF8FA8',
-  primary500: '#FF5C8A', // shecare primary pink (UI_UX spec)
-  primary700: '#D6336B',
+  // Brand — SheCare_Mobile_App_Design spec
+  primary50: '#FFF8F0',   // warm cream bg
+  primary100: '#FFE8EF',  // mood bg
+  primary300: '#FFB3C6',  // blushLight — soft bg / hover
+  primary500: '#FF6B8A',  // blush — primary pink (design spec)
+  primary700: '#D4507A',  // gradient mid point
+  primary900: '#A83060',  // hero gradient deep end
   // Accent / secondary
   accent50: '#F5F0FF',
   accent100: '#EDE9FE',
@@ -17,6 +18,13 @@ export const palette = {
   accent500: '#9B7BFF', // soft purple (UI_UX spec)
   accent700: '#7E5BEF',
   wellness500: '#4FB7B3', // teal for emotional wellness
+  // Design-specific accent palette
+  roseQuartz: '#F7C5CC', // subtle borders, card accents
+  mauve:      '#D4A5B5', // secondary accent, decorative
+  lavender:   '#E8D5F5', // phase cards, wellness
+  mint:       '#D4F0E0', // success / wellness bg
+  warmCream:  '#FFF8F0', // page background
+  blushLight: '#FFB3C6', // soft bg / chip active
   // Neutral
   white: '#FFFFFF',
   black: '#0E0E10',
@@ -27,34 +35,46 @@ export const palette = {
   gray700: '#3B4151',
   gray900: '#1A1D26',
   // Status
-  success500: '#4CAF50', // UI_UX spec
+  success500: '#4CAF50',
   warning500: '#F4A93C',
-  danger500: '#D63B3B',
+  danger500: '#EF4444',  // design's `red`
+  danger700: '#DC2626',  // design's `redD` — SOS active
   info500: '#3B82F6',
-  // Phase colors — soft pastel palette per UI_UX spec
+  // Phase colors — design spec exact values
   menstrual: '#FF6B8A',
-  follicular: '#FFDAB9',
+  follicular: '#FFB3C6', // changed from #FFDAB9 to design spec
   ovulation: '#D4F0E0',
   luteal: '#E8D5F5',
 } as const;
 
 export const colors = {
-  // Semantic colors used by components — UI_UX Global_Design_Prompt spec
-  background: '#FFF8FB', // UI_UX spec background
+  // Semantic colors used by components — SheCare_Mobile_App_Design spec
+  background: palette.warmCream, // #FFF8F0 — design's `cream`
   surface: palette.white,
   textPrimary: palette.gray900,
   textSecondary: palette.gray700,
   textMuted: palette.gray500,
   textInverse: palette.white,
   border: palette.gray100,
-  primary: palette.primary500,
-  primaryMuted: palette.primary100,
-  accent: palette.accent500,
-  accentMuted: palette.accent100,
+  primary: palette.primary500,      // #FF6B8A — design's `blush`
+  primaryMuted: palette.primary100, // #FFE8EF
+  primaryLight: palette.blushLight, // #FFB3C6 — design's `blushL`
+  accent: palette.accent500,        // #9B7BFF
+  accentMuted: palette.accent100,   // #EDE9FE
+  accentLight: palette.lavender,    // #E8D5F5 — design's `lavender`
+  roseQuartz: palette.roseQuartz,   // #F7C5CC — design's `rose`
+  mauve: palette.mauve,             // #D4A5B5 — design's `mauve`
+  mint: palette.mint,               // #D4F0E0 — design's `mint`
   success: palette.success500,
   warning: palette.warning500,
-  danger: palette.danger500,
+  danger: palette.danger500,        // #EF4444 — design's `red`
+  dangerDark: palette.danger700,    // #DC2626 — design's `redD`
   info: palette.info500,
+  // Design-specific text colors (warmer tone)
+  textDark: '#2D1B26',    // headings — design's `dark`
+  textMid: '#6B4D5A',     // secondary body — design's `mid`
+  textSoft: '#A07888',    // captions / muted — design's `soft`
+  textLighter: '#C9A8B8', // inactive nav / subtle dividers — design's `lighter`
 } as const;
 
 export const darkColors = {
@@ -65,14 +85,24 @@ export const darkColors = {
   textMuted: palette.gray300,
   textInverse: palette.gray900,
   border: '#3A3D48',
-  primary: palette.primary300,
-  primaryMuted: palette.primary700,
-  accent: palette.accent300,
-  accentMuted: palette.accent700,
+  primary: palette.primary300,      // #FFB3C6 — lighter for dark bg
+  primaryMuted: palette.primary700, // #D4507A
+  primaryLight: '#7A3D55',
+  accent: palette.accent300,        // #C4B5FD
+  accentMuted: palette.accent700,   // #7E5BEF
+  accentLight: '#4A3055',
+  roseQuartz: palette.gray300,      // #C7CCD6
+  mauve: '#8A6A7A',
+  mint: '#2D4A3A',
   success: palette.success500,
   warning: palette.warning500,
-  danger: palette.danger500,
+  danger: '#FF6B6B',
+  dangerDark: '#FF4444',
   info: palette.info500,
+  textDark: palette.white,
+  textMid: palette.gray100,
+  textSoft: palette.gray300,
+  textLighter: palette.gray500,
 } as const;
 
 // 4-px grid (rule §3.2)
@@ -114,6 +144,19 @@ export const typography = {
   displayLogo: { fontSize: 28, fontWeight: '700' as const, lineHeight: 34, fontFamily: fonts.heading },
   displayCountdown: { fontSize: 48, fontWeight: '700' as const, lineHeight: 52, fontFamily: fonts.heading },
   tab: { fontSize: 11, fontWeight: '500' as const, lineHeight: 14, fontFamily: fonts.body },
+  // Design-specific variants — SheCare_Mobile_App_Design
+  h1Large: { fontSize: 28, fontWeight: '800' as const, lineHeight: 34, fontFamily: fonts.heading },
+  // "Good morning, Sofia ✨", "Today's Entry"
+  label: { fontSize: 10, fontWeight: '700' as const, lineHeight: 14, letterSpacing: 0.9, fontFamily: fonts.body },
+  // "STEP 1 OF 6", "NEXT PERIOD", "ENERGY LEVEL"
+  heroValue: { fontSize: 36, fontWeight: '800' as const, lineHeight: 40, fontFamily: fonts.heading },
+  // large countdown numbers like "14" in "14 days"
+  countdown: { fontSize: 54, fontWeight: '900' as const, lineHeight: 58, fontFamily: fonts.heading },
+  // SOS countdown number
+  chip: { fontSize: 12, fontWeight: '600' as const, lineHeight: 16, fontFamily: fonts.body },
+  // symptom chips, phase pills
+  greeting: { fontSize: 15, fontWeight: '500' as const, lineHeight: 20, fontFamily: fonts.body },
+  // "Sunday, 27 July" date line
 } as const;
 
 export const shadow = {
@@ -138,20 +181,34 @@ export const shadow = {
     shadowRadius: 12,
     elevation: 6,
   },
-  // Semantic shadows per UI_UX spec
+  // Semantic shadows per design spec
   soft: {
-    shadowColor: '#FF6B8A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: '#D4A5B5',  // rose-tinted
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 4,
   },
   primary: {
     shadowColor: '#FF6B8A',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.38,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  hero: {
+    shadowColor: '#FF6B8A',
+    shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25,
+    shadowRadius: 48,
+    elevation: 16,
+  },
+  chip: {
+    shadowColor: '#FF6B8A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.27,
     shadowRadius: 12,
-    elevation: 5,
+    elevation: 3,
   },
   sos: {
     shadowColor: '#FF0000',

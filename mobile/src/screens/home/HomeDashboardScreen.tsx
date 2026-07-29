@@ -1,14 +1,9 @@
-/**
- * HomeDashboardScreen — Bento + Glassmorphism layout per UI_UX Home_Screen spec.
- * Route: MainTabs → Home tab
- */
-
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, View, Pressable, Dimensions, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withDelay, withSequence } from 'react-native-reanimated';
-import Svg, { Path, Circle as SvgCircle } from 'react-native-svg';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withDelay } from 'react-native-reanimated';
+import Svg, { Circle as SvgCircle } from 'react-native-svg';
 
 import { Text, Skeleton } from 'src/components/ui';
 import { useTheme } from 'src/theme';
@@ -25,6 +20,9 @@ import { eventBus } from '../../services/eventBus';
 
 type Nav = any;
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_GAP = 12;
+
 function getTimeGreeting(): string {
   const h = new Date().getHours();
   if (h >= 5 && h < 12) return 'Good morning';
@@ -33,75 +31,42 @@ function getTimeGreeting(): string {
   return 'Good night';
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_H_MD = 120;
-const CARD_H_LG = 160;
-const CARD_GAP = 12;
+function getPhaseName(days: number): string {
+  if (days >= 1 && days <= 5) return 'Menstrual';
+  if (days >= 6 && days <= 13) return 'Follicular';
+  if (days === 14 || days === 15) return 'Ovulation';
+  return 'Luteal';
+}
 
-const GlassCard = React.memo(function GlassCard({
-  children,
-  style,
-  onPress,
-  delay = 0,
-}: {
-  children: React.ReactNode;
-  style?: any;
-  onPress?: () => void;
-  delay?: number;
-}) {
-  const theme = useTheme();
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(20);
+function getPhaseColor(phase: string): string {
+  switch (phase) {
+    case 'Menstrual': return '#F48FB1';
+    case 'Follicular': return '#CE93D8';
+    case 'Ovulation': return '#81C784';
+    case 'Luteal': return '#90CAF9';
+    default: return '#F48FB1';
+  }
+}
 
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }, { translateY: translateY.value }],
-    opacity: opacity.value,
-  }));
+function getPhaseEmoji(phase: string): string {
+  switch (phase) {
+    case 'Menstrual': return '🩸';
+    case 'Follicular': return '🌱';
+    case 'Ovulation': return '🌟';
+    case 'Luteal': return '🌙';
+    default: return '🌸';
+  }
+}
 
-  React.useEffect(() => {
-    opacity.value = withDelay(delay, withSpring(1, { damping: 20, stiffness: 150 }));
-    translateY.value = withDelay(delay, withSpring(0, { damping: 20, stiffness: 150 }));
-  }, [delay]);
-
-  const pressAnim = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const Wrapper = onPress ? Animated.View : Animated.View;
-  const wrapperStyle = onPress ? pressAnim : animStyle;
-
-  return (
-    <Wrapper style={wrapperStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={() => { if (onPress) scale.value = withSpring(0.96); }}
-        onPressOut={() => { if (onPress) scale.value = withSpring(1); }}
-        disabled={!onPress}
-        style={[
-          styles.glassCard,
-          {
-            backgroundColor: 'rgba(255, 255, 255, 0.7)',
-            borderColor: 'rgba(255, 255, 255, 0.3)',
-            borderRadius: theme.radius.xl,
-          },
-          style,
-        ]}
-      >
-        {children}
-      </Pressable>
-    </Wrapper>
-  );
-});
-
-const StatBadge = React.memo(function StatBadge({ value, label, color }: { value: string; label: string; color: string }) {
-  return (
-    <View style={styles.badge}>
-      <Text variant="h2" style={{ color, textAlign: 'center' }}>{value}</Text>
-      <Text variant="caption" color="muted" align="center">{label}</Text>
-    </View>
-  );
-});
+function getPhaseDescription(phase: string): string {
+  switch (phase) {
+    case 'Menstrual': return 'Rest and recharge';
+    case 'Follicular': return 'Energy rising';
+    case 'Ovulation': return 'Peak vitality. Magnetic energy.';
+    case 'Luteal': return 'Slow down, stay cosy';
+    default: return '';
+  }
+}
 
 export function HomeDashboardScreen() {
   const theme = useTheme();
@@ -109,10 +74,19 @@ export function HomeDashboardScreen() {
   const { data: calData, isLoading: loading, error, refetch } = useCycleCalendar(3, 3);
   const user = useAuthStore((s) => s.user);
   const displayName = user?.display_name ?? '';
+  const firstName = displayName.split(' ')[0] || '';
 
+  const cycleDay = calData?.days ? Object.keys(calData.days).length % 28 + 1 : 1;
+  const phaseName = getPhaseName(cycleDay);
+  const phaseColor = getPhaseColor(phaseName);
+  const phaseEmoji = getPhaseEmoji(phaseName);
+  const phaseDesc = getPhaseDescription(phaseName);
+  const nextPeriodDays = calData?.next_period_in_days ?? 14;
   const nextPeriodDate = calData?.next_period_in_days != null
     ? new Date(Date.now() + calData.next_period_in_days * 86400000)
     : null;
+
+  const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const isFocused = useIsFocused();
   const lunaEnabled = useCompanionStore((s) => s.installStatus === 'ready');
@@ -125,13 +99,12 @@ export function HomeDashboardScreen() {
   const hydrateCompanion = useCompanionStore((s) => s.hydrate);
 
   useEffect(() => {
-    if (lunaEnabled && !lunaInitialized.current) {
+    if (!lunaInitialized.current) {
       lunaInitialized.current = true;
       eventCleanupRef.current = initEventEngine(showBubble, (achievement) => {
         showPopup(achievement);
       });
     }
-
     return () => {
       if (eventCleanupRef.current) {
         eventCleanupRef.current();
@@ -139,13 +112,13 @@ export function HomeDashboardScreen() {
         lunaInitialized.current = false;
       }
     };
-  }, [lunaEnabled, showBubble]);
+  }, [showBubble]);
 
   useEffect(() => {
-    if (lunaEnabled && user) {
+    if (user) {
       hydrateCompanion(user.id);
     }
-  }, [lunaEnabled, user, hydrateCompanion]);
+  }, [user, hydrateCompanion]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
@@ -158,22 +131,16 @@ export function HomeDashboardScreen() {
     return () => sub.remove();
   }, []);
 
-  const bellRotation = useSharedValue(0);
-  const bellAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${bellRotation.value}deg` }],
-  }));
-
-  const handleBellPress = useCallback(() => {
-    bellRotation.value = withSequence(
-      withSpring(-15, { damping: 4, stiffness: 200 }),
-      withSpring(15, { damping: 4, stiffness: 200 }),
-      withSpring(-10, { damping: 4, stiffness: 200 }),
-      withSpring(0, { damping: 10, stiffness: 200 }),
-    );
-  }, [bellRotation]);
+  const staggerItems = [50, 100, 150, 200, 250, 300, 350, 400];
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: '#FFF8FB' }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+      <LinearGradient
+        colors={[theme.colors.primary + '38', 'transparent']}
+        locations={[0, 0.65]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {error && (
           <View style={[styles.errorBanner, { backgroundColor: theme.colors.danger + '15', borderColor: theme.colors.danger + '30', borderRadius: theme.radius.md }]}>
@@ -186,287 +153,553 @@ export function HomeDashboardScreen() {
           </View>
         )}
 
-        {/* Header Card — 140px, avatar centered, bell top-right, greeting below */}
-        <View style={[styles.headerCard, { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, borderColor: theme.colors.border, minHeight: 140 }]}>
-          <View style={styles.headerCardTop}>
-            <View style={styles.headerAvatarWrapper}>
-              <View style={[styles.headerAvatar, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.pill }]}>
-                <Text variant="h2" color="primary">🌸</Text>
-              </View>
-            </View>
-            <Pressable onPress={handleBellPress} accessibilityLabel="Notifications" style={[styles.headerBell, { borderRadius: theme.radius.pill }]}>
-              <Animated.View style={bellAnimStyle}>
-                <Svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  <Path d="M13.73 21a2 2 0 01-3.46 0" stroke={theme.colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </Svg>
-              </Animated.View>
-            </Pressable>
+        <View style={styles.headerRow}>
+          <View style={{ flex: 1 }}>
+            <Text variant="caption" color="muted" style={{ fontSize: 12, letterSpacing: 0.5 }}>{todayStr}</Text>
+            <Text variant="display" style={styles.greeting}>{getTimeGreeting()}{firstName ? `, ${firstName}` : ''} ✨</Text>
           </View>
-          <View style={styles.headerCardBottom}>
-            <Text variant="display" style={{ color: theme.colors.textPrimary, fontSize: 18 }}>
-              {getTimeGreeting()}{displayName ? `, ${displayName}` : ''}
-            </Text>
-            <Text variant="body" color="secondary" style={{ marginTop: 2 }}>
-              🌸 SheCare
-            </Text>
-          </View>
+          <Pressable
+            onPress={() => navigation.navigate('SOSActive')}
+            accessibilityLabel="Emergency SOS"
+            accessibilityHint="Triggers 5-second countdown, then alerts contacts"
+            style={[styles.sosBtn, { backgroundColor: theme.colors.danger, borderRadius: 22 }]}
+          >
+            <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>🆘</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate('Profile')}
+            accessibilityLabel="Profile"
+            style={[styles.avatarBtn, { backgroundColor: theme.colors.primary + '22', borderRadius: 22 }]}
+          >
+            <Text style={{ fontSize: 20 }}>👤</Text>
+          </Pressable>
         </View>
 
         {loading ? (
           <View style={styles.loadingGrid}>
-            <Skeleton height={CARD_H_MD} style={{ width: (SCREEN_WIDTH - 48 - CARD_GAP) / 2, marginBottom: CARD_GAP, borderRadius: theme.radius.xl }} />
-            <Skeleton height={CARD_H_MD} style={{ width: (SCREEN_WIDTH - 48 - CARD_GAP) / 2, marginBottom: CARD_GAP, borderRadius: theme.radius.xl }} />
-            <Skeleton height={CARD_H_LG} style={{ width: SCREEN_WIDTH - 48, marginBottom: CARD_GAP, borderRadius: theme.radius.xl }} />
-            <Skeleton height={CARD_H_MD} style={{ width: (SCREEN_WIDTH - 48 - CARD_GAP) / 2, marginBottom: CARD_GAP, borderRadius: theme.radius.xl }} />
-            <Skeleton height={CARD_H_MD} style={{ width: (SCREEN_WIDTH - 48 - CARD_GAP) / 2, marginBottom: CARD_GAP, borderRadius: theme.radius.xl }} />
+            <Skeleton height={200} style={{ width: SCREEN_WIDTH - 48, marginBottom: CARD_GAP, borderRadius: 26 }} />
+            <Skeleton height={100} style={{ width: (SCREEN_WIDTH - 48 - CARD_GAP) / 2, marginBottom: CARD_GAP, borderRadius: 20 }} />
+            <Skeleton height={100} style={{ width: (SCREEN_WIDTH - 48 - CARD_GAP) / 2, marginBottom: CARD_GAP, borderRadius: 20 }} />
           </View>
         ) : (
           <View style={styles.grid}>
-            {/* Row 1: Today's Cycle + Next Period */}
-            <GlassCard delay={0} style={[styles.cardHalf, { minHeight: CARD_H_MD }]}>
-              <View style={styles.cardContent}>
-                <View style={[styles.cardIcon, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.md }]}>
-                  <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <Path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke={theme.colors.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </Svg>
+            <AnimatedSection delay={staggerItems[0]}>
+              <LinearGradient
+                colors={[phaseColor + 'CC', phaseColor]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.heroCard, { borderRadius: 26 }]}
+              >
+                <View style={StyleSheet.absoluteFill}>
+                  <View style={[styles.decoCircle, { width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.07)', top: -40, right: -40 }]} />
+                  <View style={[styles.decoCircle, { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.07)', bottom: -20, right: -10 }]} />
                 </View>
-                <Text variant="bodySmall" color="muted" style={{ marginTop: 8 }}>Today's Cycle</Text>
-                <Text variant="h2" style={{ marginTop: 2 }}>Day {calData?.days ? Object.keys(calData.days).length % 28 + 1 : '-'}</Text>
-                <Text variant="caption" color="muted">Log symptoms</Text>
-              </View>
-            </GlassCard>
-
-            <GlassCard delay={50} style={[styles.cardHalf, { minHeight: CARD_H_MD }]}>
-              <LinearGradient colors={[theme.colors.primary, '#B06AB3']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: theme.radius.xl, flex: 1, padding: 16, justifyContent: 'center' }}>
-                <Text variant="bodySmall" style={{ color: 'rgba(255,255,255,0.85)' }}>Next Period</Text>
-                <Text variant="display" style={{ color: '#fff', fontSize: 28, marginTop: 4 }}>
-                  {calData?.next_period_in_days != null ? `${calData.next_period_in_days} days` : '--'}
-                </Text>
-                <Text variant="caption" style={{ color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>
-                  {nextPeriodDate ? nextPeriodDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
-                </Text>
+                <View style={styles.heroContent}>
+                  <View style={styles.heroTop}>
+                    <View style={[styles.phasePill, { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 100 }]}>
+                      <View style={[styles.dot, { backgroundColor: '#81C784' }]} />
+                      <Text style={styles.phasePillText}>CYCLE DAY {cycleDay} · {phaseName.toUpperCase()}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.heroTitle}>{phaseEmoji} {phaseName} Phase</Text>
+                  <Text style={styles.heroSubtitle}>{phaseDesc}</Text>
+                  <View style={styles.heroRingSection}>
+                    <View style={{ alignItems: 'center' }}>
+                      <Svg width={78} height={78} viewBox="0 0 78 78">
+                        <SvgCircle cx="39" cy="39" r="34" stroke="rgba(255,255,255,0.2)" strokeWidth="5" fill="none" />
+                        <SvgCircle
+                          cx="39"
+                          cy="39"
+                          r="34"
+                          stroke="#fff"
+                          strokeWidth="5"
+                          fill="none"
+                          strokeDasharray={2 * Math.PI * 34}
+                          strokeLinecap="round"
+                          strokeDashoffset={2 * Math.PI * 34 * (1 - cycleDay / 28)}
+                        />
+                      </Svg>
+                      <View style={styles.ringLabel}>
+                        <Text style={styles.ringDay}>{cycleDay}</Text>
+                        <Text style={styles.ringTotal}>/ 28</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={[styles.heroDivider, { backgroundColor: 'rgba(255,255,255,0.22)' }]} />
+                  <View style={styles.heroStats}>
+                    <View style={styles.heroStatItem}>
+                      <Text style={styles.heroStatValue}>{nextPeriodDays}</Text>
+                      <Text style={styles.heroStatLabel}>Next period</Text>
+                    </View>
+                    <View style={[styles.heroStatDivider, { backgroundColor: 'rgba(255,255,255,0.22)' }]} />
+                    <View style={styles.heroStatItem}>
+                      <Text style={styles.heroStatValue}>28</Text>
+                      <Text style={styles.heroStatLabel}>Cycle avg</Text>
+                    </View>
+                    <View style={[styles.heroStatDivider, { backgroundColor: 'rgba(255,255,255,0.22)' }]} />
+                    <View style={styles.heroStatItem}>
+                      <Text style={styles.heroStatValue}>3</Text>
+                      <Text style={styles.heroStatLabel}>Streak</Text>
+                    </View>
+                  </View>
+                </View>
               </LinearGradient>
-            </GlassCard>
+            </AnimatedSection>
 
-            {/* Row 2: AI Prediction (full width) */}
-            <GlassCard delay={100} style={[styles.cardFull, { minHeight: CARD_H_LG }]}>
-              <Pressable onPress={() => navigation.navigate('CyclePredictions')} style={{ flex: 1 }}>
-                <View style={styles.cardContent}>
-                  <View style={styles.cardRow}>
-                    <View style={[styles.cardIcon, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radius.md }]}>
-                      <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <Path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" stroke={theme.colors.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        <SvgCircle cx="12" cy="12" r="3" stroke={theme.colors.accent} strokeWidth="2" />
-                      </Svg>
+            <View style={styles.quickStatsRow}>
+              <AnimatedSection delay={staggerItems[1]} style={{ flex: 1, marginRight: 6 }}>
+                <Pressable
+                  onPress={() => navigation.navigate('CyclePredictions')}
+                  style={[styles.statCard, { backgroundColor: theme.colors.accentMuted, borderRadius: 20 }]}
+                >
+                  <Text variant="caption" color="muted" style={{ fontSize: 10, letterSpacing: 0.8 }}>NEXT PERIOD</Text>
+                  <Text style={styles.statNumber}>{nextPeriodDays}</Text>
+                  <View style={[styles.progressBarSmall, { backgroundColor: 'rgba(0,0,0,0.08)', borderRadius: 100 }]}>
+                    <View style={[styles.progressFillSmall, { width: '50%', backgroundColor: '#A78BFA', borderRadius: 100 }]} />
+                  </View>
+                  <Text variant="caption" color="muted" style={{ fontSize: 10 }}>
+                    {nextPeriodDate ? nextPeriodDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} · Predicted
+                  </Text>
+                </Pressable>
+              </AnimatedSection>
+              <AnimatedSection delay={staggerItems[1]} style={{ flex: 1, marginLeft: 6 }}>
+                <Pressable
+                  onPress={() => navigation.navigate('MoodLog')}
+                  style={[styles.statCard, { backgroundColor: '#D1FAE5', borderRadius: 20 }]}
+                >
+                  <Text variant="caption" color="muted" style={{ fontSize: 10, letterSpacing: 0.8 }}>TODAY'S MOOD</Text>
+                  <Text style={{ fontSize: 36 }}>😊</Text>
+                  <View style={styles.moodLogRow}>
+                    <View style={[styles.greenDot, { backgroundColor: '#10B981' }]} />
+                    <Text variant="caption" style={{ color: '#059669', fontSize: 11 }}>Log feeling</Text>
+                  </View>
+                </Pressable>
+              </AnimatedSection>
+            </View>
+
+            <AnimatedSection delay={staggerItems[2]}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.phaseTimeline}>
+                {['Menstrual', 'Follicular', 'Ovulation', 'Luteal'].map((p) => {
+                  const active = p === phaseName;
+                  const pc = getPhaseColor(p);
+                  return (
+                    <Pressable
+                      key={p}
+                      style={[
+                        styles.phaseCard,
+                        {
+                          backgroundColor: active ? pc : 'rgba(255,255,255,0.75)',
+                          borderColor: active ? pc : 'rgba(0,0,0,0.06)',
+                          borderRadius: 16,
+                        },
+                        active && { shadowColor: pc, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 24 }}>{getPhaseEmoji(p)}</Text>
+                      <Text style={[styles.phaseName, { color: active ? '#fff' : '#4A5568' }]}>{p}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </AnimatedSection>
+
+            <AnimatedSection delay={staggerItems[3]}>
+              <Pressable
+                onPress={() => navigation.navigate('CyclePredictions')}
+                style={[styles.aiCard, { borderRadius: 20 }]}
+              >
+                <LinearGradient colors={['#EDE9FE', '#FCE7F3']} style={[StyleSheet.absoluteFill, { borderRadius: 20 }]} />
+                <View style={styles.aiCardContent}>
+                  <View style={[styles.aiIconWrap, { borderRadius: 16, backgroundColor: theme.colors.accentMuted }]}>
+                    <LinearGradient colors={['#C4B5FD', '#F0ABFC']} style={[StyleSheet.absoluteFill, { borderRadius: 16 }]} />
+                    <Text style={{ fontSize: 22 }}>🤖</Text>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text variant="h3">AI Prediction</Text>
+                    <Text variant="body" color="secondary" style={{ marginTop: 2 }}>
+                      Next period predicted <Text variant="body" style={{ fontWeight: '700' }}>
+                        {nextPeriodDate ? nextPeriodDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '--'}
+                      </Text>
+                    </Text>
+                    <View style={styles.confidenceRow}>
+                      <View style={[styles.confidenceBadge, { backgroundColor: '#10B981', borderRadius: 100 }]}>
+                        <Text style={styles.confidenceText}>● 94% CONFIDENCE</Text>
+                      </View>
+                      <View style={[styles.confidenceBadge, { backgroundColor: '#10B981', borderRadius: 100 }]}>
+                        <Text style={styles.confidenceText}>● ON TRACK</Text>
+                      </View>
                     </View>
-                    <Text variant="h3" style={{ flex: 1, marginLeft: 8 }}>AI Prediction</Text>
-                  </View>
-                  <View style={styles.badgeRow}>
-                    <StatBadge value={calData?.predictions?.confidence ? `${Math.round(calData.predictions.confidence * 100)}%` : '86%'} label="Accuracy" color={theme.colors.success} />
-                    <StatBadge value="75%" label="Fertility" color={theme.colors.accent} />
-                    <StatBadge value="92%" label="Ovulation" color={theme.colors.primary} />
-                  </View>
-                  <View style={{ marginTop: 8, height: 24 }}>
-                    <Svg width="100%" height="24" viewBox="0 0 200 24" preserveAspectRatio="none">
-                      <Path d="M0 20 Q20 12 40 15 T80 10 T120 14 T160 6 T200 8" fill="none" stroke={theme.colors.accent} strokeWidth="1.5" opacity="0.6" />
-                      <Path d="M0 20 Q20 12 40 15 T80 10 T120 14 T160 6 T200 8" fill="none" stroke={theme.colors.accent} strokeWidth="2.5" strokeLinecap="round" />
-                    </Svg>
                   </View>
                 </View>
               </Pressable>
-            </GlassCard>
+            </AnimatedSection>
 
-            {/* Row 3: Mood + Videos */}
-            <GlassCard delay={150} style={[styles.cardHalf, { minHeight: CARD_H_MD }]}>
-              <Pressable onPress={() => navigation.navigate('MoodLog')} style={{ flex: 1 }}>
-                <View style={styles.cardContent}>
-                  <View style={[styles.cardIcon, { backgroundColor: '#FEF3C7', borderRadius: theme.radius.md }]}>
-                    <Text variant="h2">😊</Text>
+            <View style={styles.bentoRow}>
+              <AnimatedSection delay={staggerItems[4]} style={{ flex: 1, marginRight: 6 }}>
+                <Pressable
+                  onPress={() => navigation.navigate('AIChat')}
+                  style={[styles.bentoCard, { backgroundColor: '#fff', borderRadius: 20 }]}
+                >
+                  <View style={[styles.bentoIcon, { borderRadius: 12 }]}>
+                    <LinearGradient colors={['#C4B5FD', '#F0ABFC']} style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} />
+                    <Text style={{ fontSize: 20 }}>💬</Text>
                   </View>
-                  <Text variant="bodySmall" color="muted" style={{ marginTop: 8 }}>Mood</Text>
-                  <Text variant="body" style={{ marginTop: 2 }}>How are you feeling?</Text>
+                  <Text variant="h3" style={{ marginTop: 8 }}>Luna AI</Text>
+                  <Text variant="caption" color="muted">Ask me anything about your health</Text>
+                </Pressable>
+              </AnimatedSection>
+              <AnimatedSection delay={staggerItems[4]} style={{ flex: 1, marginLeft: 6 }}>
+                <Pressable
+                  onPress={() => navigation.navigate('JournalList')}
+                  style={[styles.bentoCard, { backgroundColor: '#fff', borderRadius: 20 }]}
+                >
+                  <View style={[styles.bentoIcon, { borderRadius: 12 }]}>
+                    <LinearGradient colors={['#A7F3D0', '#6EE7B7']} style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} />
+                    <Text style={{ fontSize: 20 }}>📝</Text>
+                  </View>
+                  <Text variant="h3" style={{ marginTop: 8 }}>Journal</Text>
+                  <Text variant="caption" color="muted">Log symptoms & feelings</Text>
+                </Pressable>
+              </AnimatedSection>
+            </View>
+
+            <AnimatedSection delay={staggerItems[5]}>
+              <View style={[styles.analyticsCard, { backgroundColor: '#fff', borderRadius: 20 }]}>
+                <Text variant="h3" style={{ marginBottom: 12 }}>Cycle Analytics</Text>
+                <View style={styles.barChart}>
+                  {['May', 'Jun', 'Jul'].map((month, idx) => {
+                    const isCurrent = idx === 2;
+                    const height = [70, 55, 85][idx];
+                    return (
+                      <View key={month} style={styles.barCol}>
+                        <Text style={{ fontSize: 10, color: theme.colors.textMuted }}>{['😊', '😌', '😊'][idx]}</Text>
+                        <View style={[styles.bar, { height, borderRadius: 8, backgroundColor: isCurrent ? theme.colors.primary : '#FFD4DC' }]} />
+                        <Text style={{ fontSize: 10, color: theme.colors.textMuted, marginTop: 4 }}>{month}</Text>
+                      </View>
+                    );
+                  })}
                 </View>
-              </Pressable>
-            </GlassCard>
+                <View style={[styles.regularityBadge, { backgroundColor: theme.colors.mint, borderRadius: 100 }]}>
+                  <Text style={{ color: '#059669', fontSize: 12, fontWeight: '600' }}>📈 Average cycle: 28 days · Regularity score: 92%</Text>
+                </View>
+              </View>
+            </AnimatedSection>
 
-            <GlassCard delay={200} style={[styles.cardHalf, { minHeight: CARD_H_MD }]}>
-              <Pressable onPress={() => (navigation as any).navigate('Videos')} style={{ flex: 1 }}>
-                <View style={styles.cardContent}>
-                  <View style={[styles.cardIcon, { backgroundColor: '#DCFCE7', borderRadius: theme.radius.md }]}>
-                    <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <Path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" stroke={theme.colors.success} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      <Path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke={theme.colors.success} strokeWidth="2" />
-                    </Svg>
-                  </View>
-                  <Text variant="bodySmall" color="muted" style={{ marginTop: 8 }}>Videos</Text>
-                  <View style={styles.badgeRow}>
-                    <Text variant="body" style={{ marginTop: 2 }}>Explore</Text>
-                    <View style={[styles.newBadge, { backgroundColor: theme.colors.primary, borderRadius: theme.radius.pill }]}>
-                      <Text variant="caption" color="inverse" style={{ fontSize: 10 }}>3 new</Text>
+            <AnimatedSection delay={staggerItems[6]}>
+              <Text variant="h3" style={{ marginBottom: 12 }}>Wellness Videos</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {[
+                  { emoji: '🥗', title: 'Cycle Nutrition', duration: '8 min', badge: 'Nutrition' },
+                  { emoji: '🧘', title: 'Yoga for Cramps', duration: '15 min', badge: 'Exercise' },
+                  { emoji: '😴', title: 'Better Sleep', duration: '6 min', badge: 'Sleep' },
+                  { emoji: '🧠', title: 'Mindful Eating', duration: '10 min', badge: 'Wellness' },
+                ].map((v, i) => (
+                  <Pressable
+                    key={v.title}
+                    style={[styles.videoCard, { backgroundColor: '#fff', borderRadius: 16, marginRight: i < 3 ? 12 : 0 }]}
+                  >
+                    <View style={[styles.videoIcon, { borderRadius: 12 }]}>
+                      <Text style={{ fontSize: 28 }}>{v.emoji}</Text>
                     </View>
-                  </View>
-                </View>
-              </Pressable>
-            </GlassCard>
-
-            {/* Row 4: Journal + AI Chat */}
-            <GlassCard delay={250} style={[styles.cardHalf, { minHeight: CARD_H_MD }]}>
-              <Pressable onPress={() => navigation.navigate('JournalList')} style={{ flex: 1 }}>
-                <View style={styles.cardContent}>
-                  <View style={[styles.cardIcon, { backgroundColor: '#D1FAE5', borderRadius: theme.radius.md }]}>
-                    <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <Path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke={theme.colors.success} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </Svg>
-                  </View>
-                  <Text variant="bodySmall" color="muted" style={{ marginTop: 8 }}>Journal</Text>
-                  <Text variant="body" style={{ marginTop: 2 }}>Write your thoughts</Text>
-                </View>
-              </Pressable>
-            </GlassCard>
-
-            <GlassCard delay={300} style={[styles.cardHalf, { minHeight: CARD_H_MD }]}>
-              <Pressable onPress={() => navigation.navigate('AIChat')} style={{ flex: 1 }}>
-                <View style={styles.cardContent}>
-                  <View style={[styles.cardIcon, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radius.md }]}>
-                    <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <Path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" stroke={theme.colors.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </Svg>
-                  </View>
-                  <Text variant="bodySmall" color="muted" style={{ marginTop: 8 }}>AI Chat</Text>
-                  <Text variant="body" style={{ marginTop: 2 }}>Ask me anything</Text>
-                </View>
-              </Pressable>
-            </GlassCard>
-
-            {/* Row 5: Wellness Hub (Breathing, Mood History, Insights) */}
-            <GlassCard delay={350} style={[styles.cardFull, { minHeight: 100 }]}>
-              <Pressable onPress={() => navigation.navigate('Insights')} style={{ flex: 1 }}>
-                <View style={styles.cardContent}>
-                  <View style={styles.cardRow}>
-                    <View style={[styles.cardIcon, { backgroundColor: '#EDE9FE', borderRadius: theme.radius.md }]}>
-                      <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <Path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" stroke={theme.colors.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </Svg>
+                    <Text variant="body" style={{ fontWeight: '600', marginTop: 8 }}>{v.title}</Text>
+                    <Text variant="caption" color="muted">⏱ {v.duration}</Text>
+                    <View style={[styles.videoBadge, { backgroundColor: theme.colors.primary + '22', borderRadius: 100 }]}>
+                      <Text style={{ color: theme.colors.primary, fontSize: 10, fontWeight: '600' }}>{v.badge}</Text>
                     </View>
-                    <Text variant="h3" style={{ flex: 1, marginLeft: 10 }}>Wellness Hub</Text>
-                  </View>
-                  <View style={[styles.badgeRow, { marginTop: 8, gap: 8 }]}>
-                    <Pressable onPress={() => navigation.navigate('BreathingList')} style={[styles.miniChip, { backgroundColor: '#EDE9FE', borderRadius: theme.radius.pill }]}>
-                      <Text variant="caption" color="accent">🧘 Breathing</Text>
-                    </Pressable>
-                    <Pressable onPress={() => navigation.navigate('MoodHistory')} style={[styles.miniChip, { backgroundColor: '#BFDBFE', borderRadius: theme.radius.pill }]}>
-                      <Text variant="caption" style={{ color: theme.colors.info }}>📊 Mood History</Text>
-                    </Pressable>
-                    <Pressable onPress={() => navigation.navigate('Insights')} style={[styles.miniChip, { backgroundColor: '#FCE7F3', borderRadius: theme.radius.pill }]}>
-                      <Text variant="caption" color="primary">💡 Insights</Text>
-                    </Pressable>
-                    <Pressable onPress={() => navigation.navigate('HealthHub')} style={[styles.miniChip, { backgroundColor: '#D1FAE5', borderRadius: theme.radius.pill }]}>
-                      <Text variant="caption" style={{ color: '#059669' }}>🌸 Health Hub</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </Pressable>
-            </GlassCard>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </AnimatedSection>
+
+            <View style={{ height: 24 }} />
           </View>
         )}
 
         <View style={{ height: 24 }} />
       </ScrollView>
-
       {isFocused && lunaEnabled && <LunaOverlay />}
       {lunaEnabled && <AchievementPopup achievement={currentPopup} onDismiss={dismissPopup} />}
     </SafeAreaView>
   );
 }
 
+function AnimatedSection({ children, delay, style }: { children: React.ReactNode; delay: number; style?: any }) {
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(20);
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+  React.useEffect(() => {
+    opacity.value = withDelay(delay, withSpring(1, { damping: 20, stiffness: 150 }));
+    translateY.value = withDelay(delay, withSpring(0, { damping: 20, stiffness: 150 }));
+  }, [delay]);
+  return <Animated.View style={[animStyle, style]}>{children}</Animated.View>;
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 },
-  headerCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 24,
-    justifyContent: 'space-between',
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: 20,
   },
-  headerCardTop: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerAvatarWrapper: {
-    width: 80,
-    height: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerAvatar: {
-    width: 80,
-    height: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerBell: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  headerCardBottom: {
-    alignItems: 'center',
+  greeting: {
+    fontSize: 27,
+    fontWeight: '800',
+    color: '#1A1A2E',
     marginTop: 4,
+  },
+  sosBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  avatarBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
   errorBanner: { flexDirection: 'row', alignItems: 'center', padding: 12, borderWidth: 1, marginBottom: 12 },
   loadingGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  glassCard: {
-    borderWidth: 1,
+  grid: {},
+  heroCard: {
+    minHeight: 240,
     overflow: 'hidden',
-  },
-  cardHalf: {
-    width: (SCREEN_WIDTH - 48 - CARD_GAP) / 2,
     marginBottom: CARD_GAP,
   },
-  cardFull: {
-    width: SCREEN_WIDTH - 48,
-    marginBottom: CARD_GAP,
+  decoCircle: {
+    position: 'absolute',
   },
-  cardContent: {
-    padding: 16,
-    flex: 1,
+  heroContent: {
+    padding: 20,
   },
-  cardRow: {
+  heroTop: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  phasePill: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  cardIcon: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
-  },
-  badge: {
-    flex: 1,
-    alignItems: 'center',
+    paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  newBadge: {
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  phasePillText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  heroSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.88)',
+    marginTop: 4,
+  },
+  heroRingSection: {
+    alignItems: 'flex-end',
+    marginTop: -60,
+    marginBottom: 8,
+  },
+  ringLabel: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -15 }, { translateY: -15 }],
+    alignItems: 'center',
+  },
+  ringDay: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  ringTotal: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+  },
+  heroDivider: {
+    height: 1,
+    marginVertical: 12,
+  },
+  heroStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  heroStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  heroStatValue: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  heroStatLabel: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  heroStatDivider: {
+    width: 1,
+    height: 24,
+  },
+  quickStatsRow: {
+    flexDirection: 'row',
+    marginBottom: CARD_GAP,
+  },
+  statCard: {
+    padding: 16,
+    minHeight: 110,
+    justifyContent: 'space-between',
+  },
+  statNumber: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#1A1A2E',
+  },
+  progressBarSmall: {
+    height: 4,
+    marginVertical: 6,
+  },
+  progressFillSmall: {
+    height: '100%',
+  },
+  moodLogRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  greenDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 4,
+  },
+  phaseTimeline: {
+    marginBottom: CARD_GAP,
+  },
+  phaseCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    marginRight: 10,
+    width: 90,
+    borderWidth: 1,
+  },
+  phaseName: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  aiCard: {
+    minHeight: 100,
+    marginBottom: CARD_GAP,
+    overflow: 'hidden',
+  },
+  aiCardContent: {
+    flexDirection: 'row',
+    padding: 16,
+    alignItems: 'center',
+  },
+  aiIconWrap: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  confidenceRow: {
+    flexDirection: 'row',
+    marginTop: 6,
+    gap: 6,
+  },
+  confidenceBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  confidenceText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  bentoRow: {
+    flexDirection: 'row',
+    marginBottom: CARD_GAP,
+  },
+  bentoCard: {
+    padding: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.06)',
+    minHeight: 110,
+  },
+  bentoIcon: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  analyticsCard: {
+    padding: 16,
+    marginBottom: CARD_GAP,
+  },
+  barChart: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-end',
+    height: 120,
+    paddingBottom: 4,
+  },
+  barCol: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  bar: {
+    width: 32,
+  },
+  regularityBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 12,
+  },
+  videoCard: {
+    width: 140,
+    padding: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.06)',
+  },
+  videoIcon: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  videoBadge: {
+    alignSelf: 'flex-start',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    marginLeft: 4,
-  },
-  miniChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    marginTop: 6,
   },
 });
