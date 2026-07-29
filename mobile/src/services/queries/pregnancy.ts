@@ -5,10 +5,6 @@ import {
   PregnancyProfile,
   PregnancyDailyLog,
 } from 'src/services/api';
-import {
-  placeholderPregnancyProfile,
-  placeholderPregnancyMilestones,
-} from 'src/services/localDb/syncPlaceholders';
 import { upsertPregnancyProfile } from 'src/services/localDb/writeThroughHelpers';
 
 export const pregnancyKeys = {
@@ -23,7 +19,6 @@ export function usePregnancyProfile() {
   return useQuery({
     queryKey: pregnancyKeys.profile,
     queryFn: () => pregnancyService.getProfile(),
-    initialData: () => placeholderPregnancyProfile() as any,
     staleTime: 0,
     retry: false,
   });
@@ -63,7 +58,6 @@ export function usePregnancyMilestones() {
   return useQuery({
     queryKey: pregnancyKeys.milestones,
     queryFn: () => pregnancyService.getMilestones(),
-    initialData: () => placeholderPregnancyMilestones() as any,
     staleTime: 0,
     retry: false,
   });

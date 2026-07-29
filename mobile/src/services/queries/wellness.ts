@@ -9,11 +9,6 @@ import {
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { isNetworkError } from 'src/services/sync';
 import { generateId } from 'src/utils';
-import {
-  placeholderJournalEntries,
-  placeholderMoodLogs,
-  placeholderInsights,
-} from 'src/services/localDb/syncPlaceholders';
 import { upsertJournalEntry, upsertMoodLog } from 'src/services/localDb/writeThroughHelpers';
 
 export const wellnessKeys = {
@@ -28,7 +23,6 @@ export function useJournalEntries(params?: { page?: number; per_page?: number })
   return useQuery({
     queryKey: [...wellnessKeys.journal, params],
     queryFn: () => wellnessService.getJournalEntries(params?.per_page, params?.page),
-    initialData: () => placeholderJournalEntries(params?.per_page) as any,
     staleTime: 0,
     retry: false,
   });
@@ -72,7 +66,6 @@ export function useMoodLogs(params?: { page?: number; per_page?: number }) {
   return useQuery({
     queryKey: [...wellnessKeys.moodLogs, params],
     queryFn: () => wellnessService.getMoodLogs(params?.per_page),
-    initialData: () => placeholderMoodLogs(params?.per_page) as any,
     staleTime: 0,
     retry: false,
   });
@@ -153,7 +146,6 @@ export function useInsights() {
   return useQuery({
     queryKey: wellnessKeys.insights,
     queryFn: () => wellnessService.getInsights(),
-    initialData: () => placeholderInsights() as any,
     staleTime: 0,
     retry: false,
   });

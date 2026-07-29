@@ -215,6 +215,7 @@ or poetry run python run.py or directly python run.py
   cd mobile
   npx expo start 
   npx expo run:android
+  adb uninstall com.shecare.app
   eas build --profile development
 
   for eas used use this  ,npx expo start --dev-client or .\start.ps1

@@ -8,7 +8,6 @@ import { isNetworkError } from 'src/services/sync';
 import { scheduleEndDateNotification } from 'src/services/endDateNotifications';
 import { calculateCyclePhases, applyPhaseToDays } from 'src/utils';
 import { generateId } from 'src/utils';
-import { placeholderCycleEntries, placeholderCyclePredictions, placeholderCycleCalendar } from 'src/services/localDb/syncPlaceholders';
 
 import { upsertCycleEntry, upsertSnoozeEvent } from 'src/services/localDb/writeThroughHelpers';
 export const cycleKeys = {
@@ -24,7 +23,6 @@ export function useCycleEntries(params?: { limit?: number; offset?: number; mont
   return useQuery({
     queryKey: [...cycleKeys.entries, params],
     queryFn: () => cycleService.getEntries(params),
-    initialData: () => placeholderCycleEntries(params?.limit) as any,
     staleTime: 0,
     retry: false,
   });
@@ -110,7 +108,6 @@ export function useCyclePredictions() {
   return useQuery({
     queryKey: cycleKeys.predictions,
     queryFn: () => cycleService.getPredictions(),
-    initialData: () => placeholderCyclePredictions() as any,
     staleTime: 0,
     retry: false,
   });
@@ -127,7 +124,6 @@ export function useCycleCalendar(monthsBack = 3, monthsForward = 3) {
   return useQuery({
     queryKey: [...cycleKeys.calendar, monthsBack, monthsForward],
     queryFn: () => cycleService.getCalendar(monthsBack, monthsForward),
-    initialData: () => placeholderCycleCalendar() as any,
     staleTime: 0,
     retry: false,
   });

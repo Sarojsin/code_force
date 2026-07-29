@@ -93,6 +93,7 @@ export function MainTabs() {
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         headerShown: false,
+        freezeOnBlur: true,
       })}
     >
       <Tabs.Screen

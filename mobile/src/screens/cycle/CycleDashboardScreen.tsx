@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -52,6 +52,8 @@ export function CycleDashboardScreen() {
   const { data: entries } = useCycleEntries({ limit: 1 });
   const createEntry = useCreateCycleEntry();
 
+  const todayRef = useRef(new Date());
+  const noopRef = useRef(() => {});
   const [snoozeState, setSnoozeState] = useState<SnoozeState | null>(null);
   const [showOverride, setShowOverride] = useState(false);
   const [showEndDateModal, setShowEndDateModal] = useState(false);
@@ -132,13 +134,16 @@ export function CycleDashboardScreen() {
   );
 
   const doneOrSkipped = (ml: string) => backfillDone.includes(ml) || backfillSkipped.includes(ml);
-  const endDateStore = useEndDateStore();
+  const entryId = useEndDateStore((s) => s.entryId);
+  const periodStartDate = useEndDateStore((s) => s.periodStartDate);
+  const notificationId = useEndDateStore((s) => s.notificationId);
+  const clearPending = useEndDateStore((s) => s.clearPending);
 
   useEffect(() => {
-    if (route.params?.markEndDate && endDateStore.periodStartDate) {
+    if (route.params?.markEndDate && periodStartDate) {
       setShowEndDateModal(true);
     }
-  }, [route.params?.markEndDate, endDateStore.periodStartDate]);
+  }, [route.params?.markEndDate, periodStartDate]);
   const overrideForm = useForm<OverrideForm>({
     resolver: zodResolver(overrideSchema),
     defaultValues: { overrideDate: toDateStr(new Date()) },
@@ -217,27 +222,27 @@ export function CycleDashboardScreen() {
 
   const handleConfirmEndDate = useCallback(
     (endDate: string) => {
-      if (!endDateStore.entryId) return;
+      if (!entryId) return;
       updateEntry.mutate(
-        { id: endDateStore.entryId, data: { period_end_date: endDate } },
+        { id: entryId, data: { period_end_date: endDate } },
         { onSuccess: () => {
-          if (endDateStore.notificationId) cancelEndDateNotification(endDateStore.notificationId).catch(() => {});
-          endDateStore.clearPending();
+          if (notificationId) cancelEndDateNotification(notificationId).catch(() => {});
+          clearPending();
           setShowEndDateModal(false);
         }},
       );
     },
-    [updateEntry, endDateStore],
+    [updateEntry, entryId, notificationId, clearPending],
   );
 
   const handleSkipEndDate = useCallback(() => {
-    if (endDateStore.notificationId) cancelEndDateNotification(endDateStore.notificationId).catch(() => {});
-    endDateStore.clearPending();
+    if (notificationId) cancelEndDateNotification(notificationId).catch(() => {});
+    clearPending();
     setShowEndDateModal(false);
-  }, [endDateStore]);
+  }, [notificationId, clearPending]);
 
-  const daysSinceStart = endDateStore.periodStartDate
-    ? Math.max(0, Math.round((today.getTime() - new Date(endDateStore.periodStartDate + 'T00:00:00').getTime()) / 86400000))
+  const daysSinceStart = periodStartDate
+    ? Math.max(0, Math.round((today.getTime() - new Date(periodStartDate + 'T00:00:00').getTime()) / 86400000))
     : 0;
 
   const handlePermanentOverride = overrideForm.handleSubmit((data) => {
@@ -329,10 +334,10 @@ export function CycleDashboardScreen() {
           />
         )}
 
-        {endDateStore.periodStartDate && (
+        {periodStartDate && (
           <EndDatePromptCard
             visible
-            periodStartDate={endDateStore.periodStartDate}
+            periodStartDate={periodStartDate}
             daysSinceStart={daysSinceStart}
             onConfirmEndDate={() => setShowEndDateModal(true)}
             onSkip={handleSkipEndDate}
@@ -372,7 +377,7 @@ export function CycleDashboardScreen() {
             },
           ]}
         >
-          <Calendar selectedDate={new Date()} onDateSelect={() => {}} encodedDays={calData?.days} />
+          <Calendar selectedDate={todayRef.current} onDateSelect={noopRef.current} encodedDays={calData?.days} />
         </View>
 
         <View style={styles.actions}>
@@ -435,14 +440,14 @@ export function CycleDashboardScreen() {
         />
       </BottomSheet>
 
-      {endDateStore.periodStartDate && (
+      {periodStartDate && (
         <MarkEndDateModal
           visible={showEndDateModal}
           onClose={() => setShowEndDateModal(false)}
           onConfirm={handleConfirmEndDate}
           onSkip={handleSkipEndDate}
           loading={logCorrection.isPending}
-          periodStartDate={endDateStore.periodStartDate}
+          periodStartDate={periodStartDate}
         />
       )}
     </SafeAreaView>

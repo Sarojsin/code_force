@@ -1,19 +1,28 @@
 diff --git a/node_modules/expo-av/android/CMakeLists.txt b/node_modules/expo-av/android/CMakeLists.txt
-index 6b5f52a..437e1e3 100644
+index 6b5f52a..59a12d6 100644
 --- a/node_modules/expo-av/android/CMakeLists.txt
 +++ b/node_modules/expo-av/android/CMakeLists.txt
-@@ -42,7 +42,6 @@ target_link_libraries(
+@@ -42,17 +42,11 @@ target_link_libraries(
          ${PACKAGE_NAME}
          ${LOG_LIB}
          fbjni::fbjni
 -        ReactAndroid::jsi
          android
++        c++_shared
++)
++target_link_libraries(
++        ${PACKAGE_NAME}
++        ReactAndroid::reactnative
++        ReactAndroid::jsi
  )
- if (ReactAndroid_VERSION_MINOR GREATER_EQUAL 76)
-@@ -54,5 +53,6 @@ else()
-   target_link_libraries(
-           ${PACKAGE_NAME}
-           ReactAndroid::reactnativejni
-+          ReactAndroid::jsi
-   )
- endif()
+-if (ReactAndroid_VERSION_MINOR GREATER_EQUAL 76)
+-  target_link_libraries(
+-          ${PACKAGE_NAME}
+-          ReactAndroid::reactnative
+-  )
+-else()
+-  target_link_libraries(
+-          ${PACKAGE_NAME}
+-          ReactAndroid::reactnativejni
+-  )
+-endif()

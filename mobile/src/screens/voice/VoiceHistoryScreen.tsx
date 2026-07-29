@@ -35,44 +35,49 @@ const sentimentColors: Record<string, string> = {
   Anxious: '#FEE2E2',
 };
 
+const VoiceCard = React.memo(function VoiceCard({ item }: { item: VoiceEntry }) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const theme = useTheme();
+  return (
+    <Animated.View style={animStyle}>
+      <Pressable
+        onPressIn={() => { scale.value = withSpring(0.96); }}
+        onPressOut={() => { scale.value = withSpring(1); }}
+        accessibilityRole="button"
+        accessibilityLabel={`Voice journal: ${item.title}`}
+      >
+        <Card elevated style={{ marginBottom: theme.spacing.md }}>
+          <View style={styles.row}>
+            <View style={[styles.iconCircle, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.pill }]}>
+              <Txt variant="body" color="primary">&#9835;</Txt>
+            </View>
+            <View style={{ flex: 1, marginLeft: theme.spacing.md }}>
+              <View style={styles.topRow}>
+                <Txt variant="h3">{item.title}</Txt>
+                <Txt variant="caption" color="muted">{item.duration}</Txt>
+              </View>
+              <View style={styles.metaRow}>
+                <Txt variant="caption" color="muted">{item.createdAt}</Txt>
+                <View style={[styles.sentimentBadge, { backgroundColor: sentimentColors[item.sentiment] ?? theme.colors.border, borderRadius: theme.radius.sm }]}>
+                  <Txt variant="caption" color="primary">{item.sentiment}</Txt>
+                </View>
+              </View>
+              {!item.hasTranscript && <Txt variant="caption" color="muted">Transcript unavailable</Txt>}
+            </View>
+          </View>
+        </Card>
+      </Pressable>
+    </Animated.View>
+  );
+});
+
 export function VoiceHistoryScreen() {
   const theme = useTheme();
 
-  const renderItem = ({ item }: { item: VoiceEntry }) => {
-    const scale = useSharedValue(1);
-    const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-    return (
-      <Animated.View style={animStyle}>
-        <Pressable
-          onPressIn={() => { scale.value = withSpring(0.96); }}
-          onPressOut={() => { scale.value = withSpring(1); }}
-          accessibilityRole="button"
-          accessibilityLabel={`Voice journal: ${item.title}`}
-        >
-          <Card elevated style={{ marginBottom: theme.spacing.md }}>
-            <View style={styles.row}>
-              <View style={[styles.iconCircle, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.pill }]}>
-                <Txt variant="body" color="primary">&#9835;</Txt>
-              </View>
-              <View style={{ flex: 1, marginLeft: theme.spacing.md }}>
-                <View style={styles.topRow}>
-                  <Txt variant="h3">{item.title}</Txt>
-                  <Txt variant="caption" color="muted">{item.duration}</Txt>
-                </View>
-                <View style={styles.metaRow}>
-                  <Txt variant="caption" color="muted">{item.createdAt}</Txt>
-                  <View style={[styles.sentimentBadge, { backgroundColor: sentimentColors[item.sentiment] ?? theme.colors.border, borderRadius: theme.radius.sm }]}>
-                    <Txt variant="caption" color="primary">{item.sentiment}</Txt>
-                  </View>
-                </View>
-                {!item.hasTranscript && <Txt variant="caption" color="muted">Transcript unavailable</Txt>}
-              </View>
-            </View>
-          </Card>
-        </Pressable>
-      </Animated.View>
-    );
-  };
+  const renderItem = React.useCallback(({ item }: { item: VoiceEntry }) => (
+    <VoiceCard item={item} />
+  ), []);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
@@ -81,15 +86,19 @@ export function VoiceHistoryScreen() {
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ padding: theme.spacing.lg }}
-        ListHeaderComponent={
+        windowSize={5}
+        maxToRenderPerBatch={10}
+        removeClippedSubviews={true}
+        initialNumToRender={7}
+        ListHeaderComponent={React.useMemo(() => (
           <View style={{ marginBottom: theme.spacing.lg }}>
             <Txt variant="h1">Voice History</Txt>
             <Txt variant="body" color="secondary">Your past voice journal entries.</Txt>
           </View>
-        }
-        ListEmptyComponent={
+        ), [])}
+        ListEmptyComponent={React.useMemo(() => (
           <Card><Txt variant="body" color="secondary" align="center">No voice journals yet.</Txt></Card>
-        }
+        ), [])}
       />
     </SafeAreaView>
   );

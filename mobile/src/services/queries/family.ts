@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { familyService, PermissionsUpdate } from 'src/services/api';
-import { placeholderFamilyLinks } from 'src/services/localDb/syncPlaceholders';
 import { localDb } from 'src/services/localDb';
 
 export const familyKeys = {
@@ -13,7 +12,6 @@ export function useFamilyLinks() {
   return useQuery({
     queryKey: familyKeys.links,
     queryFn: () => familyService.getLinks(),
-    initialData: () => placeholderFamilyLinks() as any,
     staleTime: 0,
     retry: false,
   });

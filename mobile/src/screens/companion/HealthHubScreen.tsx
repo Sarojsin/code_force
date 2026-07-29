@@ -74,14 +74,12 @@ export function HealthHubScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const userId = useCompanionStore((s) => s.userId);
-  const {
-    todayLogs,
-    streaks,
-    completion,
-    isLoading,
-    hydrate,
-    logMetric,
-  } = useHealthMetricsStore();
+  const todayLogs = useHealthMetricsStore((s) => s.todayLogs);
+  const streaks = useHealthMetricsStore((s) => s.streaks);
+  const completion = useHealthMetricsStore((s) => s.completion);
+  const isLoading = useHealthMetricsStore((s) => s.isLoading);
+  const hydrate = useHealthMetricsStore((s) => s.hydrate);
+  const logMetric = useHealthMetricsStore((s) => s.logMetric);
 
   const [tips, setTips] = useState<{ category: HealthTipCategory; tip: string }[]>([]);
   const [tipsLoading, setTipsLoading] = useState(true);

@@ -1,8 +1,4 @@
-/**
- * ChatHomeScreen — list of chat rooms.
- */
-
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { FlatList, StyleSheet, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -31,45 +27,54 @@ const MOCK_ROOMS: ChatRoom[] = [
   { id: 'room_4', name: 'Sarah (Sister)', lastMessage: 'Thanks for the update!', lastMessageTime: '1d ago', unread: 0, avatar: 'S' },
 ];
 
+const ChatRoomRow = React.memo(function ChatRoomRow({ item, onPress }: { item: ChatRoom; onPress: (id: string) => void }) {
+  const theme = useTheme();
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Animated.View style={animStyle}>
+      <Pressable
+        onPressIn={() => { scale.value = withSpring(0.96); }}
+        onPressOut={() => { scale.value = withSpring(1); }}
+        onPress={() => onPress(item.id)}
+        accessibilityRole="button"
+        accessibilityLabel={`Chat with ${item.name}, ${item.unread} unread messages`}
+      >
+        <Card elevated style={{ marginBottom: theme.spacing.md }}>
+          <View style={styles.row}>
+            <View style={[styles.avatar, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.pill }]}>
+              <Txt variant="bodySmall" color="primary">{item.avatar}</Txt>
+            </View>
+            <View style={{ flex: 1, marginLeft: theme.spacing.md }}>
+              <View style={styles.topRow}>
+                <Txt variant="h3">{item.name}</Txt>
+                <Txt variant="caption" color="muted">{item.lastMessageTime}</Txt>
+              </View>
+              <Txt variant="bodySmall" color="secondary" numberOfLines={1}>{item.lastMessage}</Txt>
+            </View>
+            {item.unread > 0 && (
+              <View style={[styles.unreadBadge, { backgroundColor: theme.colors.primary, borderRadius: theme.radius.pill }]}>
+                <Txt variant="caption" color="inverse">{item.unread}</Txt>
+              </View>
+            )}
+          </View>
+        </Card>
+      </Pressable>
+    </Animated.View>
+  );
+});
+
 export function ChatHomeScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
 
-  const renderItem = ({ item }: { item: ChatRoom }) => {
-    const scale = useSharedValue(1);
-    const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-    return (
-      <Animated.View style={animStyle}>
-        <Pressable
-          onPressIn={() => { scale.value = withSpring(0.96); }}
-          onPressOut={() => { scale.value = withSpring(1); }}
-          onPress={() => navigation.navigate('ChatRoom', { roomId: item.id })}
-          accessibilityRole="button"
-          accessibilityLabel={`Chat with ${item.name}, ${item.unread} unread messages`}
-        >
-          <Card elevated style={{ marginBottom: theme.spacing.md }}>
-            <View style={styles.row}>
-              <View style={[styles.avatar, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.pill }]}>
-                <Txt variant="bodySmall" color="primary">{item.avatar}</Txt>
-              </View>
-              <View style={{ flex: 1, marginLeft: theme.spacing.md }}>
-                <View style={styles.topRow}>
-                  <Txt variant="h3">{item.name}</Txt>
-                  <Txt variant="caption" color="muted">{item.lastMessageTime}</Txt>
-                </View>
-                <Txt variant="bodySmall" color="secondary" numberOfLines={1}>{item.lastMessage}</Txt>
-              </View>
-              {item.unread > 0 && (
-                <View style={[styles.unreadBadge, { backgroundColor: theme.colors.primary, borderRadius: theme.radius.pill }]}>
-                  <Txt variant="caption" color="inverse">{item.unread}</Txt>
-                </View>
-              )}
-            </View>
-          </Card>
-        </Pressable>
-      </Animated.View>
-    );
-  };
+  const handleRoomPress = useCallback((id: string) => {
+    navigation.navigate('ChatRoom', { roomId: id });
+  }, [navigation]);
+
+  const renderItem = useCallback(({ item }: { item: ChatRoom }) => (
+    <ChatRoomRow item={item} onPress={handleRoomPress} />
+  ), [handleRoomPress]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
@@ -78,15 +83,19 @@ export function ChatHomeScreen() {
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ padding: theme.spacing.lg }}
-        ListHeaderComponent={
+        windowSize={5}
+        maxToRenderPerBatch={10}
+        removeClippedSubviews={true}
+        initialNumToRender={7}
+        ListHeaderComponent={useMemo(() => (
           <View style={{ marginBottom: theme.spacing.lg }}>
             <Txt variant="h1">Chats</Txt>
             <Txt variant="body" color="secondary">Messages with providers and family.</Txt>
           </View>
-        }
-        ListEmptyComponent={
+        ), [])}
+        ListEmptyComponent={useMemo(() => (
           <Card><Txt variant="body" color="secondary" align="center">No conversations yet.</Txt></Card>
-        }
+        ), [])}
       />
     </SafeAreaView>
   );

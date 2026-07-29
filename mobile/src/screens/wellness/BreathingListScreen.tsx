@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FlatList, StyleSheet, View, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
@@ -106,7 +106,7 @@ export function BreathingListScreen() {
     }
   }, [activeExercise, completeMutation]);
 
-  const renderItem = ({ item }: { item: BreathingExercise }) => {
+  const renderItem = useCallback(({ item }: { item: BreathingExercise }) => {
     const isActive = activeExercise === item.id;
     const color = EXERCISE_COLORS[parseInt(item.id, 36) % EXERCISE_COLORS.length];
 
@@ -147,7 +147,7 @@ export function BreathingListScreen() {
         )}
       </Card>
     );
-  };
+  }, [activeExercise, showTimer, handleComplete, theme]);
 
   if (isLoading) {
     return (
@@ -164,15 +164,19 @@ export function BreathingListScreen() {
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ padding: theme.spacing.lg }}
-        ListHeaderComponent={
+        windowSize={5}
+        maxToRenderPerBatch={10}
+        removeClippedSubviews={true}
+        initialNumToRender={7}
+        ListHeaderComponent={useMemo(() => (
           <View style={{ marginBottom: theme.spacing.lg }}>
             <Txt variant="h1">Breathing Exercises</Txt>
             <Txt variant="body" color="secondary">Guided exercises to calm your mind.</Txt>
           </View>
-        }
-        ListEmptyComponent={
+        ), [])}
+        ListEmptyComponent={useMemo(() => (
           <Card><Txt variant="body" color="secondary" align="center">No exercises available.</Txt></Card>
-        }
+        ), [])}
       />
     </SafeAreaView>
   );

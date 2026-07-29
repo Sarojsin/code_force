@@ -5,13 +5,53 @@ import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
-import { Card, Button, Text as Txt } from 'src/components/ui';
+import { Card, Button, Text as Txt, Skeleton } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useEmergencyContacts, useDeleteEmergencyContact } from 'src/services/queries';
 import { logger } from 'src/utils';
 import type { SafetyStackParamList } from 'src/navigation/types';
 
 type Nav = StackNavigationProp<SafetyStackParamList, 'EmergencyContacts'>;
+
+type ContactItem = { id: string; name: string; phone_number: string; relationship: string | null; is_primary: boolean };
+
+const ContactCard = React.memo(function ContactCard({ item, onPress, onLongPress }: { item: ContactItem; onPress: () => void; onLongPress: () => void }) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const theme = useTheme();
+  return (
+    <Animated.View style={animStyle}>
+      <Pressable
+        onPressIn={() => { scale.value = withSpring(0.96); }}
+        onPressOut={() => { scale.value = withSpring(1); }}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.name}, ${item.relationship ?? 'contact'}`}
+      >
+        <Card elevated style={{ marginBottom: theme.spacing.md }}>
+          <View style={styles.row}>
+            <View style={[styles.avatar, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.pill }]}>
+              <Txt variant="h3" color="primary">{item.name.charAt(0)}</Txt>
+            </View>
+            <View style={{ flex: 1, marginLeft: theme.spacing.md }}>
+              <View style={styles.nameRow}>
+                <Txt variant="h3">{item.name}</Txt>
+                {item.is_primary && (
+                  <View style={[styles.primaryBadge, { backgroundColor: theme.colors.primary, borderRadius: theme.radius.sm }]}>
+                    <Txt variant="caption" color="inverse">Primary</Txt>
+                  </View>
+                )}
+              </View>
+              <Txt variant="bodySmall" color="secondary">{item.relationship ?? ''}</Txt>
+              <Txt variant="bodySmall" color="muted">{item.phone_number}</Txt>
+            </View>
+          </View>
+        </Card>
+      </Pressable>
+    </Animated.View>
+  );
+});
 
 export function EmergencyContactsScreen() {
   const theme = useTheme();
@@ -40,42 +80,13 @@ export function EmergencyContactsScreen() {
     );
   };
 
-  const renderItem = ({ item }: { item: { id: string; name: string; phone_number: string; relationship: string | null; is_primary: boolean } }) => {
-    const scale = useSharedValue(1);
-    const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-    return (
-      <Animated.View style={animStyle}>
-        <Pressable
-          onPressIn={() => { scale.value = withSpring(0.96); }}
-          onPressOut={() => { scale.value = withSpring(1); }}
-          onPress={() => navigation.navigate('EmergencyContactEdit', { id: item.id })}
-          onLongPress={() => handleDelete(item.id, item.name)}
-          accessibilityRole="button"
-          accessibilityLabel={`${item.name}, ${item.relationship ?? 'contact'}`}
-        >
-          <Card elevated style={{ marginBottom: theme.spacing.md }}>
-            <View style={styles.row}>
-              <View style={[styles.avatar, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.pill }]}>
-                <Txt variant="h3" color="primary">{item.name.charAt(0)}</Txt>
-              </View>
-              <View style={{ flex: 1, marginLeft: theme.spacing.md }}>
-                <View style={styles.nameRow}>
-                  <Txt variant="h3">{item.name}</Txt>
-                  {item.is_primary && (
-                    <View style={[styles.primaryBadge, { backgroundColor: theme.colors.primary, borderRadius: theme.radius.sm }]}>
-                      <Txt variant="caption" color="inverse">Primary</Txt>
-                    </View>
-                  )}
-                </View>
-                <Txt variant="bodySmall" color="secondary">{item.relationship ?? ''}</Txt>
-                <Txt variant="bodySmall" color="muted">{item.phone_number}</Txt>
-              </View>
-            </View>
-          </Card>
-        </Pressable>
-      </Animated.View>
-    );
-  };
+  const renderItem = React.useCallback(({ item }: { item: ContactItem }) => (
+    <ContactCard
+      item={item}
+      onPress={() => navigation.navigate('EmergencyContactEdit', { id: item.id })}
+      onLongPress={() => handleDelete(item.id, item.name)}
+    />
+  ), [navigation, handleDelete]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
@@ -85,13 +96,17 @@ export function EmergencyContactsScreen() {
         renderItem={renderItem}
         contentContainerStyle={{ padding: theme.spacing.lg }}
         refreshing={isLoading}
-        ListHeaderComponent={
+        windowSize={5}
+        maxToRenderPerBatch={10}
+        removeClippedSubviews={true}
+        initialNumToRender={7}
+        ListHeaderComponent={React.useMemo(() => (
           <View style={{ marginBottom: theme.spacing.lg }}>
             <Txt variant="h1">Emergency Contacts</Txt>
             <Txt variant="body" color="secondary">People notified when you trigger SOS. (max 5)</Txt>
           </View>
-        }
-        ListFooterComponent={
+        ), [])}
+        ListFooterComponent={React.useMemo(() => (
           <Button
             label="Add emergency contact"
             variant="outline"
@@ -99,14 +114,18 @@ export function EmergencyContactsScreen() {
             fullWidth
             style={{ marginTop: theme.spacing.md }}
           />
-        }
-        ListEmptyComponent={
+        ), [navigation])}
+        ListEmptyComponent={React.useMemo(() => (
           isLoading ? (
-            <Card><Txt variant="body" color="secondary" align="center">Loading contacts...</Txt></Card>
+            <View style={{ padding: theme.spacing.lg }}>
+              <Skeleton height={80} style={{ marginBottom: 12 }} />
+              <Skeleton height={80} style={{ marginBottom: 12 }} />
+              <Skeleton height={80} />
+            </View>
           ) : (
             <Card><Txt variant="body" color="secondary" align="center">No emergency contacts yet.</Txt></Card>
           )
-        }
+        ), [isLoading])}
       />
     </SafeAreaView>
   );

@@ -13,7 +13,13 @@ import { useTheme } from 'src/theme';
 export function OfflineDashboardScreen() {
   const { isConnected, connectionType } = useNetworkStatus();
   const operations = useOfflineStore((s) => s.operations);
-  const metrics = useSyncMetricsStore();
+  const lastSyncAt = useSyncMetricsStore((s) => s.lastSyncAt);
+  const lastSyncStatus = useSyncMetricsStore((s) => s.lastSyncStatus);
+  const lastSyncDuration = useSyncMetricsStore((s) => s.lastSyncDuration);
+  const totalSyncCycles = useSyncMetricsStore((s) => s.totalSyncCycles);
+  const failedSyncCycles = useSyncMetricsStore((s) => s.failedSyncCycles);
+  const totalOpsPushed = useSyncMetricsStore((s) => s.totalOpsPushed);
+  const maxQueueSize = useSyncMetricsStore((s) => s.maxQueueSize);
   const theme = useTheme();
 
   const handleForceSync = useCallback(async () => {
@@ -52,13 +58,13 @@ export function OfflineDashboardScreen() {
 
         <Card style={{ marginTop: 12 }}>
           <Text variant="h3">Metrics</Text>
-          <Text>Last sync: {metrics.lastSyncAt ? new Date(metrics.lastSyncAt).toLocaleString() : 'Never'}</Text>
-          <Text>Last status: {metrics.lastSyncStatus || 'N/A'}</Text>
-          <Text>Last duration: {metrics.lastSyncDuration ? `${metrics.lastSyncDuration}ms` : 'N/A'}</Text>
-          <Text>Total cycles: {metrics.totalSyncCycles}</Text>
-          <Text>Failed: {metrics.failedSyncCycles}</Text>
-          <Text>Ops pushed: {metrics.totalOpsPushed}</Text>
-          <Text>Max queue: {metrics.maxQueueSize}</Text>
+          <Text>Last sync: {lastSyncAt ? new Date(lastSyncAt).toLocaleString() : 'Never'}</Text>
+          <Text>Last status: {lastSyncStatus || 'N/A'}</Text>
+          <Text>Last duration: {lastSyncDuration ? `${lastSyncDuration}ms` : 'N/A'}</Text>
+          <Text>Total cycles: {totalSyncCycles}</Text>
+          <Text>Failed: {failedSyncCycles}</Text>
+          <Text>Ops pushed: {totalOpsPushed}</Text>
+          <Text>Max queue: {maxQueueSize}</Text>
         </Card>
 
         <View style={{ marginTop: 16, gap: 8 }}>

@@ -2,7 +2,7 @@
  * LinkedFamilyScreen — view linked family members and permissions.
  */
 
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -29,10 +29,9 @@ const permLabels: Record<string, string> = {
   receive_alerts: 'Receive alerts',
 };
 
-export function LinkedFamilyScreen() {
+const FamilyCard = React.memo(function FamilyCard({ item }: { item: FamilyMember }) {
   const theme = useTheme();
-
-  const renderItem = ({ item }: { item: FamilyMember }) => (
+  return (
     <Card elevated style={{ marginBottom: theme.spacing.md }} accessibilityLabel={`${item.name}, ${item.relationship}`}>
       <View style={styles.row}>
         <View style={[styles.avatar, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.pill }]}>
@@ -52,6 +51,14 @@ export function LinkedFamilyScreen() {
       </View>
     </Card>
   );
+});
+
+export function LinkedFamilyScreen() {
+  const theme = useTheme();
+
+  const renderItem = useCallback(({ item }: { item: FamilyMember }) => (
+    <FamilyCard item={item} />
+  ), []);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
@@ -60,18 +67,22 @@ export function LinkedFamilyScreen() {
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ padding: theme.spacing.lg }}
-        ListHeaderComponent={
+        windowSize={5}
+        maxToRenderPerBatch={10}
+        removeClippedSubviews={true}
+        initialNumToRender={7}
+        ListHeaderComponent={useMemo(() => (
           <View style={{ marginBottom: theme.spacing.lg }}>
             <Txt variant="h1">Linked Family</Txt>
             <Txt variant="body" color="secondary">Family members connected to your account.</Txt>
           </View>
-        }
-        ListFooterComponent={
+        ), [])}
+        ListFooterComponent={useMemo(() => (
           <Button label="Link new member" variant="outline" fullWidth style={{ marginTop: theme.spacing.md }} />
-        }
-        ListEmptyComponent={
+        ), [])}
+        ListEmptyComponent={useMemo(() => (
           <Card><Txt variant="body" color="secondary" align="center">No family members linked yet.</Txt></Card>
-        }
+        ), [])}
       />
     </SafeAreaView>
   );

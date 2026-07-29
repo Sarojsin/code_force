@@ -1,8 +1,4 @@
-/**
- * ChatRoomScreen — chat messages with FlatList.
- */
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View, TextInput, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
@@ -30,6 +26,34 @@ const MOCK_MESSAGES: Message[] = [
   { id: 'm5', text: 'Take rest and stay hydrated. Let me know if anything changes.', sender: 'other', timestamp: '10:36 AM' },
 ];
 
+const MessageBubble = React.memo(function MessageBubble({ item }: { item: Message }) {
+  const theme = useTheme();
+  const isMe = item.sender === 'me';
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Animated.View style={[animStyle, styles.messageRow, isMe ? styles.myRow : styles.otherRow]}>
+      <Pressable
+        onPressIn={() => { scale.value = withSpring(0.98); }}
+        onPressOut={() => { scale.value = withSpring(1); }}
+        accessibilityRole="text"
+        accessibilityLabel={`${isMe ? 'You' : 'Other'} said: ${item.text}`}
+        style={[
+          styles.bubble,
+          {
+            backgroundColor: isMe ? theme.colors.primary : theme.colors.surface,
+            borderColor: isMe ? 'transparent' : theme.colors.border,
+            borderRadius: theme.radius.lg,
+          },
+        ]}
+      >
+        <Txt variant="body" color={isMe ? 'inverse' : 'primary'}>{item.text}</Txt>
+        <Txt variant="caption" color={isMe ? 'inverse' : 'muted'} style={{ marginTop: 4, opacity: 0.7 }}>{item.timestamp}</Txt>
+      </Pressable>
+    </Animated.View>
+  );
+});
+
 export function ChatRoomScreen() {
   const theme = useTheme();
   const route = useRoute<Rt>();
@@ -38,7 +62,7 @@ export function ChatRoomScreen() {
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef<FlatList>(null);
 
-  const sendMessage = () => {
+  const sendMessage = useCallback(() => {
     if (!inputText.trim()) return;
     const msg: Message = {
       id: `m${Date.now()}`,
@@ -50,34 +74,11 @@ export function ChatRoomScreen() {
     setInputText('');
     logger.info('ChatRoomScreen.send', { roomId });
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-  };
+  }, [inputText, roomId]);
 
-  const renderItem = ({ item }: { item: Message }) => {
-    const isMe = item.sender === 'me';
-    const scale = useSharedValue(1);
-    const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-    return (
-      <Animated.View style={[animStyle, styles.messageRow, isMe ? styles.myRow : styles.otherRow]}>
-        <Pressable
-          onPressIn={() => { scale.value = withSpring(0.98); }}
-          onPressOut={() => { scale.value = withSpring(1); }}
-          accessibilityRole="text"
-          accessibilityLabel={`${isMe ? 'You' : 'Other'} said: ${item.text}`}
-          style={[
-            styles.bubble,
-            {
-              backgroundColor: isMe ? theme.colors.primary : theme.colors.surface,
-              borderColor: isMe ? 'transparent' : theme.colors.border,
-              borderRadius: theme.radius.lg,
-            },
-          ]}
-        >
-          <Txt variant="body" color={isMe ? 'inverse' : 'primary'}>{item.text}</Txt>
-          <Txt variant="caption" color={isMe ? 'inverse' : 'muted'} style={{ marginTop: 4, opacity: 0.7 }}>{item.timestamp}</Txt>
-        </Pressable>
-      </Animated.View>
-    );
-  };
+  const renderItem = useCallback(({ item }: { item: Message }) => (
+    <MessageBubble item={item} />
+  ), []);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
@@ -88,6 +89,10 @@ export function ChatRoomScreen() {
           keyExtractor={item => item.id}
           renderItem={renderItem}
           contentContainerStyle={{ padding: theme.spacing.md }}
+          windowSize={5}
+          maxToRenderPerBatch={10}
+          removeClippedSubviews={true}
+          initialNumToRender={7}
           ListEmptyComponent={<Txt variant="body" color="secondary" align="center" style={{ marginTop: 40 }}>No messages yet. Say hello!</Txt>}
         />
         <View style={[styles.inputBar, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>

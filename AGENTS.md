@@ -309,3 +309,22 @@ Before you open a PR, walk this list:
 - [ ] Did you update the API contract doc if the request/response shape changed?
 
 If any checkbox is unchecked, fix it before opening the PR.
+
+---
+
+## 6. Android Build invariants
+
+### 6.1 NDK toolchain patch (`c++_shared`)
+- `android-legacy.toolchain.cmake` at line 366 must contain:
+  `list(APPEND ANDROID_CXX_STANDARD_LIBRARIES "-lc++_shared")`
+  in the `c++_shared` STL case. This is a **global NDK patch** (not per-package).
+- Without this, JNI library loading fails silently at runtime on some devices.
+
+### 6.2 expo-av source build
+- Remove the `publication` block from `expo-av/expo-module.config.json` to force source build (avoid prebuilt AAR with wrong JSI ABI).
+- Patch `expo-av/android/CMakeLists.txt` — ensure `ReactAndroid::jsi` is linked in the correct ABI branch (RN 0.86 uses `reactnative`, not `reactnativejni`).
+- Both patches are tracked via `patches/expo-av+16.0.8.patch`.
+
+### 6.3 Fresh build after `npm ci`
+After `npm ci`, re-apply patches with `npx patch-package` before Android build.
+NDK toolchain patch must be re-applied manually if NDK is reinstalled or updated.

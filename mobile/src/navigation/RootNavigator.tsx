@@ -30,7 +30,9 @@ const Root = createStackNavigator<RootStackParamList>();
 const ONBOARDING_KEY = 'shecare.onboarding';
 
 export function RootNavigator() {
-  const { user, isHydrated, hydrate } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
+  const hydrate = useAuthStore((s) => s.hydrate);
   const onboardingCompleted = useOnboardingStore((s) => s.isCompleted);
   const setCompleted = useOnboardingStore((s) => s.setCompleted);
   const [showSplash, setShowSplash] = useState(true);

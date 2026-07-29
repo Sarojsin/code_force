@@ -2,7 +2,7 @@
  * PregnancyMilestonesScreen — list of milestones by week.
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -30,15 +30,10 @@ const MILESTONES: Milestone[] = [
   { id: '10', week: 40, title: 'Full term', description: 'Ready for birth!', achieved: false },
 ];
 
-export function PregnancyMilestonesScreen() {
+const MilestoneCard = React.memo(function MilestoneCard({ item }: { item: Milestone }) {
   const theme = useTheme();
-
-  const renderItem = ({ item }: { item: Milestone }) => (
-    <Card
-      elevated
-      style={[styles.card, { opacity: item.achieved ? 1 : 0.7 }]}
-      accessibilityLabel={`Week ${item.week}: ${item.title}`}
-    >
+  return (
+    <Card elevated style={[styles.card, { opacity: item.achieved ? 1 : 0.7 }]} accessibilityLabel={`Week ${item.week}: ${item.title}`}>
       <View style={styles.row}>
         <View style={[
           styles.weekBadge,
@@ -59,6 +54,14 @@ export function PregnancyMilestonesScreen() {
       </View>
     </Card>
   );
+});
+
+export function PregnancyMilestonesScreen() {
+  const theme = useTheme();
+
+  const renderItem = useCallback(({ item }: { item: Milestone }) => (
+    <MilestoneCard item={item} />
+  ), []);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
@@ -67,6 +70,10 @@ export function PregnancyMilestonesScreen() {
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ padding: theme.spacing.lg }}
+        windowSize={5}
+        maxToRenderPerBatch={10}
+        removeClippedSubviews={true}
+        initialNumToRender={7}
         ListHeaderComponent={
           <View style={{ marginBottom: theme.spacing.lg }}>
             <Txt variant="h1">Milestones</Txt>

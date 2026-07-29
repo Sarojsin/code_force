@@ -52,7 +52,7 @@ export interface CalendarProps {
   animatingDates?: Set<string>;
 }
 
-export function Calendar({
+export const Calendar = React.memo(function Calendar({
   selectedDate, onDateSelect, markedDates, minDate, maxDate, encodedDays, animatingDates,
 }: CalendarProps) {
   const theme = useTheme();
@@ -66,8 +66,76 @@ export function Calendar({
     return eachDayOfInterval({ start: calStart, end: calEnd });
   }, [currentMonth]);
 
-  const canGoPrev = !minDate || subMonths(currentMonth, 1) >= startOfMonth(minDate);
-  const canGoNext = !maxDate || addMonths(currentMonth, 1) <= endOfMonth(maxDate);
+  const canGoPrev = useMemo(() => !minDate || subMonths(currentMonth, 1) >= startOfMonth(minDate), [currentMonth, minDate]);
+  const canGoNext = useMemo(() => !maxDate || addMonths(currentMonth, 1) <= endOfMonth(maxDate), [currentMonth, maxDate]);
+
+  const dayGrid = useMemo(() =>
+    Array.from({ length: Math.ceil(days.length / 7) }, (_, weekIdx) => (
+      <View key={weekIdx} style={styles.weekRow} accessibilityRole="list">
+        {days.slice(weekIdx * 7, weekIdx * 7 + 7).map((day, dayIdx) => {
+          const inMonth = isSameMonth(day, currentMonth);
+          const selected = selectedDate && isSameDay(day, selectedDate);
+          const today = isToday(day);
+          const marked = markedDates?.some((d) => isSameDay(d, day));
+          const disabled =
+            (minDate && day < startOfMonth(minDate)) ||
+            (maxDate && day > endOfMonth(maxDate));
+
+          const dateStr = format(day, 'yyyy-MM-dd');
+          const dayType = encodedDays?.[dateStr] ?? 'none';
+          const typeColor = DAY_TYPE_COLORS[dayType];
+          const isStrikethrough = typeColor?.strike ?? false;
+          const isDashed = typeColor?.dashed ?? false;
+
+          const animating = animatingDates?.has(dateStr);
+
+          const bgColor = typeColor?.bg ?? (selected ? theme.colors.primary : 'transparent');
+
+          const txtColor = typeColor?.text ?? (
+            disabled ? theme.colors.textMuted
+            : selected ? theme.colors.textInverse
+            : today ? theme.colors.primary
+            : inMonth ? theme.colors.textPrimary
+            : theme.colors.textMuted
+          );
+
+          return (
+            <AnimatedDayCell key={dayIdx} animating={animating}>
+              <Pressable
+                onPress={() => inMonth && !disabled && onDateSelect(day)}
+                disabled={!inMonth || disabled || isStrikethrough}
+                accessibilityLabel={`${format(day, 'MMMM d, yyyy')}${dayType !== 'none' ? `, ${dayType}` : ''}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: !!selected, disabled: !inMonth || disabled || isStrikethrough }}
+                style={[
+                  styles.dayCell,
+                  { minHeight: theme.minTouchTarget, minWidth: theme.minTouchTarget },
+                  { backgroundColor: bgColor, borderRadius: theme.radius.pill },
+                  selected && { backgroundColor: theme.colors.primary },
+                  isDashed && { borderWidth: 1.5, borderColor: '#CC3355', borderStyle: 'dashed' },
+                ]}
+              >
+                <Text
+                  variant="body"
+                  align="center"
+                  style={[
+                    { color: txtColor },
+                    isStrikethrough && { opacity: 0.5, textDecorationLine: 'line-through' },
+                  ]}
+                >
+                  {format(day, 'd')}
+                </Text>
+                {marked && !selected && !dayType && (
+                  <View style={[styles.dot, { backgroundColor: theme.colors.primary }]} />
+                )}
+              </Pressable>
+            </AnimatedDayCell>
+          );
+        })}
+      </View>
+    )),
+    [days, currentMonth, selectedDate, markedDates, minDate, maxDate, encodedDays, animatingDates, onDateSelect, theme.colors],
+  );
 
   return (
     <View accessibilityLabel="Calendar" accessibilityRole="list">
@@ -109,73 +177,10 @@ export function Calendar({
         ))}
       </View>
 
-      {Array.from({ length: Math.ceil(days.length / 7) }, (_, weekIdx) => (
-        <View key={weekIdx} style={styles.weekRow} accessibilityRole="list">
-          {days.slice(weekIdx * 7, weekIdx * 7 + 7).map((day, dayIdx) => {
-            const inMonth = isSameMonth(day, currentMonth);
-            const selected = selectedDate && isSameDay(day, selectedDate);
-            const today = isToday(day);
-            const marked = markedDates?.some((d) => isSameDay(d, day));
-            const disabled =
-              (minDate && day < startOfMonth(minDate)) ||
-              (maxDate && day > endOfMonth(maxDate));
-
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const dayType = encodedDays?.[dateStr] ?? 'none';
-            const typeColor = DAY_TYPE_COLORS[dayType];
-            const isStrikethrough = typeColor?.strike ?? false;
-            const isDashed = typeColor?.dashed ?? false;
-
-            const animating = animatingDates?.has(dateStr);
-
-            const bgColor = typeColor?.bg ?? (selected ? theme.colors.primary : 'transparent');
-
-            const txtColor = typeColor?.text ?? (
-              disabled ? theme.colors.textMuted
-              : selected ? theme.colors.textInverse
-              : today ? theme.colors.primary
-              : inMonth ? theme.colors.textPrimary
-              : theme.colors.textMuted
-            );
-
-            return (
-              <AnimatedDayCell key={dayIdx} animating={animating}>
-                <Pressable
-                  onPress={() => inMonth && !disabled && onDateSelect(day)}
-                  disabled={!inMonth || disabled || isStrikethrough}
-                  accessibilityLabel={`${format(day, 'MMMM d, yyyy')}${dayType !== 'none' ? `, ${dayType}` : ''}`}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: !!selected, disabled: !inMonth || disabled || isStrikethrough }}
-                  style={[
-                    styles.dayCell,
-                    { minHeight: theme.minTouchTarget, minWidth: theme.minTouchTarget },
-                    { backgroundColor: bgColor, borderRadius: theme.radius.pill },
-                    selected && { backgroundColor: theme.colors.primary },
-                    isDashed && { borderWidth: 1.5, borderColor: '#CC3355', borderStyle: 'dashed' },
-                  ]}
-                >
-                  <Text
-                    variant="body"
-                    align="center"
-                    style={[
-                      { color: txtColor },
-                      isStrikethrough && { opacity: 0.5, textDecorationLine: 'line-through' },
-                    ]}
-                  >
-                    {format(day, 'd')}
-                  </Text>
-                  {marked && !selected && !dayType && (
-                    <View style={[styles.dot, { backgroundColor: theme.colors.primary }]} />
-                  )}
-                </Pressable>
-              </AnimatedDayCell>
-            );
-          })}
-        </View>
-      ))}
+      {dayGrid}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

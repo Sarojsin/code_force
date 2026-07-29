@@ -2,7 +2,7 @@
  * LogPeriodScreen — log period start/end dates, flow, symptoms, mood, energy.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,12 +32,13 @@ const logPeriodSchema = z.object({
 });
 type LogPeriodForm = z.infer<typeof logPeriodSchema>;
 
-export function LogPeriodScreen() {
+export const LogPeriodScreen = React.memo(function LogPeriodScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
+  const defaultValues = useMemo(() => ({ startDate: new Date().toISOString().slice(0, 10), notes: '' }), []);
   const { control, handleSubmit, formState } = useForm<LogPeriodForm>({
     resolver: zodResolver(logPeriodSchema),
-    defaultValues: { startDate: new Date().toISOString().slice(0, 10), notes: '' },
+    defaultValues,
     mode: 'onBlur',
   });
   const [selectedFlow, setSelectedFlow] = useState<string | null>(null);
@@ -153,7 +154,7 @@ export function LogPeriodScreen() {
       </KeyboardAvoidingWrapper>
     </SafeAreaView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },

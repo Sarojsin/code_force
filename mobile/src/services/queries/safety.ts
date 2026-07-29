@@ -11,11 +11,6 @@ import { useOfflineStore } from 'src/stores/offlineStore';
 import { isNetworkError } from 'src/services/sync';
 import { generateId } from 'src/utils';
 import {
-  placeholderEmergencyContacts,
-  placeholderActiveSos,
-  placeholderSosHistory,
-} from 'src/services/localDb/syncPlaceholders';
-import {
   upsertEmergencyContact,
   upsertSosAlert,
   softDeleteLocalEntity,
@@ -33,7 +28,6 @@ export function useEmergencyContacts() {
   return useQuery({
     queryKey: safetyKeys.contacts,
     queryFn: () => safetyService.getEmergencyContacts(),
-    initialData: () => placeholderEmergencyContacts() as any,
     staleTime: 0,
     retry: false,
   });
@@ -179,7 +173,6 @@ export function useActiveSos() {
     queryKey: safetyKeys.activeSos,
     queryFn: () => safetyService.getActiveSos(),
     refetchInterval: 30_000,
-    initialData: () => placeholderActiveSos() as any,
     retry: false,
   });
 }
@@ -188,7 +181,6 @@ export function useSosHistory() {
   return useQuery({
     queryKey: safetyKeys.sosHistory,
     queryFn: () => safetyService.getSosHistory(),
-    initialData: () => placeholderSosHistory() as any,
     staleTime: 0,
     retry: false,
   });
