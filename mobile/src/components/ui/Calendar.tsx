@@ -20,19 +20,18 @@ import { Text } from './Text';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function AnimatedDayCell({ animating, children }: { animating: boolean; children: React.ReactNode }) {
-  const animStyle = useAnimatedStyle(() => {
-    if (!animating) return {};
-    return { transform: [{ scale: withSpring(1, { from: 0.8 }) }] };
-  }, [animating]);
-  return <Animated.View style={animStyle}>{children}</Animated.View>;
-}
+const PHASES = [
+  { id: 'menstrual',  emoji: '🩸', label: 'Menstrual',  bg: '#FFE4EC', fg: '#B83058' },
+  { id: 'follicular', emoji: '🌱', label: 'Follicular', bg: '#FFF4E3', fg: '#A0621A' },
+  { id: 'ovulation',  emoji: '🌟', label: 'Ovulation',  bg: '#E5F9F0', fg: '#1A6B45' },
+  { id: 'luteal',     emoji: '🌙', label: 'Luteal',     bg: '#EFE8FA', fg: '#5A35A0' },
+];
 
-const DAY_TYPE_COLORS: Record<string, { bg: string; text: string; strike?: boolean; dashed?: boolean }> = {
-  P: { bg: '#F48FB1', text: '#FFFFFF' },
-  p: { bg: '#FCE4EC', text: '#C62828' },
-  u: { bg: '#FFB3C1', text: '#CC3355', dashed: true },
-  c: { bg: '#E0E0E0', text: '#9E9E9E', strike: true },
+const DAY_TYPE_COLORS: Record<string, { bg: string; text: string; dashed?: boolean }> = {
+  P: { bg: '#FF6B8A', text: '#FFFFFF' },
+  p: { bg: '#FFE4EC', text: '#B83058' },
+  u: { bg: 'transparent', text: '#FF6B8A' },
+  c: { bg: '#E0E0E0', text: '#9E9E9E' },
   F: { bg: '#CE93D8', text: '#FFFFFF' },
   f: { bg: '#F3E5F5', text: '#7B1FA2' },
   O: { bg: '#81C784', text: '#FFFFFF' },
@@ -50,10 +49,13 @@ export interface CalendarProps {
   maxDate?: Date;
   encodedDays?: Record<string, string>;
   animatingDates?: Set<string>;
+  showPhaseLegend?: boolean;
+  phaseAccentForDate?: (dateStr: string) => string | undefined;
 }
 
 export const Calendar = React.memo(function Calendar({
   selectedDate, onDateSelect, markedDates, minDate, maxDate, encodedDays, animatingDates,
+  showPhaseLegend, phaseAccentForDate,
 }: CalendarProps) {
   const theme = useTheme();
   const [currentMonth, setCurrentMonth] = useState<Date>(selectedDate ?? new Date());
@@ -71,7 +73,7 @@ export const Calendar = React.memo(function Calendar({
 
   const dayGrid = useMemo(() =>
     Array.from({ length: Math.ceil(days.length / 7) }, (_, weekIdx) => (
-      <View key={weekIdx} style={styles.weekRow} accessibilityRole="list">
+      <View key={weekIdx} style={styles.weekRow}>
         {days.slice(weekIdx * 7, weekIdx * 7 + 7).map((day, dayIdx) => {
           const inMonth = isSameMonth(day, currentMonth);
           const selected = selectedDate && isSameDay(day, selectedDate);
@@ -84,23 +86,27 @@ export const Calendar = React.memo(function Calendar({
           const dateStr = format(day, 'yyyy-MM-dd');
           const dayType = encodedDays?.[dateStr] ?? 'none';
           const typeColor = DAY_TYPE_COLORS[dayType];
-          const isStrikethrough = typeColor?.strike ?? false;
-          const isDashed = typeColor?.dashed ?? false;
+          const isStrikethrough = dayType === 'c';
+          const isPredicted = dayType === 'u';
 
           const animating = animatingDates?.has(dateStr);
+          const phaseAccent = phaseAccentForDate?.(dateStr);
+          const selectedBg = selected ? (phaseAccent ?? theme.colors.primary) : undefined;
 
-          const bgColor = typeColor?.bg ?? (selected ? theme.colors.primary : 'transparent');
+          const cellBorder = selected ? 0 : (today && !selected ? 2 : (isPredicted ? 1.5 : 0));
+          const cellBorderColor = today && !selected ? '#FF6B8A' : (isPredicted ? '#FF6B8A' : 'transparent');
+          const cellBorderStyle = isPredicted ? 'dashed' : 'solid';
 
           const txtColor = typeColor?.text ?? (
             disabled ? theme.colors.textMuted
             : selected ? theme.colors.textInverse
-            : today ? theme.colors.primary
-            : inMonth ? theme.colors.textPrimary
+            : today ? '#FF6B8A'
+            : inMonth ? theme.colors.textDark
             : theme.colors.textMuted
           );
 
           return (
-            <AnimatedDayCell key={dayIdx} animating={animating}>
+            <AnimatingWrapper key={dayIdx} animating={animating}>
               <Pressable
                 onPress={() => inMonth && !disabled && onDateSelect(day)}
                 disabled={!inMonth || disabled || isStrikethrough}
@@ -109,10 +115,17 @@ export const Calendar = React.memo(function Calendar({
                 accessibilityState={{ selected: !!selected, disabled: !inMonth || disabled || isStrikethrough }}
                 style={[
                   styles.dayCell,
-                  { minHeight: theme.minTouchTarget, minWidth: theme.minTouchTarget },
-                  { backgroundColor: bgColor, borderRadius: theme.radius.pill },
-                  selected && { backgroundColor: theme.colors.primary },
-                  isDashed && { borderWidth: 1.5, borderColor: '#CC3355', borderStyle: 'dashed' },
+                  { borderRadius: 14 },
+                  selected && { backgroundColor: selectedBg ?? theme.colors.primary },
+                  !selected && typeColor?.bg && typeColor.bg !== 'transparent' && { backgroundColor: typeColor.bg },
+                  cellBorder > 0 && { borderWidth: cellBorder, borderColor: cellBorderColor, borderStyle: cellBorderStyle as any },
+                  selected && {
+                    shadowColor: phaseAccent ?? '#FF6B8A',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.33,
+                    shadowRadius: 14,
+                    elevation: 4,
+                  },
                 ]}
               >
                 <Text
@@ -126,15 +139,18 @@ export const Calendar = React.memo(function Calendar({
                   {format(day, 'd')}
                 </Text>
                 {marked && !selected && !dayType && (
-                  <View style={[styles.dot, { backgroundColor: theme.colors.primary }]} />
+                  <View style={[styles.markedDot, { backgroundColor: theme.colors.primary }]} />
+                )}
+                {today && (
+                  <View style={styles.todayDot} />
                 )}
               </Pressable>
-            </AnimatedDayCell>
+            </AnimatingWrapper>
           );
         })}
       </View>
     )),
-    [days, currentMonth, selectedDate, markedDates, minDate, maxDate, encodedDays, animatingDates, onDateSelect, theme.colors],
+    [days, currentMonth, selectedDate, markedDates, minDate, maxDate, encodedDays, animatingDates, phaseAccentForDate, onDateSelect, theme.colors],
   );
 
   return (
@@ -167,9 +183,20 @@ export const Calendar = React.memo(function Calendar({
         </Pressable>
       </View>
 
-      <View style={styles.weekRow} accessibilityRole="list">
+      {showPhaseLegend && (
+        <View style={styles.phaseLegend}>
+          {PHASES.map((p) => (
+            <View key={p.id} style={[styles.phasePill, { backgroundColor: p.bg, borderColor: `${p.fg}22` }]}>
+              <Text style={styles.phaseEmoji}>{p.emoji}</Text>
+              <Text style={[styles.phaseLabel, { color: p.fg }]}>{p.label}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <View style={styles.weekRow}>
         {WEEKDAYS.map((day) => (
-          <View key={day} style={styles.dayCell}>
+          <View key={day} style={styles.dayCellWeekday}>
             <Text variant="caption" color="muted" align="center">
               {day}
             </Text>
@@ -182,10 +209,48 @@ export const Calendar = React.memo(function Calendar({
   );
 });
 
+function AnimatingWrapper({ animating, children }: { animating?: boolean; children: React.ReactNode }) {
+  const animStyle = useAnimatedStyle(() => {
+    if (!animating) return {};
+    return { transform: [{ scale: withSpring(1, { damping: 15 }) }] };
+  }, [animating]);
+  return <Animated.View style={animStyle}>{children}</Animated.View>;
+}
+
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   arrow: { alignItems: 'center', justifyContent: 'center' },
-  weekRow: { flexDirection: 'row' },
-  dayCell: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6 },
-  dot: { width: 5, height: 5, borderRadius: 3, marginTop: 2 },
+  weekRow: { flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 4 },
+  dayCell: {
+    width: 46,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayCellWeekday: {
+    width: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+  },
+  markedDot: { width: 5, height: 5, borderRadius: 3, marginTop: 2, position: 'absolute', bottom: 4 },
+  todayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#EF4444', position: 'absolute', bottom: 4 },
+  phaseLegend: {
+    flexDirection: 'row',
+    gap: 7,
+    marginBottom: 18,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  phasePill: {
+    flexDirection: 'row',
+    gap: 5,
+    alignItems: 'center',
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+  },
+  phaseEmoji: { fontSize: 12 },
+  phaseLabel: { fontSize: 11, fontWeight: '700', lineHeight: 14 },
 });

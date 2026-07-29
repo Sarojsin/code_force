@@ -10,16 +10,25 @@ export interface MoodOption {
   emoji: string;
 }
 
-export const DEFAULT_MOODS: MoodOption[] = [
-  { id: 'happy', label: 'Happy', emoji: '😊' },
-  { id: 'calm', label: 'Calm', emoji: '😌' },
-  { id: 'energetic', label: 'Energetic', emoji: '⚡' },
-  { id: 'anxious', label: 'Anxious', emoji: '😰' },
-  { id: 'sad', label: 'Sad', emoji: '😢' },
-  { id: 'irritable', label: 'Irritable', emoji: '😤' },
-  { id: 'tired', label: 'Tired', emoji: '😴' },
-  { id: 'grateful', label: 'Grateful', emoji: '🙏' },
+export const DESIGN_MOODS: MoodOption[] = [
+  { id: 'radiant',   label: 'Radiant',   emoji: '✨' },
+  { id: 'calm',      label: 'Calm',      emoji: '🌸' },
+  { id: 'energized', label: 'Energized', emoji: '⚡' },
+  { id: 'anxious',   label: 'Anxious',   emoji: '🌊' },
+  { id: 'tired',     label: 'Tired',     emoji: '🌙' },
+  { id: 'sad',       label: 'Sad',       emoji: '🌧️' },
 ];
+
+export const DEFAULT_MOODS = DESIGN_MOODS;
+
+const MOOD_COLORS: Record<string, { bg: string; selected: string; border: string }> = {
+  radiant:   { bg: '#FFE8EF', selected: '#FF6B8A', border: '#FF6B8A33' },
+  calm:      { bg: '#FAF0F4', selected: '#D4A5B5', border: '#D4A5B533' },
+  energized: { bg: '#FFF4E3', selected: '#F5A623', border: '#F5A62333' },
+  anxious:   { bg: '#E8F2FF', selected: '#6BA8E8', border: '#6BA8E833' },
+  tired:     { bg: '#F0E8FA', selected: '#9B6BD4', border: '#9B6BD433' },
+  sad:       { bg: '#EDF3FA', selected: '#7B9EC8', border: '#7B9EC833' },
+};
 
 export interface MoodPickerProps {
   selected?: string | null;
@@ -37,34 +46,54 @@ function MoodItem({
   onPress: () => void;
 }) {
   const scale = useSharedValue(1);
+  const colors = MOOD_COLORS[mood.id] ?? MOOD_COLORS.radiant;
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [{ scale: withSpring(isSelected ? 1.06 : 1, { damping: 12 }) }],
   }));
 
   return (
     <Animated.View style={animatedStyle}>
       <Pressable
-        onPressIn={() => { scale.value = withSpring(0.88, { damping: 15 }); }}
-        onPressOut={() => { scale.value = withSpring(1, { damping: 15 }); }}
+        onPressIn={() => { scale.value = withSpring(0.94, { damping: 12 }); }}
+        onPressOut={() => { scale.value = withSpring(isSelected ? 1.06 : 1, { damping: 12 }); }}
         onPress={onPress}
         accessibilityLabel={mood.label}
         accessibilityRole="button"
         accessibilityState={{ selected: isSelected }}
-        style={({ pressed }) => [
+        style={[
           styles.moodItem,
-          { minHeight: 44, minWidth: 44 },
-          isSelected && styles.moodSelected,
-          pressed && !isSelected && styles.moodPressed,
+          isSelected
+            ? { backgroundColor: colors.selected }
+            : {
+                backgroundColor: colors.bg,
+                borderWidth: 1.5,
+                borderColor: colors.border,
+              },
+          isSelected && {
+            shadowColor: colors.selected,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.55,
+            shadowRadius: 18,
+            elevation: 6,
+          },
         ]}
       >
-        <Text variant="h1">{mood.emoji}</Text>
+        <Text style={styles.emoji}>{mood.emoji}</Text>
+        <Text
+          style={[
+            styles.label,
+            { color: isSelected ? '#FFFFFF' : '#2D1B26' },
+          ]}
+        >
+          {mood.label}
+        </Text>
       </Pressable>
     </Animated.View>
   );
 }
 
-export function MoodPicker({ selected, onSelect, moods = DEFAULT_MOODS }: MoodPickerProps) {
+export function MoodPicker({ selected, onSelect, moods = DESIGN_MOODS }: MoodPickerProps) {
   return (
     <View style={styles.grid} accessibilityLabel="Mood picker" accessibilityRole="radiogroup">
       {moods.map((mood) => (
@@ -84,21 +113,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
   },
   moodItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
-    padding: 8,
+    borderRadius: 18,
+    minHeight: 68,
+    width: '30%',
+    paddingVertical: 10,
+    paddingHorizontal: 6,
   },
-  moodSelected: {
-    backgroundColor: '#FFF1F4',
-    borderWidth: 2,
-    borderColor: '#E63462',
-    borderRadius: 12,
+  emoji: {
+    fontSize: 28,
+    marginBottom: 4,
   },
-  moodPressed: {
-    opacity: 0.7,
+  label: {
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 14,
   },
 });

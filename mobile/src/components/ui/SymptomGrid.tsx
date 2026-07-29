@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
 import { useTheme } from 'src/theme';
 import { Text } from './Text';
@@ -9,6 +10,62 @@ export interface SymptomGridProps {
   onToggle: (symptom: string) => void;
   symptoms: string[];
   max?: number;
+}
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+function SymptomChip({
+  symptom,
+  isSelected,
+  disabled,
+  onPress,
+  theme,
+}: {
+  symptom: string;
+  isSelected: boolean;
+  disabled: boolean;
+  onPress: () => void;
+  theme: ReturnType<typeof useTheme>;
+}) {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <AnimatedPressable
+      onPressIn={() => { scale.value = withSpring(0.95, { damping: 12 }); }}
+      onPressOut={() => { scale.value = withSpring(1, { damping: 12 }); }}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityLabel={`${symptom}${isSelected ? ', selected' : ''}`}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isSelected, disabled }}
+      style={[
+        styles.chip,
+        animatedStyle,
+        isSelected
+          ? {
+              backgroundColor: '#FF6B8A',
+              ...theme.shadow.chip,
+            }
+          : {
+              backgroundColor: 'rgba(255,255,255,0.75)',
+              borderWidth: 1.5,
+              borderColor: '#FF6B8A44',
+            },
+        disabled && !isSelected && { opacity: 0.4 },
+      ]}
+    >
+      <Text
+        variant="chip"
+        style={{ color: isSelected ? '#FFFFFF' : '#2D1B26' }}
+      >
+        {symptom}
+      </Text>
+    </AnimatedPressable>
+  );
 }
 
 export function SymptomGrid({ selected, onToggle, symptoms, max }: SymptomGridProps) {
@@ -22,37 +79,14 @@ export function SymptomGrid({ selected, onToggle, symptoms, max }: SymptomGridPr
         const disabled = !isSelected && atLimit;
 
         return (
-          <Pressable
+          <SymptomChip
             key={symptom}
-            onPress={() => onToggle(symptom)}
+            symptom={symptom}
+            isSelected={isSelected}
             disabled={disabled}
-            accessibilityLabel={`${symptom}${isSelected ? ', selected' : ''}`}
-            accessibilityRole="button"
-            accessibilityState={{ selected: isSelected, disabled }}
-            style={[
-              styles.chip,
-              {
-                borderRadius: theme.radius.pill,
-                minHeight: theme.minTouchTarget,
-                paddingHorizontal: theme.spacing.lg,
-              },
-              isSelected
-                ? { backgroundColor: theme.colors.primary }
-                : {
-                    backgroundColor: 'transparent',
-                    borderWidth: 1,
-                    borderColor: theme.colors.border,
-                  },
-              disabled && !isSelected && { opacity: 0.4 },
-            ]}
-          >
-            <Text
-              variant="bodySmall"
-              color={isSelected ? 'inverse' : 'primary'}
-            >
-              {symptom}
-            </Text>
-          </Pressable>
+            onPress={() => onToggle(symptom)}
+            theme={theme}
+          />
         );
       })}
     </View>
@@ -68,5 +102,9 @@ const styles = StyleSheet.create({
   chip: {
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 100,
+    paddingHorizontal: 13,
+    paddingVertical: 5,
+    minHeight: 44,
   },
 });

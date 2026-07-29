@@ -36,13 +36,13 @@ export function ScreenLayout({
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : (
-        <View style={[styles.flex, padded && { paddingHorizontal: theme.spacing.lg }]}>
+        <View style={[styles.flex, padded && { paddingHorizontal: 18 }]}>
           {(title || headerRight) && (
             <View style={[styles.header, { paddingTop: theme.spacing.lg }]}>
               <View style={styles.headerLeft}>
-                {title && <Text variant="h2">{title}</Text>}
+                {title && <Text variant="h1Large">{title}</Text>}
                 {subtitle && (
-                  <Text variant="bodySmall" color="secondary" style={{ marginTop: theme.spacing.xs }}>
+                  <Text variant="greeting" color="muted" style={{ marginTop: 4 }}>
                     {subtitle}
                   </Text>
                 )}
