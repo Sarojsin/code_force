@@ -4,23 +4,27 @@
  */
 
 import React from 'react';
+import { View, Text as RNText } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle as SvgCircle } from 'react-native-svg';
 
-import { useTheme } from 'src/theme';
 import { HomeStack } from './HomeStack';
 import { CalendarStack } from './CalendarStack';
 import { AnalyticsStack } from './AnalyticsStack';
-import { AIChatStack } from './AIChatStack';
+import { WellnessStack } from './WellnessStack';
 import { ProfileStack } from './ProfileStack';
 
+import { useTheme } from 'src/theme';
 import type { MainTabParamList } from './types';
 
 const Tabs = createBottomTabNavigator<MainTabParamList>();
 
+const ACTIVE_COLOR = '#FFFFFF';
+
 function TabIcon({ name, focused, color }: { name: string; focused: boolean; color: string }) {
   const size = 24;
-  const strokeWidth = focused ? 2.2 : 1.8;
+  const strokeWidth = focused ? 2.5 : 1.8;
 
   const renderIcon = () => {
     switch (name) {
@@ -42,11 +46,11 @@ function TabIcon({ name, focused, color }: { name: string; focused: boolean; col
             <Path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         );
-      case 'AIChat':
+      case 'Wellness':
         return (
           <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-            <Path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-            <Path d="M12 2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V4a2 2 0 012-2z" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" opacity={focused ? 1 : 0.4} />
+            <Path d="M12 2C12 2 6 7 6 13c0 3.31 2.69 6 6 6s6-2.69 6-6c0-6-6-11-6-11z" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+            <Path d="M12 22v-3" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
           </Svg>
         );
       case 'Profile':
@@ -65,33 +69,70 @@ function TabIcon({ name, focused, color }: { name: string; focused: boolean; col
 
 export function MainTabs() {
   const theme = useTheme();
+  const INACTIVE_COLOR = theme.colors.textLighter;
   return (
     <Tabs.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color }) => (
-          <TabIcon name={route.name} focused={focused} color={color} />
+        tabBarIcon: ({ focused }) => (
+          <View style={{
+            width: focused ? 42 : 36,
+            height: 32,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {focused ? (
+              <LinearGradient
+                colors={[theme.colors.primary, theme.colors.primaryMuted]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  width: 42,
+                  height: 32,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  shadowColor: theme.colors.primary,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.35,
+                  shadowRadius: 14,
+                  elevation: 6,
+                }}
+              >
+                <TabIcon name={route.name} focused={true} color={ACTIVE_COLOR} />
+              </LinearGradient>
+            ) : (
+              <TabIcon name={route.name} focused={false} color={INACTIVE_COLOR} />
+            )}
+          </View>
         ),
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.textMuted,
+        tabBarLabel: ({ focused, children }) => (
+          <RNText style={{
+            fontSize: 10,
+            fontWeight: focused ? '800' : '500',
+            color: focused ? theme.colors.primary : INACTIVE_COLOR,
+            textAlign: 'center',
+          }}>
+            {children}
+          </RNText>
+        ),
         tabBarStyle: {
           position: 'absolute',
           bottom: 12,
           left: 16,
           right: 16,
-          backgroundColor: 'rgba(255, 255, 255, 0.85)',
-          borderTopColor: 'rgba(255, 255, 255, 0.3)',
+          backgroundColor: theme.isDark ? 'rgba(42,45,56,0.94)' : 'rgba(255,248,240,0.94)',
           borderTopWidth: 0,
+          borderTopColor: theme.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(247,197,204,0.4)',
           borderRadius: 20,
           height: 60,
-          paddingBottom: 6,
-          paddingTop: 6,
-          shadowColor: '#000',
+          paddingBottom: 22,
+          paddingTop: 8,
+          shadowColor: theme.colors.mauve,
           shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 12,
+          shadowOpacity: 0.16,
+          shadowRadius: 24,
           elevation: 8,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         headerShown: false,
         freezeOnBlur: true,
       })}
@@ -112,9 +153,9 @@ export function MainTabs() {
         options={{ tabBarLabel: 'Analytics' }}
       />
       <Tabs.Screen
-        name="AIChat"
-        component={AIChatStack}
-        options={{ tabBarLabel: 'AI Chat' }}
+        name="Wellness"
+        component={WellnessStack}
+        options={{ tabBarLabel: 'Wellness' }}
       />
       <Tabs.Screen
         name="Profile"

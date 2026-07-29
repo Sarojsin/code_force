@@ -13,6 +13,11 @@ import { MoodHistoryScreen } from 'src/screens/wellness/MoodHistoryScreen';
 import { BreathingListScreen } from 'src/screens/wellness/BreathingListScreen';
 import { InsightsScreen } from 'src/screens/wellness/InsightsScreen';
 import { HealthHubScreen } from 'src/screens/companion/HealthHubScreen';
+import { SOSActiveScreen } from 'src/screens/safety/SOSActiveScreen';
+import { SafetyHomeScreen } from 'src/screens/safety/SafetyHomeScreen';
+import { EmergencyContactsScreen } from 'src/screens/safety/EmergencyContactsScreen';
+import { EmergencyContactEditScreen } from 'src/screens/safety/EmergencyContactEditScreen';
+import { SosHistoryScreen } from 'src/screens/safety/SosHistoryScreen';
 
 import type { HomeStackParamList } from './types';
 
@@ -40,6 +45,11 @@ export function HomeStack() {
       <Stack.Screen name="BreathingList" component={BreathingListScreen} options={{ title: 'Breathing' }} />
       <Stack.Screen name="Insights" component={InsightsScreen} options={{ title: 'Insights' }} />
       <Stack.Screen name="HealthHub" component={HealthHubScreen} options={{ title: 'Health Hub' }} />
+      <Stack.Screen name="SafetyHome" component={SafetyHomeScreen} options={{ title: 'Safety' }} />
+      <Stack.Screen name="EmergencyContacts" component={EmergencyContactsScreen} options={{ title: 'Emergency Contacts' }} />
+      <Stack.Screen name="EmergencyContactEdit" component={EmergencyContactEditScreen} options={{ title: 'Edit Contact' }} />
+      <Stack.Screen name="SosHistory" component={SosHistoryScreen} options={{ title: 'SOS History' }} />
+      <Stack.Screen name="SOSActive" component={SOSActiveScreen} options={{ title: 'SOS Active', headerShown: false }} />
     </Stack.Navigator>
   );
 }

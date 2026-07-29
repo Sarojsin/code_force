@@ -14,6 +14,7 @@ const DEFAULT_HOST = Platform.OS === 'web'
   : 'http://192.168.0.103:8000';
 const ROOT = (process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_HOST).replace(/\/+$/, '');
 export const API_BASE_URL = `${ROOT}/api/v1`;
+export const API_ROOT = ROOT;
 console.log('[config] Platform.OS:', Platform.OS, 'ROOT:', ROOT, 'API_BASE_URL:', API_BASE_URL);
 export const SOCKET_URL = ROOT.replace(/^http/, 'ws') + '/ws';
 

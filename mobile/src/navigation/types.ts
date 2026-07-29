@@ -71,6 +71,11 @@ export type HomeStackParamList = {
   MoodHistory: undefined;
   BreathingList: undefined;
   Insights: undefined;
+  SafetyHome: undefined;
+  EmergencyContacts: undefined;
+  EmergencyContactEdit: { id?: string };
+  SosHistory: undefined;
+  SOSActive: undefined;
 };
 
 export type CalendarStackParamList = {
@@ -107,7 +112,7 @@ export type MainTabParamList = {
   Home: NavigatorScreenParams<HomeStackParamList>;
   Calendar: NavigatorScreenParams<CalendarStackParamList>;
   Analytics: NavigatorScreenParams<AnalyticsStackParamList>;
-  AIChat: NavigatorScreenParams<AIChatStackParamList>;
+  Wellness: NavigatorScreenParams<WellnessStackParamList>;
   Profile: NavigatorScreenParams<ProfileStackParamList>;
 };
 

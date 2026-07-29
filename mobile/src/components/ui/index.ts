@@ -22,3 +22,4 @@ export * from './Skeleton';
 export * from './StickyCard';
 export * from './SymptomGrid';
 export * from './Text';
+export * from './Toggle';
