@@ -265,7 +265,177 @@ function SectionHead({ title, action, onAction }: { title: string; action?: stri
 }
 
 /* ═══════════════════════════════════════════════════════
-   SCREEN: ONBOARDING
+   LUNA COMPANION OVERLAY
+   ═══════════════════════════════════════════════════════ */
+type LunaAnimation = 'idle' | 'walk-right' | 'walk-left' | 'bounce'
+
+interface LunaContext {
+  animation: LunaAnimation
+  message: string
+  actionLabel?: string
+}
+
+function getLunaContext(screen: Screen | 'onboarding' | 'chat', opts: {
+  lunaEnabled: boolean
+  pregnancyMode: boolean
+  currentPhase?: Phase
+  selectedDate?: number | null
+  selectedPhase?: Phase | null
+  mood?: Mood | null
+  energy?: number
+  sentiment?: string | null
+  wellnessTab?: 'insights' | 'mood' | 'breathing'
+  week?: number
+  trimester?: number
+  babySize?: string
+}): LunaContext {
+  const base: LunaContext = { animation: 'idle', message: "Hey Sofia! ☀️ Remember to log your mood and stay hydrated today." }
+
+  if (!opts.lunaEnabled) {
+    return { ...base, message: "Luna is sleeping 😴" }
+  }
+
+  switch (screen) {
+    case 'home':
+      if (opts.pregnancyMode) {
+        const week = opts.week || 8
+        const tri = opts.trimester || 2
+        const size = opts.babySize || 'your baby'
+        return { animation: 'walk-right', message: `Week ${week} · Trimester ${tri} · Size of a ${size} 🍼`, actionLabel: 'Log symptoms' }
+      }
+      if (opts.currentPhase) {
+        const ph = PHASE[opts.currentPhase]
+        return { animation: 'idle', message: `Cycle day · ${ph.label} phase ${ph.emoji}`, actionLabel: 'Check cycle' }
+      }
+      break
+    case 'calendar':
+      const date = opts.selectedDate || 27
+      const phase = opts.selectedPhase || 'ovulation'
+      const ph2 = PHASE[phase]
+      return { animation: 'walk-left', message: `July ${date} · ${ph2.label} ${ph2.emoji}`, actionLabel: 'View week' }
+    case 'journal':
+      const moodLabel = opts.mood ? MOODS.find(m => m.id === opts.mood)?.label : 'okay'
+      const eLabel = opts.energy ? ['Very Low','Low','Moderate','High','Peak'][opts.energy - 1] : 'moderate'
+      const sent = opts.sentiment === 'positive' ? 'positive vibes ✨' : opts.sentiment === 'neutral' ? 'neutral tone' : ''
+      return { animation: 'bounce', message: `Feeling ${moodLabel} · Energy ${eLabel}${sent ? ' · ' + sent : ''}`, actionLabel: 'Save entry' }
+    case 'wellness':
+      const tab = opts.wellnessTab || 'insights'
+      const metric = tab === 'sleep' ? '7.2h avg sleep' : tab === 'mood' ? 'Radiant most days' : '4-7-8 breathing'
+      return { animation: 'walk-left', message: `Wellness · ${tab}: ${metric}`, actionLabel: 'Open insights' }
+    case 'chat':
+      return { animation: 'idle', message: 'Ask about cramps, sleep, or nutrition 🌸', actionLabel: 'Start chat' }
+    case 'settings':
+      return { animation: 'idle', message: `Luna insights ${opts.lunaEnabled ? 'on' : 'off'} · Pregnancy ${opts.pregnancyMode ? 'on' : 'off'}`, actionLabel: 'Settings' }
+    case 'sos':
+      return { animation: 'bounce', message: 'Emergency contacts ready 🆘', actionLabel: 'Open SOS' }
+    case 'onboarding':
+      return { animation: 'idle', message: 'Complete setup to unlock insights ✨', actionLabel: 'Continue' }
+  }
+
+  return base
+}
+
+function LunaOverlay({ screen, lunaEnabled, pregnancyMode, currentPhase, selectedDate, selectedPhase, mood, energy, sentiment, wellnessTab, week, trimester, babySize }: {
+  screen: Screen | 'onboarding' | 'chat'
+  lunaEnabled: boolean
+  pregnancyMode: boolean
+  currentPhase?: Phase
+  selectedDate?: number | null
+  selectedPhase?: Phase | null
+  mood?: Mood | null
+  energy?: number
+  sentiment?: string | null
+  wellnessTab?: 'insights' | 'mood' | 'breathing'
+  week?: number
+  trimester?: number
+  babySize?: string
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const ctx = getLunaContext(screen, {
+    lunaEnabled, pregnancyMode,
+    currentPhase, selectedDate, selectedPhase, mood, energy, sentiment,
+    wellnessTab, week, trimester, babySize,
+  })
+  const animClass = `luna-${ctx.animation}`
+
+  const tailStyle: CSSProperties = {
+    position: 'absolute', bottom: -6, right: 24,
+    width: 14, height: 14, transform: 'rotate(45deg)',
+    background: 'rgba(255,255,255,0.72)',
+    borderRight: '1px solid rgba(255,255,255,0.95)',
+    borderBottom: '1px solid rgba(255,255,255,0.95)',
+    boxShadow: '3px 3px 6px rgba(212,165,181,0.08)',
+  }
+
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: screen === 'chat' ? 20 : 96,
+      right: 14, zIndex: 1000,
+      display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8,
+    }}>
+      {expanded && (
+        <div className="glass luna-bubble-in" style={{
+          width: 210, padding: '14px 14px 12px', borderRadius: 22,
+          position: 'relative',
+          boxShadow: '0 12px 32px rgba(255,107,138,0.22)',
+        }}>
+          <div style={tailStyle} />
+          <div style={{ ...row(8), marginBottom: 8 }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+              background: `linear-gradient(135deg, ${C.blushL}, ${C.blush})`,
+              border: '1.5px solid rgba(255,255,255,0.85)',
+            }}>
+              <img src="/assets/luna_cat_avatar.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#5A35A0', letterSpacing: '0.07em' }}>LUNA</span>
+          </div>
+          <p style={{ fontSize: 12, color: C.dark, lineHeight: 1.6, margin: 0 }}>
+            {ctx.message}
+          </p>
+          <button
+            onClick={() => setExpanded(false)}
+            className="btn-press"
+            aria-label="Close Luna bubble"
+            style={{
+              position: 'absolute', top: 8, right: 8,
+              width: 26, height: 26, borderRadius: '50%',
+              border: 'none', background: 'rgba(0,0,0,0.05)',
+              color: C.mid, fontSize: 16, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >×</button>
+        </div>
+      )}
+
+      <button
+        onClick={() => setExpanded(v => !v)}
+        className={`${animClass} btn-press`}
+        aria-label={`${ctx.actionLabel || 'Open'} Luna companion`}
+        style={{
+          width: 60, height: 60, borderRadius: '50%',
+          border: '2.5px solid rgba(255,255,255,0.85)',
+          background: `linear-gradient(135deg, ${C.blushL}, ${C.blush})`,
+          boxShadow: '0 8px 24px rgba(255,107,138,0.35)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'relative', overflow: 'hidden', cursor: 'pointer',
+          transition: 'transform 0.18s ease',
+        }}
+      >
+        <img
+          src="/assets/luna_cat_avatar.png"
+          alt="Luna companion cat"
+          style={{ width: '82%', height: '82%', objectFit: 'contain', pointerEvents: 'none' }}
+          draggable={false}
+        />
+      </button>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════
+    SCREEN: ONBOARDING
 ═══════════════════════════════════════════════════════ */
 const OB_STEPS = [
   {
@@ -566,10 +736,12 @@ function OnboardingScreen({ onDone }: { onDone: () => void }) {
 /* ═══════════════════════════════════════════════════════
    SCREEN: HOME DASHBOARD
 ═══════════════════════════════════════════════════════ */
-function HomeScreen({ go }: { go: (s: Screen) => void }) {
+function HomeScreen({ go, onPhase }: { go: (s: Screen) => void; onPhase?: (p: Phase) => void }) {
   const [mood, setMood] = useState<Mood | null>(null)
   const currentPhase: Phase = 'ovulation'
   const ph = PHASE[currentPhase]
+
+  useEffect(() => { onPhase?.(currentPhase) }, [currentPhase, onPhase])
 
   return (
     <div style={{ background: C.cream, minHeight: '100%', paddingBottom: 96 }}>
@@ -890,7 +1062,7 @@ function HomeScreen({ go }: { go: (s: Screen) => void }) {
 /* ═══════════════════════════════════════════════════════
    SCREEN: CALENDAR
 ═══════════════════════════════════════════════════════ */
-function CalendarScreen() {
+function CalendarScreen({ onDate, onPhase }: { onDate?: (d: number | null) => void; onPhase?: (p: Phase | null) => void }) {
   const [sel, setSel] = useState<number | null>(27)
   const DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
   const START_OFFSET = 2 // July 2025
@@ -904,6 +1076,8 @@ function CalendarScreen() {
   }
 
   const selPhase = sel ? phaseForDay(sel) : null
+
+  useEffect(() => { onDate?.(sel); onPhase?.(selPhase) }, [sel, selPhase, onDate, onPhase])
 
   return (
     <div style={{ background: C.cream, minHeight: '100%', paddingBottom: 96 }}>
@@ -1048,20 +1222,21 @@ function CalendarScreen() {
 /* ═══════════════════════════════════════════════════════
    SCREEN: JOURNAL
 ═══════════════════════════════════════════════════════ */
-function JournalScreen() {
+function JournalScreen({ onMood, onEnergy, onSentiment }: { onMood?: (m: Mood | null) => void; onEnergy?: (e: number) => void; onSentiment?: (s: string | null) => void }) {
   const [mood, setMood] = useState<Mood | null>(null)
   const [syms, setSyms] = useState<string[]>([])
   const [text, setText] = useState('')
   const [energy, setEnergy] = useState(3)
   const [saved, setSaved] = useState(false)
 
-  const toggleSym = (s: string) => setSyms(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s])
-  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2800) }
-
   const sentiment = text.length > 20
     ? text.toLowerCase().includes('pain') || text.toLowerCase().includes('tired') ? 'neutral'
     : text.toLowerCase().includes('great') || text.toLowerCase().includes('feel') ? 'positive' : 'neutral'
     : null
+
+  useEffect(() => { onMood?.(mood) }, [mood, onMood])
+  useEffect(() => { onEnergy?.(energy) }, [energy, onEnergy])
+  useEffect(() => { onSentiment?.(sentiment) }, [sentiment, onSentiment])
 
   return (
     <div style={{ background: C.cream, minHeight: '100%', paddingBottom: 96 }}>
@@ -1401,8 +1576,10 @@ function SOSScreen({ onBack }: { onBack: () => void }) {
 /* ═══════════════════════════════════════════════════════
    SCREEN: WELLNESS
 ═══════════════════════════════════════════════════════ */
-function WellnessScreen() {
+function WellnessScreen({ onTab }: { onTab?: (t: 'insights' | 'mood' | 'breathing') => void }) {
   const [tab, setTab] = useState<'insights' | 'mood' | 'breathing'>('insights')
+
+  useEffect(() => { onTab?.(tab) }, [tab, onTab])
 
   return (
     <div style={{ background: C.cream, minHeight: '100%', paddingBottom: 96 }}>
@@ -1717,14 +1894,196 @@ function ChatScreen() {
 }
 
 /* ═══════════════════════════════════════════════════════
+   SCREEN: PREGNANCY HOME
+   ═══════════════════════════════════════════════════════ */
+function PregnancyHomeScreen({ onWeek, onTrimester, onBabySize }: { onWeek?: (w: number) => void; onTrimester?: (t: number) => void; onBabySize?: (s: string) => void }) {
+  const [week, setWeek] = useState(8)
+  const trimester = week <= 12 ? 1 : week <= 27 ? 2 : 3
+  const babySize = week === 8 ? 'Raspberry' : week === 12 ? 'Lime' : week === 20 ? 'Banana' : week === 30 ? 'Coconut' : 'Your baby'
+
+  useEffect(() => { onWeek?.(week); onTrimester?.(trimester); onBabySize?.(babySize) }, [week, trimester, babySize, onWeek, onTrimester, onBabySize])
+
+  return (
+    <div style={{ background: C.cream, minHeight: '100%', paddingBottom: 96 }}>
+      <div style={{
+        background: `radial-gradient(ellipse 90% 50% at 50% 0%, rgba(255,179,198,0.35) 0%, transparent 65%), ${C.cream}`,
+        padding: '52px 18px 0',
+      }}>
+        {/* Header */}
+        <div style={{ ...row(0), justifyContent: 'space-between', marginBottom: 18 }}>
+          <div>
+            <p style={{ fontSize: 12, color: C.soft, margin: '0 0 1px', fontWeight: 500 }}>You're pregnant 💗</p>
+            <h1 style={{ fontFamily: '"Playfair Display", serif', fontSize: 27, fontWeight: 800, color: C.dark, margin: 0 }}>
+              Week {week}
+            </h1>
+          </div>
+          <div style={{ width: 52, height: 52, borderRadius: '50%', background: `linear-gradient(135deg, ${C.blush}, ${C.lavender})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, boxShadow: '0 6px 20px rgba(255,107,138,0.30)' }}>
+            🤰
+          </div>
+        </div>
+
+        {/* Hero card */}
+        <div className="anim-up shadow-hero" style={{
+          borderRadius: 26, padding: 20, marginBottom: 14,
+          background: `linear-gradient(135deg, ${C.blushL} 0%, ${C.blush} 100%)`,
+        }}>
+          <p style={{ fontSize: 12, fontWeight: 800, color: '#fff', letterSpacing: '0.08em', margin: '0 0 6px' }}>TRIMESTER {trimester}</p>
+          <h2 style={{ fontFamily: '"Playfair Display", serif', fontSize: 22, fontWeight: 800, color: '#fff', margin: '0 0 8px' }}>
+            Baby is the size of a {babySize} 🍓
+          </h2>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.90)', margin: 0, lineHeight: 1.6 }}>
+            Your little one is growing fast. Keep resting, eating well, and enjoying this journey.
+          </p>
+        </div>
+
+        {/* Quick actions */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          {[
+            { icon: '🦶', label: 'Kick Counter', bg: C.mint, color: '#1A6B45' },
+            { icon: '📝', label: 'Log Symptoms', bg: C.lavender, color: '#5A35A0' },
+            { icon: '📅', label: 'Checkups', bg: '#FFE8EF', color: C.blush },
+            { icon: '📚', label: 'Milestones', bg: '#FFF4E3', color: '#A0621A' },
+          ].map((a, i) => (
+            <Card key={i} animClass={`anim-up anim-d${i + 1}`} style={{ background: `${a.bg}55` }} onClick={() => {}}>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>{a.icon}</div>
+              <p style={{ fontSize: 13, fontWeight: 800, color: a.color, margin: 0 }}>{a.label}</p>
+            </Card>
+          ))}
+        </div>
+
+        {/* Week picker */}
+        <Card style={{ marginBottom: 14 }}>
+          <div style={{ ...row(0), justifyContent: 'space-between', marginBottom: 14 }}>
+            <Label>WEEK PROGRESS</Label>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.blush }}>Week {week} of 40</span>
+          </div>
+          <div style={{ height: 8, borderRadius: 4, background: 'rgba(212,165,181,0.25)', marginBottom: 10, overflow: 'hidden' }}>
+            <div className="progress-fill" style={{ width: `${(week / 40) * 100}%`, height: '100%', borderRadius: 4, background: `linear-gradient(90deg, ${C.blush}, ${C.lavender})` }} />
+          </div>
+          <div style={{ ...row(8) }}>
+            <button onClick={() => setWeek(w => Math.max(1, w - 1))} className="btn-press" style={{ minHeight: 40, flex: 1, borderRadius: 14, border: `1.5px solid ${C.rose}`, background: '#fff', color: C.blush, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Prev week</button>
+            <button onClick={() => setWeek(w => Math.min(40, w + 1))} className="btn-press" style={{ minHeight: 40, flex: 1, borderRadius: 14, border: 'none', background: `linear-gradient(135deg, ${C.blush}, #D4507A)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Next week</button>
+          </div>
+        </Card>
+
+        {/* Trimester info */}
+        <Card animClass="anim-fade" style={{ marginBottom: 14 }}>
+          <SectionHead title="Your Trimester" />
+          <p style={{ fontSize: 13, color: C.mid, lineHeight: 1.65, margin: 0 }}>
+            {trimester === 1 && 'First trimester — your body is adjusting. Rest is essential, and fatigue is normal.'}
+            {trimester === 2 && 'Second trimester — energy often returns. Gentle exercise and balanced nutrition support growth.'}
+            {trimester === 3 && 'Third trimester — you\'re almost there. Prepare your hospital bag and rest whenever you can.'}
+          </p>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════
+   SCREEN: PREGNANCY CALENDAR
+   ═══════════════════════════════════════════════════════ */
+function PregnancyCalendarScreen() {
+  const [selectedWeek, setSelectedWeek] = useState(8)
+
+  const milestones = [
+    { week: 8, title: 'First trimester ends', badge: 'Upcoming' },
+    { week: 12, title: '12 week scan', badge: 'Scan' },
+    { week: 20, title: 'Anatomy scan', badge: 'Scan' },
+    { week: 28, title: 'Third trimester starts', badge: 'Milestone' },
+    { week: 36, title: 'Hospital bag ready', badge: 'Checklist' },
+  ]
+
+  return (
+    <div style={{ background: C.cream, minHeight: '100%', paddingBottom: 96 }}>
+      <div style={{
+        background: `radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,179,198,0.30) 0%, transparent 60%), ${C.cream}`,
+        padding: '52px 18px 0',
+      }}>
+        {/* Header */}
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ fontFamily: '"Playfair Display", serif', fontSize: 28, fontWeight: 800, color: C.dark, margin: '0 0 6px' }}>
+            Pregnancy Tracker 🤰
+          </h1>
+          <p style={{ fontSize: 13, color: C.mid, margin: 0, lineHeight: 1.6 }}>
+            Week-by-week timeline — you're doing amazing.
+          </p>
+        </div>
+
+        {/* Week selector */}
+        <Card style={{ marginBottom: 14 }}>
+          <div style={{ ...row(0), justifyContent: 'space-between', marginBottom: 14 }}>
+            <Label>SELECT WEEK</Label>
+            <span style={{ fontSize: 14, fontWeight: 800, color: C.blush }}>Week {selectedWeek}</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+            {[4, 8, 12, 16, 20, 24, 28, 32, 36, 40].map(w => (
+              <button
+                key={w}
+                onClick={() => setSelectedWeek(w)}
+                className="btn-press"
+                style={{
+                  minWidth: 52, height: 44, borderRadius: 14, border: 'none', cursor: 'pointer',
+                  background: selectedWeek === w ? `linear-gradient(135deg, ${C.blush}, #D4507A)` : 'rgba(255,255,255,0.75)',
+                  color: selectedWeek === w ? '#fff' : C.mid,
+                  fontSize: 13, fontWeight: 700,
+                  boxShadow: selectedWeek === w ? '0 4px 14px rgba(255,107,138,0.28)' : '0 1px 4px rgba(212,165,181,0.12)',
+                  border: selectedWeek === w ? 'none' : `1.5px solid ${C.rose}88`,
+                  transition: 'all 0.22s ease',
+                }}
+              >W{w}</button>
+            ))}
+          </div>
+
+          <div style={{ marginTop: 14, padding: '14px 16px', borderRadius: 18, background: 'rgba(232,213,245,0.40)' }}>
+            <p style={{ fontSize: 12, fontWeight: 800, color: '#5A35A0', letterSpacing: '0.07em', margin: '0 0 6px' }}>WEEK {selectedWeek} HIGHLIGHTS</p>
+            <p style={{ fontSize: 13, color: C.dark, lineHeight: 1.65, margin: 0 }}>
+              {selectedWeek <= 12 ? 'Organs are forming. Take folic acid and rest.' : 
+               selectedWeek <= 27 ? 'You might feel first movements. Stay active with gentle walks.' : 
+               'Baby is practicing breathing. Pack your hospital bag soon.'}
+            </p>
+          </div>
+        </Card>
+
+        {/* Milestones list */}
+        <Card>
+          <SectionHead title="Upcoming Milestones" />
+          <div style={{ ...col(0) }}>
+            {milestones.map((m, i) => (
+              <div key={i} style={{
+                ...row(12), padding: '13px 0',
+                borderBottom: i < milestones.length - 1 ? `1px solid ${C.rose}44` : 'none',
+              }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 13, flexShrink: 0,
+                  background: `linear-gradient(135deg, ${C.blushL}, ${C.blush})`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 800,
+                }}>W{m.week}</div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: C.dark, margin: '0 0 2px' }}>{m.title}</p>
+                  <span style={{ fontSize: 11, color: C.soft, fontWeight: 600 }}>{m.badge}</span>
+                </div>
+                <span style={{ fontSize: 16, color: C.lighter }}>›</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════
    SCREEN: SETTINGS
 ═══════════════════════════════════════════════════════ */
-function SettingsScreen() {
+function SettingsScreen({ aiInsights, onToggleAI, pregnancyMode, onTogglePregnancy }: { 
+  aiInsights: boolean; onToggleAI: (v: boolean) => void 
+  pregnancyMode?: boolean; onTogglePregnancy?: (v: boolean) => void 
+}) {
   const [notifs, setNotifs]     = useState(true)
   const [bio, setBio]           = useState(false)
   const [dark, setDark]         = useState(false)
   const [reminders, setRem]     = useState(true)
-  const [aiInsights, setAI]     = useState(true)
   const [location, setLoc]      = useState(true)
 
   function SettRow({ icon, label, sub, right, last = false }: { icon: string; label: string; sub?: string; right?: React.ReactNode; last?: boolean }) {
@@ -1790,7 +2149,10 @@ function SettingsScreen() {
         <Section title="NOTIFICATIONS">
           <SettRow icon="🔔" label="Push Notifications"  sub="All alerts and reminders"    right={<Toggle on={notifs}    onChange={setNotifs}    />} />
           <SettRow icon="📅" label="Period Reminders"    sub="3 days before predicted date" right={<Toggle on={reminders} onChange={setRem}       />} />
-          <SettRow icon="🤖" label="Luna AI Insights"    sub="Daily at 8:00 AM"            right={<Toggle on={aiInsights} onChange={setAI}       />} last />
+          <SettRow icon="🤖" label="Luna AI Insights"    sub="Daily at 8:00 AM"            right={<Toggle on={aiInsights} onChange={onToggleAI} />} />
+          {!!onTogglePregnancy && (
+            <SettRow icon="🤰" label="Pregnancy Mode" sub="Track trimester, milestones, and baby growth" right={<Toggle on={pregnancyMode!} onChange={onTogglePregnancy} />} last />
+          )}
         </Section>
 
         <Section title="PRIVACY & SECURITY">
@@ -1896,6 +2258,19 @@ function BottomNav({ active, go }: { active: Screen; go: (s: Screen) => void }) 
 ═══════════════════════════════════════════════════════ */
 export default function App() {
   const [screen, setScreen] = useState<Screen | 'onboarding'>('onboarding')
+  const [lunaEnabled, setLunaEnabled] = useState(true)
+  const [pregnancyMode, setPregnancyMode] = useState(false)
+
+  const [lunaPhase, setLunaPhase] = useState<Phase>('ovulation')
+  const [lunaDate, setLunaDate] = useState<number | null>(27)
+  const [lunaCalPhase, setLunaCalPhase] = useState<Phase | null>(null)
+  const [lunaMood, setLunaMood] = useState<Mood | null>(null)
+  const [lunaEnergy, setLunaEnergy] = useState(3)
+  const [lunaSentiment, setLunaSentiment] = useState<string | null>(null)
+  const [lunaWellnessTab, setLunaWellnessTab] = useState<'insights' | 'mood' | 'breathing'>('insights')
+  const [lunaWeek, setLunaWeek] = useState(8)
+  const [lunaTrimester, setLunaTrimester] = useState(2)
+  const [lunaBabySize, setLunaBabySize] = useState('Raspberry')
 
   const go = (s: Screen) => setScreen(s)
 
@@ -1917,14 +2292,30 @@ export default function App() {
         {/* Scrollable screen */}
         <div style={{ height: '100vh', overflowY: screen === 'chat' ? 'hidden' : 'auto' }}>
           {screen === 'onboarding' && <OnboardingScreen onDone={() => setScreen('home')} />}
-          {screen === 'home'       && <HomeScreen go={go} />}
-          {screen === 'calendar'   && <CalendarScreen />}
-          {screen === 'journal'    && <JournalScreen />}
+          {screen === 'home'       && (pregnancyMode ? <PregnancyHomeScreen onWeek={setLunaWeek} onTrimester={setLunaTrimester} onBabySize={setLunaBabySize} /> : <HomeScreen go={go} onPhase={setLunaPhase} />)}
+          {screen === 'calendar'   && (pregnancyMode ? <PregnancyCalendarScreen /> : <CalendarScreen onDate={setLunaDate} onPhase={setLunaCalPhase} />)}
+          {screen === 'journal'    && <JournalScreen onMood={setLunaMood} onEnergy={setLunaEnergy} onSentiment={setLunaSentiment} />}
           {screen === 'sos'        && <SOSScreen onBack={() => setScreen('home')} />}
-          {screen === 'wellness'   && <WellnessScreen />}
+          {screen === 'wellness'   && <WellnessScreen onTab={setLunaWellnessTab} />}
           {screen === 'chat'       && <ChatScreen />}
-          {screen === 'settings'   && <SettingsScreen />}
+          {screen === 'settings'   && <SettingsScreen aiInsights={lunaEnabled} onToggleAI={setLunaEnabled} pregnancyMode={pregnancyMode} onTogglePregnancy={setPregnancyMode} />}
         </div>
+
+        {lunaEnabled && <LunaOverlay
+          screen={screen}
+          lunaEnabled={lunaEnabled}
+          pregnancyMode={pregnancyMode}
+          currentPhase={lunaPhase}
+          selectedDate={lunaDate}
+          selectedPhase={lunaCalPhase}
+          mood={lunaMood}
+          energy={lunaEnergy}
+          sentiment={lunaSentiment}
+          wellnessTab={lunaWellnessTab}
+          week={lunaWeek}
+          trimester={lunaTrimester}
+          babySize={lunaBabySize}
+        />}
 
         {/* Fixed bottom nav */}
         {showNav && <BottomNav active={screen as Screen} go={go} />}
