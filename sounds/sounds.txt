@@ -1,0 +1,11 @@
+sounds 
+Meow
+Purr
+Jump
+Walk
+Happy
+Sad
+Notification
+Eat
+Yawn
+Sleep
