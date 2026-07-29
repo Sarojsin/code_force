@@ -57,6 +57,7 @@ MODULE_INITS: list[Callable[[FastAPI, object], Awaitable[None] | None]] = [
     "app.modules.voice.routes:init_module",           # plan 22
     "app.modules.onboarding.routes:init_module",      # phase 1
     "app.modules.sync.routes:init_module",            # phase 5
+    "app.modules.luna.routes:init_module",            # lunaplan8
 ]
 
 
@@ -149,6 +150,9 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RateLimitError, shecare_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+
+    # --- event bus on app.state (needed by module dependencies) ------
+    app.state.event_bus = event_bus
 
     # --- pluggable modules (rule §15) --------------------------------
     _register_modules(app)

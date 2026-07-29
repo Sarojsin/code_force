@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { View, Pressable, StyleSheet, Dimensions, AppState } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withSequence, withDelay, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withSequence, withDelay, withRepeat, Easing } from 'react-native-reanimated';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useCompanionStore } from '../../stores/companionStore';
 import { useAnimationEngine, LunaSprite } from '../../services/companion';
 import type { AnimationState } from '../../services/companion';
@@ -9,36 +11,54 @@ import { useSpeechBubble } from '../../services/companion/EventEngine';
 import { Text, Loader } from '../../components/ui';
 import { useTheme } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
+import { getLunaContext, LunaScreen } from '../../services/companion/lunaContext';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const LUNA_SIZE = 72;
-const BUBBLE_MAX_WIDTH = Math.min(SCREEN_WIDTH * 0.55, 200);
-const BUBBLE_MAX_HEIGHT = SCREEN_HEIGHT * 0.3;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const LUNA_SIZE = 60;
+const BUBBLE_WIDTH = 210;
 const PET_COOLDOWN_MS = 5000;
 const HEART_EMOJIS = ['\u{1F495}', '\u{2764}\u{FE0F}', '\u{1F497}', '\u{1F496}', '\u{1F43E}'];
 
-function SpeechBubble({ text, theme }: { text: string; theme: ReturnType<typeof useTheme> }) {
+function AnimAvatar() {
   return (
-    <View style={styles.bubbleContainer}>
-      <View style={[styles.bubble, {
-        backgroundColor: theme.colors.surface,
-        borderColor: theme.colors.primary + '33',
-        shadowColor: theme.colors.textPrimary,
-        maxHeight: BUBBLE_MAX_HEIGHT,
-        marginBottom: SCREEN_HEIGHT < 700 ? 2 : 4,
-      }]}>
-        <Text variant="caption" align="center" style={{ color: theme.colors.textPrimary, fontSize: 12, lineHeight: 16 }} numberOfLines={3}>
-          {text}
-        </Text>
-      </View>
-      <View style={[styles.bubbleArrow, { borderTopColor: theme.colors.surface }]} />
+    <View style={styles.avatarRing}>
+      <LinearGradient
+        colors={['#FFB3C6', '#FF6B8A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.avatarGradient}
+      >
+        <View style={styles.avatarInner} />
+      </LinearGradient>
     </View>
   );
 }
 
-export const MemoizedSpeechBubble = React.memo(SpeechBubble);
+export interface LunaOverlayProps {
+  screen?: LunaScreen;
+  lunaEnabled?: boolean;
+  pregnancyMode?: boolean;
+  currentPhase?: string;
+  mood?: string | null;
+  energy?: number;
+  wellnessTab?: string;
+  week?: number;
+  trimester?: number;
+  babySize?: string;
+}
 
-export function LunaOverlay() {
+export function LunaOverlay({
+  screen = 'home',
+  lunaEnabled: lunaEnabledProp = true,
+  pregnancyMode: pregnancyModeProp = false,
+  currentPhase,
+  mood,
+  energy,
+  wellnessTab,
+  week,
+  trimester,
+  babySize,
+}: LunaOverlayProps) {
   const theme = useTheme();
 
   const isHidden = useCompanionStore((s) => s.isHidden);
@@ -60,7 +80,46 @@ export function LunaOverlay() {
 
   const [showTapFeedback, setShowTapFeedback] = useState(false);
   const [petCount, setPetCount] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   const hearts = useSharedValue(0);
+  const walkX = useSharedValue(0);
+
+  const context = useMemo(() => getLunaContext(screen, {
+    lunaEnabled: lunaEnabledProp,
+    pregnancyMode: pregnancyModeProp,
+    currentPhase,
+    mood,
+    energy,
+    wellnessTab,
+    week,
+    trimester,
+    babySize,
+  }), [screen, lunaEnabledProp, pregnancyModeProp, currentPhase, mood, energy, wellnessTab, week, trimester, babySize]);
+
+  useEffect(() => {
+    if (context.animation === 'walk-right') {
+      walkX.value = -160;
+      walkX.value = withTiming(0, { duration: 7000, easing: Easing.linear });
+    } else if (context.animation === 'walk-left') {
+      walkX.value = 160;
+      walkX.value = withTiming(0, { duration: 7000, easing: Easing.linear });
+    } else {
+      walkX.value = 0;
+    }
+  }, [context.animation]);
+
+  const floatAnim = useAnimatedStyle(() => {
+    if (reduceAnimations) return {};
+    switch (context.animation) {
+      case 'walk-right':
+      case 'walk-left':
+        return { transform: [{ translateX: walkX.value }] };
+      case 'bounce':
+        return { transform: [{ translateY: withSequence(withTiming(-14, { duration: 450 }), withTiming(0, { duration: 450 })) }] };
+      default:
+        return { transform: [{ translateY: withRepeat(withSequence(withTiming(-6, { duration: 2000 }), withTiming(0, { duration: 2000 })), -1, true) }] };
+    }
+  }, [context.animation, reduceAnimations]);
 
   const heartStyle = useAnimatedStyle(() => ({
     opacity: hearts.value,
@@ -185,6 +244,7 @@ export function LunaOverlay() {
   const handleTap = useCallback(() => {
     if (isHidden) return;
 
+    setExpanded((v) => !v);
     wakeUp();
 
     if (!reduceAnimations) {
@@ -259,7 +319,35 @@ export function LunaOverlay() {
     }
     return (
       <>
-        {speech && <MemoizedSpeechBubble text={speech.text} theme={theme} />}
+        {expanded && (
+          <View style={styles.expandedBubble}>
+            <BlurView intensity={20} tint="light" style={styles.bubbleBlur} />
+            <View style={styles.bubbleContent}>
+              <View style={styles.bubbleHeader}>
+                <AnimAvatar />
+                <Text style={styles.bubbleTitle}>LUNA</Text>
+              </View>
+              <Text style={styles.bubbleMessage}>{context.message}</Text>
+              {context.actionLabel && (
+                <Pressable onPress={() => setExpanded(false)}>
+                  <Text style={styles.bubbleAction}>{context.actionLabel} {'\u2192'}</Text>
+                </Pressable>
+              )}
+            </View>
+            <Pressable
+              style={styles.dismissBtn}
+              onPress={() => setExpanded(false)}
+              accessibilityLabel="Dismiss"
+              accessibilityRole="button"
+              hitSlop={8}
+            >
+              <Text style={styles.dismissX}>{'\u2715'}</Text>
+            </Pressable>
+            <View style={styles.bubbleTail} />
+          </View>
+        )}
+
+        {!expanded && speech && <SpeechBubble text={speech.text} />}
 
         {showTapFeedback && (
           <Animated.View style={[styles.tapFeedback, heartStyle]}>
@@ -271,22 +359,27 @@ export function LunaOverlay() {
           onPress={handleTap}
           onLongPress={() => navigation.navigate('HealthHub')}
           delayLongPress={600}
-          accessibilityLabel="Luna the companion cat. Tap to pet, long press for Health Hub."
+          accessibilityLabel="Luna the companion cat. Tap to toggle bubble, long press for Health Hub."
           accessibilityRole="imagebutton"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <LunaSprite size={reduceAnimations ? LUNA_SIZE - 8 : LUNA_SIZE} animatedStyle={animatedStyle} />
+          <Animated.View style={[animatedStyle, floatAnim]}>
+            <LunaSprite size={reduceAnimations ? LUNA_SIZE - 8 : LUNA_SIZE} animatedStyle={animatedStyle} />
+          </Animated.View>
         </Pressable>
 
-        <View style={[styles.xpBar, { backgroundColor: theme.colors.primaryMuted }]}>
-          <View style={[styles.xpFill, { width: `${xpProgress * 100}%` as any, backgroundColor: theme.colors.primary }]} />
-        </View>
-
-        <View style={[styles.levelBadge, { backgroundColor: theme.colors.primary }]}>
-          <Text style={{ color: theme.colors.textInverse, fontSize: 9, fontWeight: '700' }}>
-            {'Lv.'}{level}
-          </Text>
-        </View>
+        {!expanded && (
+          <>
+            <View style={[styles.xpBar, { backgroundColor: theme.colors.primaryMuted }]}>
+              <View style={[styles.xpFill, { width: `${xpProgress * 100}%` as any, backgroundColor: theme.colors.primary }]} />
+            </View>
+            <View style={[styles.levelBadge, { backgroundColor: theme.colors.primary }]}>
+              <Text style={{ color: theme.colors.textInverse, fontSize: 9, fontWeight: '700' }}>
+                {'Lv.'}{level}
+              </Text>
+            </View>
+          </>
+        )}
       </>
     );
   })();
@@ -300,11 +393,22 @@ export function LunaOverlay() {
   );
 }
 
+function SpeechBubble({ text }: { text: string }) {
+  return (
+    <View style={styles.speechContainer}>
+      <View style={styles.speechBubble}>
+        <Text style={styles.speechText} numberOfLines={3}>{text}</Text>
+      </View>
+      <View style={styles.speechArrow} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
+    bottom: 96,
+    right: 14,
     alignItems: 'center',
     zIndex: 1000,
   },
@@ -314,22 +418,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bubbleContainer: {
+  avatarRing: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#FF6B8A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    elevation: 8,
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+  },
+  avatarGradient: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInner: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  speechContainer: {
     marginBottom: 4,
     alignItems: 'center',
   },
-  bubble: {
+  speechBubble: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
+    borderColor: '#FF6B8A33',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    maxWidth: BUBBLE_MAX_WIDTH,
+    maxWidth: Math.min(SCREEN_WIDTH * 0.55, 200),
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
   },
-  bubbleArrow: {
+  speechText: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#1A1D26',
+    textAlign: 'center',
+  },
+  speechArrow: {
     width: 0,
     height: 0,
     borderLeftWidth: 6,
@@ -337,8 +474,77 @@ const styles = StyleSheet.create({
     borderTopWidth: 8,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
+    borderTopColor: '#FFFFFF',
     alignSelf: 'center',
     marginTop: -1,
+  },
+  expandedBubble: {
+    width: BUBBLE_WIDTH,
+    borderRadius: 22,
+    overflow: 'hidden',
+    marginBottom: 8,
+    shadowColor: '#D4A5B5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 4,
+  },
+  bubbleBlur: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 22,
+  },
+  bubbleContent: {
+    padding: 16,
+    paddingBottom: 12,
+  },
+  bubbleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  bubbleTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2D1B26',
+  },
+  bubbleMessage: {
+    fontSize: 12,
+    lineHeight: 19,
+    color: '#6B4D5A',
+    marginBottom: 4,
+  },
+  bubbleAction: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FF6B8A',
+    marginTop: 4,
+  },
+  dismissBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(160,120,136,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dismissX: {
+    fontSize: 13,
+    color: '#6B4D5A',
+    lineHeight: 14,
+  },
+  bubbleTail: {
+    position: 'absolute',
+    bottom: -7,
+    right: 20,
+    width: 14,
+    height: 14,
+    backgroundColor: 'rgba(255,248,240,0.95)',
+    transform: [{ rotate: '45deg' }],
+    borderBottomRightRadius: 3,
   },
   tapFeedback: {
     position: 'absolute',

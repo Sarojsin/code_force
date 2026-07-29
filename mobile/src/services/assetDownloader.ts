@@ -10,7 +10,7 @@ import { dialogueEngine } from './companion/DialogueEngine';
 import { soundEngine } from './companion/SoundEngine';
 import { SOUNDS_DIR } from './companion/assetPaths';
 import { logger } from '../utils';
-import { API_BASE_URL } from '../constants/config';
+import { API_BASE_URL, API_ROOT } from '../constants/config';
 
 const COMPANION_DIR = (FileSystem.documentDirectory ?? '') + 'companion/';
 const DOWNLOAD_PATH = (FileSystem.cacheDirectory ?? '') + 'luna_assets_v1.zip';
@@ -87,9 +87,12 @@ async function downloadFile(url: string): Promise<string> {
 }
 
 async function computeChecksum(filePath: string): Promise<string> {
+  const base64 = await FileSystem.readAsStringAsync(filePath, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
   return await Crypto.digestStringAsync(
     Crypto.CryptoDigestAlgorithm.SHA256,
-    filePath
+    base64
   );
 }
 
@@ -137,7 +140,10 @@ export async function installLuna(userId: string): Promise<boolean> {
       return false;
     }
 
-    const zipPath = await downloadFile(metadata.download_url);
+    const downloadUrl = metadata.download_url.startsWith('http')
+      ? metadata.download_url
+      : `${API_ROOT}${metadata.download_url}`;
+    const zipPath = await downloadFile(downloadUrl);
     store.setState('verifying');
     store.setProgress(70);
 
