@@ -7,6 +7,7 @@ mobile/
 │   │   ├── 📝 compare_Calendar Screen.md
 │   │   ├── 📝 compare_Global Design Prompt.md
 │   │   ├── 📝 compare_Home Screen.md
+│   │   ├── 📝 compare_Luna_AI_Chat.md
 │   │   ├── 📝 compare_Master Prompt Navigation Architecture.md
 │   │   ├── 📝 compare_Menstrual Phases Screen.md
 │   │   ├── 📝 compare_Mood Analysis.md
@@ -26,6 +27,11 @@ mobile/
 │   │   ├── 📝 missing_Home Screen SOS card.md
 │   │   ├── 📝 missing_Home Screen empty state.md
 │   │   ├── 📝 missing_Home Screen error state.md
+│   │   ├── 📝 missing_Luna_AI_branding_and_visual_design.md
+│   │   ├── 📝 missing_Luna_AI_chat_bubble_tail_and_styles.md
+│   │   ├── 📝 missing_Luna_AI_floral_overlay_and_atmosphere.md
+│   │   ├── 📝 missing_Luna_AI_header_and_avatar.md
+│   │   ├── 📝 missing_Luna_AI_input_bar_and_suggestions.md
 │   │   ├── 📝 missing_Menstrual Phases parallax effect.md
 │   │   ├── 📝 missing_Mood Analysis AI insight card.md
 │   │   ├── 📝 missing_Mood Analysis haptic feedback.md
@@ -61,12 +67,23 @@ mobile/
 │   ├── 🤖 models/
 │   └── 📂 splash/
 ├── 📚 docs/
+│   ├── 📝 adopt_design_system_prompt.md
+│   ├── 📝 codebase_map.md
+│   ├── 📝 companion-architecture.md
+│   ├── 📝 prompt_uiux.md
 │   ├── 📝 storage_pruning_strategy.md
 │   └── 📝 storage_store_audit.md
 ├── 🧪 e2e/
 │   └── 📘 offline.test.ts
 ├── 📦 src/
 │   ├── 📂 __tests__/
+│   │   ├── 📂 companion/
+│   │   │   ├── 📘 AchievementEngine.test.ts
+│   │   │   ├── 📘 CompanionLocalService.test.ts
+│   │   │   ├── 📘 HealthMetricsLocalService.test.ts
+│   │   │   ├── 📘 MoodManager.test.ts
+│   │   │   ├── 📘 eventFlow.test.ts
+│   │   │   └── 📘 healthTips.test.ts
 │   │   ├── 📘 storage_integration.test.ts
 │   │   ├── 📘 syncEngine.test.ts
 │   │   ├── 📘 test_system_test10_scenarios.test.ts
@@ -75,6 +92,7 @@ mobile/
 │   │   ├── 📘 test_system_test13_scenarios.test.ts
 │   │   ├── 📘 test_system_test14_scenarios.test.ts
 │   │   ├── 📘 test_system_test15_scenarios.test.ts
+│   │   ├── 📘 test_system_test16_scenarios.test.ts
 │   │   ├── 📘 test_system_test4_scenarios.test.ts
 │   │   ├── 📘 test_system_test5_scenarios.test.ts
 │   │   ├── 📘 test_system_test6_scenarios.test.ts
@@ -86,20 +104,18 @@ mobile/
 │   │   ├── 🚀 App.tsx
 │   │   └── ⚛️ providers.tsx
 │   ├── 🖼️ assets/
-│   │   ├── 📂 minilm_tokenizer/
-│   │   │   ├── 🧾 special_tokens_map.json
-│   │   │   ├── 🧾 tokenizer.json
-│   │   │   ├── 🧾 tokenizer_config.json
-│   │   │   └── 📄 vocab.txt
-│   │   ├── 🤖 models/
-│   │   │   ├── 🤖 minilm_embedder.onnx
-│   │   │   └── 🤖 wellness_classifier.onnx
-│   │   ├── 🧾 fallback_model.json
-│   │   ├── 🧾 vocab.json
-│   │   └── 🧾 vocab_minilm.json
+│   │   ├── 📂 companion/
+│   │   │   ├── 🧾 dialogues.json
+│   │   │   ├── 🧾 health_tips_fallback.json
+│   │   │   ├── 📄 luna_assets_v1.1.0.zip
+│   │   │   ├── 🖼️ luna_fallback.png
+│   │   │   └── 🧾 spritesheet.json
+│   │   └── 🤖 models/
 │   ├── 🧩 components/
 │   │   ├── 💼 business/
 │   │   └── 🎨 ui/
+│   │       ├── ⚛️ AchievementBadge.tsx
+│   │       ├── ⚛️ AchievementPopup.tsx
 │   │       ├── ⚛️ BackfillCard.tsx
 │   │       ├── ⚛️ BottomSheet.tsx
 │   │       ├── ⚛️ Button.tsx
@@ -113,6 +129,7 @@ mobile/
 │   │       ├── ⚛️ ErrorBoundary.tsx
 │   │       ├── ⚛️ ErrorState.tsx
 │   │       ├── ⚛️ FormField.tsx
+│   │       ├── ⚛️ HealthMetricCard.tsx
 │   │       ├── ⚛️ KeyboardAvoidingWrapper.tsx
 │   │       ├── ⚛️ Loader.tsx
 │   │       ├── ⚛️ MarkEndDateModal.tsx
@@ -126,10 +143,13 @@ mobile/
 │   │       ├── ⚛️ ScreenLayout.tsx
 │   │       ├── ⚛️ Skeleton.tsx
 │   │       ├── ⚛️ StickyCard.tsx
+│   │       ├── ⚛️ StreakBadge.tsx
 │   │       ├── ⚛️ SymptomGrid.tsx
 │   │       ├── ⚛️ Text.tsx
+│   │       ├── ⚛️ Toggle.tsx
 │   │       └── 📘 index.ts
 │   ├── 📏 constants/
+│   │   ├── 📘 companion.ts
 │   │   ├── 📘 config.ts
 │   │   ├── 📘 index.ts
 │   │   └── 📘 symptoms.ts
@@ -137,14 +157,21 @@ mobile/
 │   │   ├── 📂 migrations/
 │   │   │   ├── 📂 meta/
 │   │   │   │   ├── 🧾 0000_snapshot.json
+│   │   │   │   ├── 🧾 0006_snapshot.json
 │   │   │   │   └── 🧾 _journal.json
 │   │   │   ├── 🗃️ 0000_add_tables_v1.sql
 │   │   │   ├── 🗃️ 0001_add_snooze_events.sql
+│   │   │   ├── 🗃️ 0002_add_companion_metadata.sql
+│   │   │   ├── 🗃️ 0003_add_health_metrics.sql
+│   │   │   ├── 🗃️ 0004_add_cycle_type.sql
+│   │   │   ├── 🗃️ 0005_add_diary_module.sql
 │   │   │   ├── 📘 migrations.d.ts
 │   │   │   └── 📗 migrations.js
 │   │   ├── 📘 connection.ts
 │   │   └── 📘 schema.ts
 │   ├── 🪝 hooks/
+│   │   ├── 📘 usePressScale.ts
+│   │   └── 📘 useStaggerEntrance.ts
 │   ├── 🧭 navigation/
 │   │   ├── ⚛️ AIChatStack.tsx
 │   │   ├── ⚛️ AnalyticsStack.tsx
@@ -162,6 +189,7 @@ mobile/
 │   │   ├── ⚛️ WellnessStack.tsx
 │   │   ├── 📘 index.ts
 │   │   ├── 📘 rootNavigation.ts
+│   │   ├── ⚛️ screenRouters.tsx
 │   │   └── 📘 types.ts
 │   ├── 📄 screens/
 │   │   ├── 👨‍💼 admin/
@@ -180,6 +208,10 @@ mobile/
 │   │   │   ├── ⚛️ AIChatScreen.tsx
 │   │   │   ├── ⚛️ ChatHomeScreen.tsx
 │   │   │   └── ⚛️ ChatRoomScreen.tsx
+│   │   ├── 📂 companion/
+│   │   │   ├── ⚛️ HealthHubScreen.tsx
+│   │   │   ├── ⚛️ LunaInstallScreen.tsx
+│   │   │   └── ⚛️ LunaOverlay.tsx
 │   │   ├── 🌸 cycle/
 │   │   │   ├── 📂 plan/
 │   │   │   │   └── 📝 design_cycle_rule.md
@@ -191,6 +223,29 @@ mobile/
 │   │   │   └── ⚛️ MenstrualPhasesScreen.tsx
 │   │   ├── 🛠️ dev/
 │   │   │   └── ⚛️ OfflineDashboardScreen.tsx
+│   │   ├── 📂 diary/
+│   │   │   ├── 🧩 components/
+│   │   │   │   ├── ⚛️ DateStamp.tsx
+│   │   │   │   ├── ⚛️ DiaryCard.tsx
+│   │   │   │   ├── ⚛️ FloatingToolbar.tsx
+│   │   │   │   ├── ⚛️ MemoryChip.tsx
+│   │   │   │   ├── ⚛️ MoodBadge.tsx
+│   │   │   │   ├── ⚛️ MoodPicker.tsx
+│   │   │   │   ├── ⚛️ ObjectToolOverlay.tsx
+│   │   │   │   ├── ⚛️ PageTurningView.tsx
+│   │   │   │   ├── ⚛️ PolaroidFrame.tsx
+│   │   │   │   ├── ⚛️ ResizeHandles.tsx
+│   │   │   │   ├── ⚛️ ScrapbookCanvas.tsx
+│   │   │   │   ├── ⚛️ StickerPicker.tsx
+│   │   │   │   ├── ⚛️ VintageStamp.tsx
+│   │   │   │   └── 📘 index.ts
+│   │   │   ├── ⚛️ DiaryAssetInstallScreen.tsx
+│   │   │   ├── ⚛️ DiaryEditorScreen.tsx
+│   │   │   ├── ⚛️ DiaryLibraryScreen.tsx
+│   │   │   ├── ⚛️ DiaryPageScreen.tsx
+│   │   │   ├── ⚛️ DiaryScreen.tsx
+│   │   │   ├── ⚛️ DiarySearchScreen.tsx
+│   │   │   └── ⚛️ DiaryTimelineScreen.tsx
 │   │   ├── 👨‍👩‍👧 family/
 │   │   │   ├── ⚛️ FamilyHomeScreen.tsx
 │   │   │   └── ⚛️ InviteFamilyScreen.tsx
@@ -208,6 +263,7 @@ mobile/
 │   │   │   ├── ⚛️ PersonalInfoScreen.tsx
 │   │   │   └── ⚛️ WelcomeScreen.tsx
 │   │   ├── 🤰 pregnancy/
+│   │   │   ├── ⚛️ PregnancyCalendarScreen.tsx
 │   │   │   ├── ⚛️ PregnancyDailyLogScreen.tsx
 │   │   │   ├── ⚛️ PregnancyHomeScreen.tsx
 │   │   │   ├── ⚛️ PregnancyMilestonesScreen.tsx
@@ -238,12 +294,15 @@ mobile/
 │   │   │   └── ⚛️ WellnessHomeScreen.tsx
 │   │   └── ⚛️ SplashScreen.tsx
 │   ├── 🔌 services/
+│   │   ├── 📂 __tests__/
+│   │   │   └── 📘 eventBus.test.ts
 │   │   ├── 🌐 api/
 │   │   │   ├── 📘 admin.ts
 │   │   │   ├── 📘 auth.ts
 │   │   │   ├── 📘 chat.ts
 │   │   │   ├── 📘 client.ts
 │   │   │   ├── 📘 cycle.ts
+│   │   │   ├── 📘 diary.ts
 │   │   │   ├── 📘 family.ts
 │   │   │   ├── 📘 index.ts
 │   │   │   ├── 📘 nurse_content.ts
@@ -252,15 +311,38 @@ mobile/
 │   │   │   ├── 📘 safety.ts
 │   │   │   ├── 📘 voice.ts
 │   │   │   └── 📘 wellness.ts
+│   │   ├── 📂 companion/
+│   │   │   ├── 📘 AchievementEngine.ts
+│   │   │   ├── 📘 AnimationEngine.ts
+│   │   │   ├── 📘 DialogueEngine.ts
+│   │   │   ├── 📘 EmotionEngine.ts
+│   │   │   ├── 📘 EventEngine.ts
+│   │   │   ├── ⚛️ LunaSprite.tsx
+│   │   │   ├── 📘 MoodManager.ts
+│   │   │   ├── 📘 SoundEngine.ts
+│   │   │   ├── 📘 assetPaths.ts
+│   │   │   ├── 📘 index.ts
+│   │   │   └── 📘 lunaContext.ts
+│   │   ├── 📂 diary/
+│   │   │   └── 📘 useDiaryMediaUpload.ts
 │   │   ├── 📂 localDb/
 │   │   │   ├── 📂 __tests__/
 │   │   │   │   └── 📘 BaseLocalService.test.ts
 │   │   │   ├── 📘 BaseLocalService.ts
+│   │   │   ├── 📘 CompanionLocalService.ts
 │   │   │   ├── 📘 CycleLocalService.ts
+│   │   │   ├── 📘 DiaryAssetLocalService.ts
+│   │   │   ├── 📘 DiaryLocalService.ts
+│   │   │   ├── 📘 DiaryMediaLocalService.ts
+│   │   │   ├── 📘 DiaryPageLocalService.ts
+│   │   │   ├── 📘 DiaryPageObjectLocalService.ts
+│   │   │   ├── 📘 DiarySearchLocalService.ts
+│   │   │   ├── 📘 DiarySyncService.ts
 │   │   │   ├── 📘 EmergencyContactLocalService.ts
 │   │   │   ├── 📘 FamilyLinkLocalService.ts
 │   │   │   ├── 📘 FeatureFlagLocalService.ts
 │   │   │   ├── 📘 HealthInsightLocalService.ts
+│   │   │   ├── 📘 HealthMetricsLocalService.ts
 │   │   │   ├── 📘 JournalLocalService.ts
 │   │   │   ├── 📘 MoodLocalService.ts
 │   │   │   ├── 📘 PregnancyMilestoneLocalService.ts
@@ -277,21 +359,11 @@ mobile/
 │   │   ├── 🧠 ml/
 │   │   │   ├── 📂 __tests__/
 │   │   │   │   ├── 📘 heuristicScorer.test.ts
-│   │   │   │   ├── 📘 tokenizer.test.ts
 │   │   │   │   └── 📘 wellnessTypes.test.ts
-│   │   │   ├── 📘 embedder.ts
 │   │   │   ├── 📘 globalModel.ts
 │   │   │   ├── 📘 heuristicScorer.ts
 │   │   │   ├── 📘 index.ts
-│   │   │   ├── 📘 minilmEmbedder.ts
-│   │   │   ├── 📘 minilmTokenizer.ts
-│   │   │   ├── 📘 modelUpdater.ts
-│   │   │   ├── 📘 tokenizer.ts
-│   │   │   ├── 📘 useMinilmHydration.ts
-│   │   │   ├── 📘 useWellnessHydration.ts
-│   │   │   ├── 📘 wellnessClassifier.ts
-│   │   │   ├── 📘 wellnessTypes.ts
-│   │   │   └── 📘 wordpieceTokenizer.ts
+│   │   │   └── 📘 wellnessTypes.ts
 │   │   ├── 🔍 queries/
 │   │   │   ├── 📂 __tests__/
 │   │   │   │   ├── 📘 cycle.test.ts
@@ -301,6 +373,7 @@ mobile/
 │   │   │   ├── 📘 auth.ts
 │   │   │   ├── 📘 chat.ts
 │   │   │   ├── 📘 cycle.ts
+│   │   │   ├── 📘 diary.ts
 │   │   │   ├── 📘 family.ts
 │   │   │   ├── 📘 index.ts
 │   │   │   ├── 📘 nurse_content.ts
@@ -323,21 +396,32 @@ mobile/
 │   │   │   ├── 📘 syncHydrate.ts
 │   │   │   ├── 📘 types.ts
 │   │   │   └── 📘 useNetworkStatus.ts
+│   │   ├── 📘 assetDownloader.ts
 │   │   ├── 📘 dbHealthCheck.ts
+│   │   ├── 📘 diaryAssetDownloader.ts
 │   │   ├── 📘 endDateNotifications.ts
+│   │   ├── 📘 eventBus.ts
+│   │   ├── 📘 healthTips.ts
 │   │   ├── 📘 safetySyncQueue.ts
 │   │   ├── 📘 sentry.ts
 │   │   └── 📘 storage.ts
 │   ├── 🗃️ stores/
 │   │   ├── 📂 __tests__/
 │   │   │   ├── 📘 authStore.test.ts
+│   │   │   ├── 📘 companionStore.test.ts
 │   │   │   └── 📘 offlineStore.test.ts
+│   │   ├── 📘 achievementStore.ts
 │   │   ├── 📘 authStore.ts
+│   │   ├── 📘 companionStore.ts
 │   │   ├── 📘 cycleStore.ts
+│   │   ├── 📘 diaryAssetStore.ts
+│   │   ├── 📘 downloadStore.ts
 │   │   ├── 📘 endDateStore.ts
+│   │   ├── 📘 healthMetricsStore.ts
 │   │   ├── 📘 index.ts
 │   │   ├── 📘 offlineStore.ts
 │   │   ├── 📘 onboardingStore.ts
+│   │   ├── 📘 pregnancyModeStore.ts
 │   │   ├── 📘 safetyStore.ts
 │   │   └── 📘 syncMetricsStore.ts
 │   ├── 🎨 theme/
@@ -345,6 +429,7 @@ mobile/
 │   │   ├── 📘 index.ts
 │   │   └── 📘 tokens.ts
 │   ├── 📐 types/
+│   │   ├── 📘 assets.d.ts
 │   │   ├── 📘 auth.ts
 │   │   ├── 📘 expo-location.d.ts
 │   │   ├── 📘 index.ts
@@ -378,10 +463,13 @@ mobile/
 ├── 📗 index.js
 ├── 📗 jest.config.js
 ├── 📗 jest.setup.js
+├── 📄 libexpo-av-aar.so
+├── 📄 libexpo-av.so
 ├── 📗 metro.config.js
 ├── 📦 package.json
 ├── 📝 real_fixplan.md
 ├── 📄 start-expo.ps1
 ├── 📄 start.ps1
 ├── 📄 structure.py
+├── 🖼️ test_screenshot.png
 └── ⚙️ tsconfig.json

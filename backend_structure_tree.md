@@ -151,6 +151,20 @@ backend/
 │   │   │   ├── 🐍 schemas.py
 │   │   │   ├── 🐍 services.py
 │   │   │   └── 🐍 tasks.py
+│   │   ├── 📂 diary/
+│   │   │   ├── 🐍 __init__.py
+│   │   │   ├── 🐍 dependencies.py
+│   │   │   ├── 🐍 exceptions.py
+│   │   │   ├── 🐍 models.py
+│   │   │   ├── 🐍 routes.py
+│   │   │   ├── 🐍 schemas.py
+│   │   │   ├── 🐍 services.py
+│   │   │   └── 🐍 tasks.py
+│   │   ├── 📂 diary_assets/
+│   │   │   ├── 🖼️ assets/
+│   │   │   │   └── 📄 diary_assets_v1.0.0.zip
+│   │   │   ├── 🐍 __init__.py
+│   │   │   └── 🐍 routes.py
 │   │   ├── 📂 family/
 │   │   │   ├── 🐍 __init__.py
 │   │   │   ├── 🐍 dependencies.py
@@ -160,6 +174,11 @@ backend/
 │   │   │   ├── 🐍 schemas.py
 │   │   │   ├── 🐍 services.py
 │   │   │   └── 🐍 tasks.py
+│   │   ├── 📂 luna/
+│   │   │   ├── 🖼️ assets/
+│   │   │   │   └── 📄 luna_assets_v1.1.0.zip
+│   │   │   ├── 🐍 __init__.py
+│   │   │   └── 🐍 routes.py
 │   │   ├── 📂 nurse_content/
 │   │   │   ├── 🐍 __init__.py
 │   │   │   ├── 🐍 dependencies.py
@@ -221,6 +240,7 @@ backend/
 │   │   │   ├── 🐍 models.py
 │   │   │   ├── 🐍 routes.py
 │   │   │   ├── 🐍 schemas.py
+│   │   │   ├── 🐍 seed.py
 │   │   │   ├── 🐍 services.py
 │   │   │   └── 🐍 tasks.py
 │   │   └── 🐍 __init__.py
@@ -234,7 +254,6 @@ backend/
 │   └── 🐍 seed.py
 ├── 🖼️ assets/
 │   └── 🗄️ models/
-│       └── 📄 minilm_embedder.onnx
 ├── 📚 docs/
 │   ├── 📂 adr/
 │   │   ├── 📝 0001-use-fastapi.md
@@ -330,6 +349,7 @@ backend/
 │   │   │   ├── 🐍 test_system_test13_scenarios.py
 │   │   │   ├── 🐍 test_system_test14_scenarios.py
 │   │   │   ├── 🐍 test_system_test15_scenarios.py
+│   │   │   ├── 🐍 test_system_test16_scenarios.py
 │   │   │   └── 🐍 test_system_test9_scenarios.py
 │   │   ├── 📂 users/
 │   │   │   ├── 🐍 __init__.py
