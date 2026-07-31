@@ -9,7 +9,7 @@ export interface FtsResult {
 export class DiarySearchLocalService {
   async search(query: string, limit = 50): Promise<FtsResult[]> {
     try {
-      const db = getNativeDb();
+      const db = await getNativeDb();
       const sanitized = query.replace(/['"]/g, '');
       const sql = `
         SELECT rowid AS id, rank
@@ -18,7 +18,7 @@ export class DiarySearchLocalService {
         ORDER BY rank
         LIMIT ?
       `;
-      const results = db.getAllSync(sql, [sanitized, limit]) as FtsResult[];
+      const results = await db.getAllAsync<FtsResult>(sql, [sanitized, limit]);
       return results;
     } catch (error) {
       logger.error('DiarySearchLocalService.search failed', error);
@@ -28,8 +28,8 @@ export class DiarySearchLocalService {
 
   async rebuildIndex(): Promise<void> {
     try {
-      const db = getNativeDb();
-      db.execSync('INSERT INTO diary_fts(diary_fts) VALUES(\'rebuild\')');
+      const db = await getNativeDb();
+      await db.execAsync('INSERT INTO diary_fts(diary_fts) VALUES(\'rebuild\')');
     } catch (error) {
       logger.error('DiarySearchLocalService.rebuildIndex failed', error);
     }

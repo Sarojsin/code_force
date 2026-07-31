@@ -101,6 +101,11 @@ function wrappedNativeDb(sqlite: Database.Database) {
       const info = stmt.run(...(params ?? []));
       return { changes: info.changes };
     },
+    runAsync: async (sql: string, params?: any[]) => {
+      const stmt = sqlite.prepare(sql);
+      const info = stmt.run(...(params ?? []));
+      return { changes: info.changes, lastInsertRowId: Number(info.lastInsertRowid ?? 0) };
+    },
     getAllSync: (sql: string, params?: any[]) => {
       return sqlite.prepare(sql).all(...(params ?? []));
     },
@@ -108,6 +113,7 @@ function wrappedNativeDb(sqlite: Database.Database) {
       return sqlite.prepare(sql).get(...(params ?? [])) ?? null;
     },
     exec: (sql: string) => sqlite.exec(sql),
+    execAsync: async (sql: string) => sqlite.exec(sql),
   };
 }
 
@@ -189,7 +195,7 @@ describe('Phase 2 Storage Integration', () => {
         deleted_at: oldDate.toISOString(),
       }));
 
-      pruneLocalDb();
+      await pruneLocalDb();
 
       const result = await localDb.cycle.getById('cycle-1');
       expect(result).toBeNull();
@@ -201,7 +207,7 @@ describe('Phase 2 Storage Integration', () => {
         deleted_at: new Date().toISOString(),
       }));
 
-      pruneLocalDb();
+      await pruneLocalDb();
 
       const result = await localDb.cycle.getById('cycle-1');
       expect(result).not.toBeNull();

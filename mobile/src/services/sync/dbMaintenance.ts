@@ -19,8 +19,8 @@ TaskManager.defineTask(TASK_NAME, async () => {
       return BackgroundFetch.BackgroundFetchResult.NoData;
     }
 
-    pruneLocalDb();
-    getNativeDb().execSync('VACUUM');
+    await pruneLocalDb();
+    (await getNativeDb()).execAsync('VACUUM');
 
     await AsyncStorage.setItem(LAST_RUN_KEY, new Date().toISOString()).catch(() => {});
     logger.info('db_maintenance.complete');

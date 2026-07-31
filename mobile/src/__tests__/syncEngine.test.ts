@@ -15,12 +15,6 @@ jest.mock('src/utils', () => ({
 }));
 
 jest.mock('@react-native-async-storage/async-storage', () => ({ setItem: jest.fn(), getItem: jest.fn(), removeItem: jest.fn(), clear: jest.fn() }));
-jest.mock('expo-sqlite', () => ({
-  openDatabaseSync: jest.fn(() => ({ execSync: jest.fn(), runSync: jest.fn() })),
-}));
-jest.mock('drizzle-orm/expo-sqlite', () => ({
-  drizzle: jest.fn(() => ({ select: jest.fn(), insert: jest.fn(), update: jest.fn(), delete: jest.fn() })),
-}));
 
 jest.mock('@sentry/react-native', () => ({
   setTag: jest.fn(),

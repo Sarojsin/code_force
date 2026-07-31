@@ -66,19 +66,6 @@ jest.mock('src/services/api', () => ({
   },
 }));
 
-jest.mock('expo-sqlite', () => ({
-  openDatabaseSync: jest.fn(() => ({
-    execSync: jest.fn(),
-    runSync: jest.fn(),
-    closeAsync: jest.fn(),
-  })),
-}));
-jest.mock('drizzle-orm/expo-sqlite', () => ({
-  drizzle: jest.fn(() => ({
-    select: jest.fn(), insert: jest.fn(), update: jest.fn(), delete: jest.fn(),
-  })),
-}));
-
 import { act, renderHook } from '@testing-library/react-native';
 import { useAuthStore } from 'src/stores/authStore';
 import { useOfflineStore } from 'src/stores/offlineStore';

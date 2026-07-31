@@ -5,7 +5,7 @@
  * Phase 2: SQLite migrations run before UI renders.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, AppStateStatus, InteractionManager, StatusBar, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
@@ -14,9 +14,7 @@ import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
-import migrations from '../db/migrations/migrations';
-import { getDb } from '../db/connection';
+import { runMigrations } from '../db/runMigrations';
 
 import { AppProviders, queryClient } from './providers';
 
@@ -60,8 +58,12 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
 
 async function updateLastKnownLocation(): Promise<void> {
   try {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') return;
+    const { status, canAskAgain } = await Location.getForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      if (status !== 'undetermined' || !canAskAgain) return;
+      const req = await Location.requestForegroundPermissionsAsync();
+      if (req.status !== 'granted') return;
+    }
     const loc = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Low,
       timeInterval: 60000,
@@ -71,31 +73,40 @@ async function updateLastKnownLocation(): Promise<void> {
 }
 
 function MigrationGate({ children }: { children: React.ReactNode }) {
-  const { success, error } = useMigrations(getDb(), migrations);
+  const [status, setStatus] = useState<'pending' | 'success' | 'error'>('pending');
   const cleaned = useRef(false);
 
   useEffect(() => {
-    if (error) {
-      logger.error('SQLite migration failed', error);
-      Toast.show({ type: 'error', text1: 'Local storage unavailable — offline features may be limited.' });
-    }
-  }, [error]);
+    let cancelled = false;
+    runMigrations()
+      .then(() => {
+        if (!cancelled) setStatus('success');
+      })
+      .catch((err: unknown) => {
+        logger.error('SQLite migration failed', err);
+        if (!cancelled) setStatus('error');
+        Toast.show({ type: 'error', text1: 'Local storage unavailable — offline features may be limited.' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
-    if (success && !cleaned.current) {
+    if (status === 'success' && !cleaned.current) {
       cleaned.current = true;
       AsyncStorage.removeItem('REACT_QUERY_OFFLINE_CACHE').catch(() => {});
-      InteractionManager.runAfterInteractions(() => {
-        pruneLocalDb();
+      InteractionManager.runAfterInteractions(async () => {
+        await pruneLocalDb();
         migrateStoreDataToSqlite().then(() => {
           cleanupObsoleteKeys();
         });
         backfillSqliteIfNeeded();
       });
     }
-  }, [success]);
+  }, [status]);
 
-  if (error || success) {
+  if (status !== 'pending') {
     return <>{children}</>;
   }
 

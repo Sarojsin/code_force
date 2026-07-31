@@ -15,10 +15,10 @@ export async function checkDbHealth(): Promise<DbHealth> {
   try {
     const db = getDb();
     await db.run(sql`SELECT 1 AS ok`);
-    const result = await db.all(sql`
+    const result = (await db.all(sql`
       SELECT name FROM sqlite_master WHERE type='table' ORDER BY name
-    `);
-    const tables = (result as any[]).map((t: any) => t.name);
+    `)) as unknown[][];
+    const tables = result.map((t) => String(t[0]));
     return {
       ok: true,
       version: 1,

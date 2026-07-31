@@ -3,12 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 jest.mock('expo', () => ({ requireNativeModule: jest.fn(), default: {}, isRunningInExpoGo: jest.fn() }));
-jest.mock('expo-sqlite', () => ({
-  openDatabaseSync: jest.fn(() => ({ execSync: jest.fn(), runSync: jest.fn() })),
-}));
-jest.mock('drizzle-orm/expo-sqlite', () => ({
-  drizzle: jest.fn(() => ({ select: jest.fn(), insert: jest.fn(), update: jest.fn(), delete: jest.fn() })),
-}));
 jest.mock('expo-notifications', () => ({
   setNotificationHandler: jest.fn(),
   requestPermissionsAsync: jest.fn(),

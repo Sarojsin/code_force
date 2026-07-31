@@ -6,37 +6,6 @@
  * Scenario 29: Schema migration — ADD COLUMN preserves data, NULL for old rows, idempotent, multi-step.
  */
 
-const mockRunSync = jest.fn();
-const mockExecSync = jest.fn();
-const mockCloseAsync = jest.fn();
-
-jest.mock('expo-sqlite', () => ({
-  openDatabaseSync: jest.fn(() => ({
-    execSync: mockExecSync,
-    runSync: mockRunSync,
-    closeAsync: mockCloseAsync,
-  })),
-}));
-
-const mockDrizzleSelect = jest.fn();
-const mockDrizzleInsert = jest.fn();
-const mockDrizzleUpdate = jest.fn();
-const mockDrizzleDelete = jest.fn();
-
-jest.mock('drizzle-orm/expo-sqlite', () => ({
-  drizzle: jest.fn(() => ({
-    select: mockDrizzleSelect,
-    insert: mockDrizzleInsert,
-    update: mockDrizzleUpdate,
-    delete: mockDrizzleDelete,
-  })),
-  useMigrations: jest.fn(),
-}));
-
-jest.mock('drizzle-orm/expo-sqlite/migrator', () => ({
-  useMigrations: jest.fn(),
-}));
-
 jest.mock('@react-native-async-storage/async-storage', () => ({
   setItem: jest.fn(), getItem: jest.fn(), removeItem: jest.fn(), clear: jest.fn(),
 }));
@@ -85,7 +54,6 @@ jest.mock('src/db/migrations/migrations', () => ({
 }));
 
 import { act, renderHook } from '@testing-library/react-native';
-import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { useAuthStore } from 'src/stores/authStore';
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { BaseLocalService } from 'src/services/localDb/BaseLocalService';
@@ -98,9 +66,6 @@ const mockTokenStore = jest.requireMock('src/services/api').tokenStore;
 beforeEach(async () => {
   jest.clearAllMocks();
   Object.keys(encryptedStore).forEach((k) => delete encryptedStore[k]);
-  mockRunSync.mockReset();
-  mockExecSync.mockReset();
-  (useMigrations as jest.Mock).mockReset();
   mockStorage.getItem.mockImplementation(async (key: string) => encryptedStore[key] ?? null);
   mockStorage.setItem.mockImplementation(async (key: string, value: string) => { encryptedStore[key] = value; });
   mockTokenStore.getAccess.mockResolvedValue(null);
@@ -128,54 +93,9 @@ describe('Scenario 26: Fresh install bootstrap', () => {
       }
     });
 
-    it('migrations array passed to useMigrations is non-empty', () => {
+    it('migrations bundle and connection are available', () => {
       expect(getDb).toBeDefined();
       expect(migrations).toBeDefined();
-    });
-  });
-
-  describe('useMigrations lifecycle', () => {
-    it('renders children immediately on success', () => {
-      (useMigrations as jest.Mock).mockReturnValue({ success: true, error: undefined });
-
-      let successResult: boolean | undefined;
-      function TestConsumer() {
-        const { success } = useMigrations(getDb(), migrations);
-        successResult = success;
-        return null;
-      }
-
-      renderHook(() => TestConsumer());
-      expect(successResult).toBe(true);
-    });
-
-    it('renders children immediately on error', () => {
-      (useMigrations as jest.Mock).mockReturnValue({ success: false, error: new Error('migrate failed') });
-
-      let errorResult: Error | undefined;
-      function TestConsumer() {
-        const { error } = useMigrations(getDb(), migrations);
-        errorResult = error;
-        return null;
-      }
-
-      renderHook(() => TestConsumer());
-      expect(errorResult).toBeDefined();
-    });
-
-    it('shows toast on migration error', () => {
-      (useMigrations as jest.Mock).mockReturnValue({ success: false, error: new Error('migrate failed') });
-
-      const { result } = renderHook(() => useMigrations(getDb(), migrations));
-      expect(result.current.success).toBe(false);
-      expect(result.current.error).toBeInstanceOf(Error);
-    });
-
-    it('logs migration error', () => {
-      (useMigrations as jest.Mock).mockReturnValue({ success: false, error: new Error('migrate failed') });
-
-      const { result } = renderHook(() => useMigrations(getDb(), migrations));
-      expect(result.current.error?.message).toBe('migrate failed');
     });
   });
 

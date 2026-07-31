@@ -13,10 +13,10 @@ interface SafetyState {
   clearAlert: () => void;
 }
 
-function readActiveSosFromLocal(): SosAlert | null {
+async function readActiveSosFromLocal(): Promise<SosAlert | null> {
   try {
-    const db = getNativeDb();
-    const row = db.getFirstSync<any>(
+    const db = await getNativeDb();
+    const row = await db.getFirstAsync<SosAlert>(
       "SELECT * FROM sos_alerts WHERE is_active = 1 AND cancelled_at IS NULL AND resolved_at IS NULL ORDER BY triggered_at DESC LIMIT 1",
     );
     return (row ?? null) as SosAlert | null;
@@ -36,7 +36,7 @@ export const useSafetyStore = create<SafetyState>((set) => ({
       const alert = await safetyService.getActiveSos();
       set({ activeAlert: alert, badgeCount: alert ? 1 : 0, isLoading: false });
     } catch (err) {
-      const local = readActiveSosFromLocal();
+      const local = await readActiveSosFromLocal();
       set({ activeAlert: local, badgeCount: local ? 1 : 0, isLoading: false });
       logger.error('safetyStore.fetchActiveAlert.failed_fallback_to_sqlite', err);
     }
