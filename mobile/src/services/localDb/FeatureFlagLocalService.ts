@@ -50,15 +50,18 @@ export class FeatureFlagLocalService {
     if (records.length === 0) return;
     try {
       const db = getDb();
-      for (const record of records) {
-        await db
-          .insert(featureFlags)
-          .values({ ...record, synced_at: new Date().toISOString() })
-          .onConflictDoUpdate({
-            target: featureFlags.key,
-            set: { ...record, synced_at: new Date().toISOString() },
-          });
-      }
+      const syncedAt = new Date().toISOString();
+      await db.transaction(async (tx) => {
+        for (const record of records) {
+          await tx
+            .insert(featureFlags)
+            .values({ ...record, synced_at: syncedAt })
+            .onConflictDoUpdate({
+              target: featureFlags.key,
+              set: { ...record, synced_at: syncedAt },
+            });
+        }
+      });
     } catch (error) {
       this.handleError('upsertMany', error);
     }
