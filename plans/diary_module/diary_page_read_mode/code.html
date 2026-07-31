@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Digital Heirlooms - October 14th</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;600;700&amp;family=Literata:ital,wght@0,400;0,600;1,400&amp;family=Work+Sans:wght@400;600&amp;family=Great+Vibes&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "inverse-on-surface": "#f3f1e9",
+                    "primary": "#410403",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "surface": "#fbf9f1",
+                    "inverse-surface": "#30312c",
+                    "primary-container": "#5e1914",
+                    "surface-container-highest": "#e4e3db",
+                    "surface-variant": "#e4e3db",
+                    "secondary": "#7d562d",
+                    "on-background": "#1b1c17",
+                    "on-secondary-fixed": "#2c1600",
+                    "on-error": "#ffffff",
+                    "surface-tint": "#98453c",
+                    "on-primary": "#ffffff",
+                    "on-primary-fixed": "#3f0303",
+                    "on-primary-container": "#e17e72",
+                    "surface-bright": "#fbf9f1",
+                    "surface-container": "#f0eee6",
+                    "on-surface": "#1b1c17",
+                    "tertiary-fixed-dim": "#b7ccb9",
+                    "on-surface-variant": "#554240",
+                    "secondary-fixed": "#ffdcbd",
+                    "on-tertiary-container": "#8b9f8e",
+                    "surface-container-high": "#eae8e0",
+                    "tertiary-container": "#243629",
+                    "on-tertiary-fixed-variant": "#394b3d",
+                    "on-secondary-container": "#7a532a",
+                    "outline": "#88726f",
+                    "error": "#ba1a1a",
+                    "secondary-container": "#ffca98",
+                    "error-container": "#ffdad6",
+                    "primary-fixed-dim": "#ffb4aa",
+                    "on-tertiary-fixed": "#0e1f13",
+                    "secondary-fixed-dim": "#f0bd8b",
+                    "background": "#fbf9f1",
+                    "inverse-primary": "#ffb4aa",
+                    "on-secondary-fixed-variant": "#623f18",
+                    "on-error-container": "#93000a",
+                    "surface-dim": "#dcdad2",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed": "#d3e8d5",
+                    "outline-variant": "#dbc1bd",
+                    "primary-fixed": "#ffdad5",
+                    "surface-container-low": "#f5f4ec",
+                    "on-primary-fixed-variant": "#7a2e27",
+                    "tertiary": "#0f2115"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-sm": "8px",
+                    "safe-area-bottom": "40px",
+                    "margin-page": "24px",
+                    "gutter-grid": "16px",
+                    "stack-md": "16px",
+                    "stack-lg": "32px"
+            },
+            "fontFamily": {
+                    "body-md": ["Work Sans"],
+                    "label-caps": ["Work Sans"],
+                    "entry-text": ["Literata"],
+                    "handwriting": ["Great Vibes"],
+                    "headline-md": ["Libre Caslon Text"],
+                    "display-lg": ["Libre Caslon Text"],
+                    "display-lg-mobile": ["Libre Caslon Text"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600"}],
+                    "entry-text": ["18px", {"lineHeight": "30px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "display-lg": ["42px", {"lineHeight": "52px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "display-lg-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .paper-grain {
+            background-color: #fbf9f1;
+            background-image: url("https://www.transparenttextures.com/patterns/felt.png");
+            position: relative;
+        }
+        .paper-grain::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+        }
+        .scrapbook-photo {
+            box-shadow: 0 10px 20px rgba(65, 4, 3, 0.15), 0 3px 6px rgba(0,0,0,0.1);
+            border: 8px solid white;
+        }
+        .sticker-shadow {
+            filter: drop-shadow(2px 4px 3px rgba(0,0,0,0.1));
+        }
+        .date-stamp {
+            transform: rotate(-2deg);
+            opacity: 0.8;
+            border: 2px solid currentColor;
+            padding: 4px 12px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="bg-surface-container font-body-md text-on-surface min-h-screen flex flex-col">
+<!-- Top App Bar (From Shared Components Guide) -->
+<header class="bg-surface dark:bg-surface-dim flex justify-between items-center w-full px-margin-page py-4 sticky top-0 z-50">
+<button class="hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary">October 14th</h1>
+<button class="hover:opacity-80 transition-opacity active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-primary">edit</span>
+</button>
+</header>
+<!-- Main Canvas -->
+<main class="flex-grow paper-grain mx-margin-page my-stack-lg rounded-xl overflow-hidden shadow-2xl relative max-w-2xl md:mx-auto md:w-full">
+<!-- Content Container -->
+<div class="p-8 md:p-12 h-full flex flex-col items-center">
+<!-- Date Stamp -->
+<div class="self-end mb-stack-lg">
+<div class="date-stamp font-label-caps text-secondary uppercase tracking-widest border-secondary rounded-sm">
+                    October 14th, 2023
+                </div>
+</div>
+<!-- Scenic Photo -->
+<div class="relative w-full max-w-sm transform -rotate-3 transition-transform hover:rotate-0 duration-500 mb-stack-lg">
+<div class="scrapbook-photo aspect-[4/5] overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A breathtaking view of jagged mountain peaks at dawn, with soft golden light hitting the summits. The sky is a gradient of deep indigo and soft orange. The style is cinematic and high-resolution, evoking a sense of tranquil isolation and natural beauty, consistent with a premium leather-bound journal's memory." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxpAW1tFOSbEL-AHo3yhnvXSHxQPLBF0pDTMMkDGDUCjxQot192_uFqNfxC9z-CbxgvaBOlnsBQ3FXAA7UpwJCSe4tupBZ13TISNB8Ln0sXavyJvH60O1NNySvlgIFUEs4i8q4pb_K7id_o1fUtpwzjv9E3VFXmXB8XEfTl_BGM2u7-BQYj4gEaPTpMhftEYyO8m-RGsNQYNvAxNWHHvnGItoWlTLI-ZtqE_OO742ONSBiqP9u_yg"/>
+</div>
+<!-- Photo Tape Detail -->
+<div class="absolute -top-4 left-1/2 -translate-x-1/2 w-24 h-8 bg-secondary/20 backdrop-blur-sm sticker-shadow transform rotate-1"></div>
+</div>
+<!-- Text Content -->
+<div class="w-full max-w-md space-y-stack-md text-center">
+<p class="font-handwriting text-4xl text-primary leading-relaxed opacity-90 px-4">
+                    "The air in the mountains felt so different today. Refreshing."
+                </p>
+<div class="w-16 h-px bg-outline-variant mx-auto"></div>
+<p class="font-entry-text text-entry-text text-on-surface-variant italic">
+                    A quiet moment of reflection near the summit. The world felt smaller, yet more significant.
+                </p>
+</div>
+<!-- Decorative Elements -->
+<div class="relative w-full mt-stack-lg">
+<!-- Pressed Flower Sticker -->
+<div class="absolute left-4 -top-8 w-24 h-24 sticker-shadow transform -rotate-12">
+<img class="w-full h-full object-contain" data-alt="A delicate, realistic illustration of a dried and pressed wildflower, possibly a mountain anemone, with intricate petal textures and warm earth tones. The flower appears as if it has been preserved between the pages of an old book, matching the tactile neoclassicism style of the digital heirloom journal." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZG7HWNJaB-f6V9aXy59FTXTjFlLXO1jGcO-k5OTrSXYhvzsQC5bXS4JDuRruoOs5gsq6ByA7lrN_uN6f46be0BFAzjPRjacLGnhok5E10zB_pKjsY-3Fenx9Cn5v7uM_eW0HdB-3M8fH9AYt8ZgB_wRZ3tR9ECO8Xi3d0fXQfGBP6aWO_xXOv9AQdFbnMXjVM7BEBjfuaHoX1WCUPKDsa7uXSWSqx8sk1KxcOUYrVJxycjFU0Mxg"/>
+</div>
+<!-- Mood Badge -->
+<div class="absolute right-8 bottom-0 flex flex-col items-center">
+<div class="w-14 h-14 rounded-full bg-secondary-fixed-dim flex items-center justify-center sticker-shadow border-4 border-surface">
+<span class="material-symbols-outlined text-on-secondary-fixed-variant text-3xl" style="font-variation-settings: 'FILL' 1;">wb_sunny</span>
+</div>
+<span class="font-label-caps text-[10px] text-secondary mt-2">CALM</span>
+</div>
+</div>
+<!-- Vintage Stamp -->
+<div class="mt-auto self-start transform rotate-6 opacity-70">
+<div class="border-2 border-dashed border-outline-variant p-2 flex flex-col items-center">
+<span class="material-symbols-outlined text-outline">landscape</span>
+<span class="font-label-caps text-[8px] text-outline mt-1">PEAK DISTRICT</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (Page Indicators) -->
+<footer class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe-area-bottom pt-2 backdrop-blur-md bg-surface-container/80 dark:bg-surface-container-highest/80 shadow-lg rounded-t-xl">
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/50 transition-all active:scale-90 duration-300">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<div class="flex flex-col items-center">
+<span class="font-label-caps text-label-caps text-primary font-bold">Page 12 of 48</span>
+<div class="flex gap-1 mt-1">
+<div class="w-1.5 h-1.5 rounded-full bg-outline-variant"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-outline-variant"></div>
+</div>
+</div>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/50 transition-all active:scale-90 duration-300">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</footer>
+<!-- Atmosphere Micro-interaction -->
+<script>
+        document.addEventListener('mousemove', (e) => {
+            const photos = document.querySelectorAll('.scrapbook-photo');
+            photos.forEach(photo => {
+                const rect = photo.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                
+                // Very subtle tilt following the mouse
+                const rotateX = -y / 100;
+                const rotateY = x / 100;
+                
+                photo.parentElement.style.transform = `rotate(-3deg) perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            });
+        });
+    </script>
+</body></html>

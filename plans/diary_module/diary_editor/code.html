@@ -1,0 +1,316 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Digital Heirlooms - Editor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;600;700&amp;family=Work+Sans:wght@400;500;600&amp;family=Literata:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "inverse-on-surface": "#f3f1e9",
+                    "primary": "#410403",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "surface": "#fbf9f1",
+                    "inverse-surface": "#30312c",
+                    "primary-container": "#5e1914",
+                    "surface-container-highest": "#e4e3db",
+                    "surface-variant": "#e4e3db",
+                    "secondary": "#7d562d",
+                    "on-background": "#1b1c17",
+                    "on-secondary-fixed": "#2c1600",
+                    "on-error": "#ffffff",
+                    "surface-tint": "#98453c",
+                    "on-primary": "#ffffff",
+                    "on-primary-fixed": "#3f0303",
+                    "on-primary-container": "#e17e72",
+                    "surface-bright": "#fbf9f1",
+                    "surface-container": "#f0eee6",
+                    "on-surface": "#1b1c17",
+                    "tertiary-fixed-dim": "#b7ccb9",
+                    "on-surface-variant": "#554240",
+                    "secondary-fixed": "#ffdcbd",
+                    "on-tertiary-container": "#8b9f8e",
+                    "surface-container-high": "#eae8e0",
+                    "tertiary-container": "#243629",
+                    "on-tertiary-fixed-variant": "#394b3d",
+                    "on-secondary-container": "#7a532a",
+                    "outline": "#88726f",
+                    "error": "#ba1a1a",
+                    "secondary-container": "#ffca98",
+                    "error-container": "#ffdad6",
+                    "primary-fixed-dim": "#ffb4aa",
+                    "on-tertiary-fixed": "#0e1f13",
+                    "secondary-fixed-dim": "#f0bd8b",
+                    "background": "#fbf9f1",
+                    "inverse-primary": "#ffb4aa",
+                    "on-secondary-fixed-variant": "#623f18",
+                    "on-error-container": "#93000a",
+                    "surface-dim": "#dcdad2",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed": "#d3e8d5",
+                    "outline-variant": "#dbc1bd",
+                    "primary-fixed": "#ffdad5",
+                    "surface-container-low": "#f5f4ec",
+                    "on-primary-fixed-variant": "#7a2e27",
+                    "tertiary": "#0f2115"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-sm": "8px",
+                    "safe-area-bottom": "40px",
+                    "margin-page": "24px",
+                    "gutter-grid": "16px",
+                    "stack-md": "16px",
+                    "stack-lg": "32px"
+            },
+            "fontFamily": {
+                    "body-md": ["Work Sans"],
+                    "label-caps": ["Work Sans"],
+                    "entry-text": ["Literata"],
+                    "headline-md": ["Libre Caslon Text"],
+                    "display-lg": ["Libre Caslon Text"],
+                    "display-lg-mobile": ["Libre Caslon Text"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600"}],
+                    "entry-text": ["18px", {"lineHeight": "30px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "display-lg": ["42px", {"lineHeight": "52px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "display-lg-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #fbf9f1;
+            background-image: radial-gradient(#dcdad2 0.5px, transparent 0.5px);
+            background-size: 24px 24px;
+        }
+
+        .paper-grain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.03;
+            z-index: 100;
+            background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+        }
+
+        .selection-border {
+            outline: 1.5px dashed #410403;
+            outline-offset: 4px;
+        }
+
+        .resize-handle {
+            width: 10px;
+            height: 10px;
+            background: #410403;
+            position: absolute;
+            border-radius: 2px;
+        }
+
+        .fab-arc-item {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .floating-pill {
+            backdrop-filter: blur(8px);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-on-surface font-body-md overflow-x-hidden">
+<div class="paper-grain"></div>
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 left-0 w-full z-50 bg-surface/90 backdrop-blur-sm flex justify-between items-center px-margin-page py-4">
+<div class="flex items-center gap-4">
+<button class="hover:opacity-80 transition-opacity active:scale-95 duration-200">
+<span class="material-symbols-outlined text-primary" data-icon="undo">undo</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary">Editing Entry</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-label-caps text-label-caps text-on-surface-variant flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+                Autosaved 12:45 PM
+            </span>
+<button class="bg-primary text-on-primary p-2 rounded-full shadow-lg hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined" data-icon="check">check</span>
+</button>
+</div>
+</header>
+<!-- Main Canvas Area -->
+<main class="pt-24 px-margin-page pb-safe-area-bottom max-w-2xl mx-auto min-h-screen relative">
+<!-- Selection State 1: Image Block -->
+<div class="relative group mb-stack-lg transition-transform duration-300" style="transform: rotate(-1deg);">
+<div class="relative selection-border" style="opacity: 1; cursor: default;">
+<img class="w-full h-80 object-cover shadow-xl rounded-sm border-8 border-white" alt="Nostalgic family picnic video thumbnail" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCBJMx0JKDj3Xoc3DLjnPg1rfandPVlffSawa2459Fj75OdrmnGO-7f4ZleNIZN-aCkIZMMcefohOU37PbQPI_PLZ51nxQ1upeYSfm6ULNLc1x5fta7xrPFgoDT44c2vEfNQr6b9pQZTk_ZJ_aGUZiv6rFmIefZVR8il5Uq4ysti-TUqZ9JKoc4e52mcSJWmEAmczPmS6jnt5XK0x9RIxQcYXyHAAJnt4-tmOsjJeQyoNw7x6YXO7U">
+<!-- Interaction Handles -->
+<div class="resize-handle -top-1 -left-1 cursor-nw-resize"></div>
+<div class="resize-handle -top-1 -right-1 cursor-ne-resize"></div>
+<div class="resize-handle -bottom-1 -left-1 cursor-sw-resize"></div>
+<div class="resize-handle -bottom-1 -right-1 cursor-se-resize"></div>
+<!-- Tool Overlay (Hidden until hover/active) -->
+<div class="absolute -top-12 left-1/2 -translate-x-1/2 bg-surface shadow-md rounded-full px-4 py-2 flex gap-4 border border-outline-variant items-center">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary" data-icon="crop">crop</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary" data-icon="filter_vintage">filter_vintage</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary" data-icon="delete">delete</span>
+</div>
+</div>
+<!-- Memory Chip -->
+<div class="absolute -bottom-4 -right-2 bg-secondary/90 text-on-secondary px-3 py-1 font-label-caps text-label-caps rounded-sm shadow-sm rotate-3">
+                Lake District, 1994
+            </div>
+</div>
+<!-- Selection State 2: Text Block -->
+<div class="relative mt-stack-lg selection-border p-4" style="opacity: 1; cursor: default;">
+<h2 class="font-headline-md text-headline-md text-primary mb-2">The Silence of the Morning</h2>
+<p class="font-entry-text text-entry-text text-on-surface-variant border-b border-outline-variant/30 pb-1 mb-2">
+                There is a specific kind of quiet that only exists before the rest of the world wakes. It feels like the air is heavy with unwritten stories. The fog today was particularly thick, clinging to the valley floors like a heavy wool blanket. I sat for hours just watching the light change from steel gray to a warm, bruised purple.
+            </p>
+<p class="font-entry-text text-entry-text text-on-surface-variant border-b border-outline-variant/30 pb-1">
+                Looking back at these moments, I realize they aren't just memories—they are the threads that hold my sense of self together.
+            </p>
+<!-- Interaction Handles -->
+<div class="resize-handle -top-1 -left-1 cursor-nw-resize"></div>
+<div class="resize-handle -top-1 -right-1 cursor-ne-resize"></div>
+<div class="resize-handle -bottom-1 -left-1 cursor-sw-resize"></div>
+<div class="resize-handle -bottom-1 -right-1 cursor-se-resize"></div>
+<!-- Drag Handle -->
+<div class="absolute -left-10 top-1/2 -translate-y-1/2 text-outline-variant cursor-grab active:cursor-grabbing">
+<span class="material-symbols-outlined" data-icon="drag_indicator">drag_indicator</span>
+</div>
+</div>
+<!-- Placeholder for adding new content -->
+<!-- Video Block Placeholder -->
+<div class="relative group mb-stack-lg transition-transform duration-300" style="transform: rotate(2deg);">
+<div class="relative selection-border bg-on-background p-4 rounded-sm shadow-xl">
+<!-- Film Strip Perforations -->
+<div class="absolute top-1 left-0 right-0 flex justify-around px-2">
+<div class="w-2 h-2 bg-surface rounded-sm"></div>
+<div class="w-2 h-2 bg-surface rounded-sm"></div>
+<div class="w-2 h-2 bg-surface rounded-sm"></div>
+<div class="w-2 h-2 bg-surface rounded-sm"></div>
+<div class="w-2 h-2 bg-surface rounded-sm"></div>
+</div>
+<div class="absolute bottom-1 left-0 right-0 flex justify-around px-2">
+<div class="w-2 h-2 bg-surface rounded-sm"></div>
+<div class="w-2 h-2 bg-surface rounded-sm"></div>
+<div class="w-2 h-2 bg-surface rounded-sm"></div>
+<div class="w-2 h-2 bg-surface rounded-sm"></div>
+<div class="w-2 h-2 bg-surface rounded-sm"></div>
+</div>
+<!-- Video Content Area -->
+<div class="w-full h-48 bg-surface-container-highest flex items-center justify-center relative overflow-hidden">
+<img class="w-full h-full object-cover opacity-60" src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&amp;fit=crop&amp;q=80&amp;w=800" alt="Video thumbnail">
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="w-16 h-16 bg-primary/80 rounded-full flex items-center justify-center text-on-primary shadow-lg">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</div>
+</div>
+</div>
+<!-- Interaction Handles -->
+<div class="resize-handle -top-1 -left-1 cursor-nw-resize"></div>
+<div class="resize-handle -top-1 -right-1 cursor-ne-resize"></div>
+<div class="resize-handle -bottom-1 -left-1 cursor-sw-resize"></div>
+<div class="resize-handle -bottom-1 -right-1 cursor-se-resize"></div>
+</div>
+<!-- Memory Chip -->
+<div class="absolute -bottom-4 -left-2 bg-secondary/90 text-on-secondary px-3 py-1 font-label-caps text-label-caps rounded-sm shadow-sm -rotate-2">
+0:45 • Summer Rain
+</div>
+</div><div class="mt-stack-lg border-2 border-dashed border-outline-variant/30 rounded-xl p-12 flex flex-col items-center justify-center text-on-surface-variant/40">
+<span class="material-symbols-outlined text-4xl mb-2" data-icon="add_circle">add_circle</span>
+<p class="font-label-caps text-label-caps">Tap to add a new layer</p>
+</div>
+</main>
+<!-- Floating Action Toolbar (Expanded State) -->
+<div class="fixed bottom-margin-page right-margin-page z-[60] flex flex-col items-end gap-4">
+<!-- Arc/Vertical Menu Items -->
+<div class="flex flex-col gap-3 mb-2 opacity-100 transform translate-y-0" id="fab-menu">
+<button class="fab-arc-item bg-surface-container-high text-on-surface-variant p-3 rounded-full shadow-lg flex items-center gap-3 hover:bg-secondary-container hover:text-on-secondary-container transition-all">
+<span class="font-label-caps text-label-caps px-2">Mood</span>
+<span class="material-symbols-outlined" data-icon="mood">mood</span>
+</button>
+<button class="fab-arc-item bg-surface-container-high text-on-surface-variant p-3 rounded-full shadow-lg flex items-center gap-3 hover:bg-secondary-container hover:text-on-secondary-container transition-all">
+<span class="font-label-caps text-label-caps px-2">Voice</span>
+<span class="material-symbols-outlined" data-icon="mic">mic</span>
+</button>
+<button class="fab-arc-item bg-surface-container-high text-on-surface-variant p-3 rounded-full shadow-lg flex items-center gap-3 hover:bg-secondary-container hover:text-on-secondary-container transition-all">
+<span class="font-label-caps text-label-caps px-2">Sticker</span>
+<span class="material-symbols-outlined" data-icon="label">label</span>
+</button>
+<button class="fab-arc-item bg-surface-container-high text-on-surface-variant p-3 rounded-full shadow-lg flex items-center gap-3 hover:bg-secondary-container hover:text-on-secondary-container transition-all">
+<span class="font-label-caps text-label-caps px-2">Image</span>
+<span class="material-symbols-outlined" data-icon="image">image</span>
+</button>
+<button class="fab-arc-item bg-surface-container-high text-on-surface-variant p-3 rounded-full shadow-lg flex items-center gap-3 hover:bg-secondary-container hover:text-on-secondary-container transition-all">
+<span class="font-label-caps text-label-caps px-2">Text</span>
+<span class="material-symbols-outlined" data-icon="text_fields">text_fields</span>
+</button>
+<button class="fab-arc-item bg-surface-container-high text-on-surface-variant p-3 rounded-full shadow-lg flex items-center gap-3 hover:bg-secondary-container hover:text-on-secondary-container transition-all">
+<span class="font-label-caps text-label-caps px-2">Video</span>
+<span class="material-symbols-outlined" data-icon="videocam">videocam</span>
+</button></div>
+<!-- Main FAB Button (Close State) -->
+<button class="w-16 h-16 bg-primary text-on-primary rounded-full shadow-[0_10px_20px_rgba(65,4,3,0.25)] flex items-center justify-center active:scale-90 transition-all duration-300" id="fab-trigger">
+<span class="material-symbols-outlined text-3xl" data-icon="close" id="fab-icon">close</span>
+</button>
+</div>
+<!-- Bottom Status Pill -->
+<div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-surface-container/60 floating-pill border border-outline-variant/20 px-6 py-2 rounded-full shadow-sm flex items-center gap-4">
+<span class="material-symbols-outlined text-sm text-secondary" data-icon="cloud_done" data-weight="fill" style="font-variation-settings: 'FILL' 1;">cloud_done</span>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Changes saved to vault</p>
+</div>
+<script>
+        const fabTrigger = document.getElementById('fab-trigger');
+        const fabMenu = document.getElementById('fab-menu');
+        const fabIcon = document.getElementById('fab-icon');
+        let isOpen = true;
+
+        fabTrigger.addEventListener('click', () => {
+            isOpen = !isOpen;
+            if (isOpen) {
+                fabMenu.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+                fabMenu.classList.add('opacity-100', 'translate-y-0');
+                fabIcon.innerText = 'close';
+                fabTrigger.classList.add('rotate-90');
+            } else {
+                fabMenu.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+                fabMenu.classList.remove('opacity-100', 'translate-y-0');
+                fabIcon.innerText = 'add';
+                fabTrigger.classList.remove('rotate-90');
+            }
+        });
+
+        // Simple dragging visualization logic
+        document.querySelectorAll('.selection-border').forEach(element => {
+            element.addEventListener('mousedown', (e) => {
+                element.style.opacity = '0.8';
+                element.style.cursor = 'grabbing';
+            });
+            document.addEventListener('mouseup', () => {
+                element.style.opacity = '1';
+                element.style.cursor = 'default';
+            });
+        });
+    </script>
+
+
+</body></html>

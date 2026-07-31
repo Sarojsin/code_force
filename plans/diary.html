@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Diary - All Screens Interactive Prototype</title>
+    <!-- Modern Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Style+Script&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- CSS VARIABLES & THEME --- */
+        :root {
+            --paper-bg: #FDFBF7;
+            --primary: #6B4E71;
+            --accent-green: #2A9D8F;
+            --text-main: #2B2D42;
+            --text-muted: #8D99AE;
+            --card-white: #FFFFFF;
+            --phone-frame: #1C1E21;
+            --font-ui: 'Inter', sans-serif;
+            --font-cursive: 'Style Script', cursive;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: var(--font-ui);
+            background: #E0DFDB;
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR NAVIGATION --- */
+        #sidebar {
+            width: 300px;
+            background: #1E1E24;
+            color: #C5C6C7;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #333;
+        }
+        #sidebar h2 { font-size: 16px; color: #FFF; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        .section-title { font-size: 11px; font-weight: 700; color: #6B4E71; text-transform: uppercase; margin: 15px 0 8px 0; }
+        .nav-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: none;
+            color: #A0A5AA;
+            padding: 8px 10px;
+            font-size: 13px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .nav-btn:hover { background: #2A2A32; color: #FFF; }
+        .nav-btn.active { background: var(--primary); color: #FFF; font-weight: 600; }
+
+        /* --- STAGE & PHONE FRAME --- */
+        #stage {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #EAE8E4;
+            position: relative;
+        }
+
+        #phone {
+            width: 375px;
+            height: 812px;
+            background: var(--phone-frame);
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            position: relative;
+        }
+
+        #phone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--paper-bg);
+            border-radius: 38px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Dynamic notch */
+        #notch {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 25px;
+            background: var(--phone-frame);
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
+            z-index: 999;
+        }
+
+        /* --- SCREEN VIEWS --- */
+        .screen { display: none; flex-direction: column; width: 100%; height: 100%; position: relative; }
+        .screen.active { display: flex; }
+
+        /* Headers & Footers */
+        .header { padding: 40px 20px 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header-title { font-size: 20px; font-weight: 700; }
+        .content { flex: 1; padding: 15px 20px; overflow-y: auto; position: relative; }
+        
+        .tab-bar { height: 60px; background: #FFF; border-top: 1px solid #EEE; display: flex; justify-content: space-around; align-items: center; }
+        .tab-item { font-size: 10px; color: var(--text-muted); text-align: center; }
+        .tab-item.active { color: var(--primary); font-weight: 600; }
+
+        /* UI Elements */
+        .card { background: #FFF; padding: 15px; border-radius: 16px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .btn { background: var(--primary); color: #FFF; border: none; padding: 12px; border-radius: 10px; width: 100%; font-weight: 600; cursor: pointer; text-align: center; }
+        
+        /* Scrapbook Canvas Elements */
+        .polaroid { background: #FFF; padding: 8px 8px 20px 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transform: rotate(-2deg); width: 180px; }
+        .polaroid img { width: 100%; height: 120px; object-fit: cover; }
+        .script-text { font-family: var(--font-cursive); font-size: 28px; color: var(--text-main); }
+        .bottom-sheet { position: absolute; bottom: 0; left: 0; right: 0; background: #FFF; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 20px; box-shadow: 0 -5px 25px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR NAVIGATION (20 Screens) -->
+    <div id="sidebar">
+        <h2>Memory Diary</h2>
+        
+        <div class="section-title">1. App Flow Overview</div>
+        <button class="nav-btn active" onclick="goTo('s1-1', this)">1.1 My Diaries</button>
+        <button class="nav-btn" onclick="goTo('s1-2', this)">1.2 Create New</button>
+        <button class="nav-btn" onclick="goTo('s1-3', this)">1.3 Download Kit</button>
+        <button class="nav-btn" onclick="goTo('s1-4', this)">1.4 First Page (Blank)</button>
+        <button class="nav-btn" onclick="goTo('s1-5', this)">1.5 Editing (Elements)</button>
+        <button class="nav-btn" onclick="goTo('s1-6', this)">1.6 Read Mode</button>
+
+        <div class="section-title">2. Editor Details</div>
+        <button class="nav-btn" onclick="goTo('s2-a', this)">2.A Add Text</button>
+        <button class="nav-btn" onclick="goTo('s2-b', this)">2.B Add Photo</button>
+        <button class="nav-btn" onclick="goTo('s2-c', this)">2.C Add Sticker</button>
+        <button class="nav-btn" onclick="goTo('s2-d', this)">2.D Add Voice Note</button>
+        <button class="nav-btn" onclick="goTo('s2-e', this)">2.E Add Mood</button>
+        <button class="nav-btn" onclick="goTo('s2-f', this)">2.F Object Menu</button>
+
+        <div class="section-title">3. More Screens</div>
+        <button class="nav-btn" onclick="goTo('s3-1', this)">3.1 Page Overview</button>
+        <button class="nav-btn" onclick="goTo('s3-2', this)">3.2 Calendar Timeline</button>
+        <button class="nav-btn" onclick="goTo('s3-3', this)">3.3 Search</button>
+        <button class="nav-btn" onclick="goTo('s3-4', this)">3.4 Luna AI Assistant</button>
+        <button class="nav-btn" onclick="goTo('s3-5', this)">3.5 Settings</button>
+        <button class="nav-btn" onclick="goTo('s3-6', this)">3.6 Lock Diary</button>
+
+        <div class="section-title">4. Components</div>
+        <button class="nav-btn" onclick="goTo('s4-1', this)">4.1 Buttons & Tabs</button>
+        <button class="nav-btn" onclick="goTo('s4-2', this)">4.2 Stickers & Textures</button>
+    </div>
+
+    <!-- STAGE / DEVICE -->
+    <div id="stage">
+        <div id="phone">
+            <div id="notch"></div>
+            <div id="phone-screen">
+
+                <!-- 1.1 My Diaries -->
+                <div id="s1-1" class="screen active">
+                    <div class="header"><div class="header-title">My Diaries</div><div>➕</div></div>
+                    <div class="content">
+                        <div class="card" style="display:flex; gap:15px;">
+                            <div style="width:50px; height:65px; background:#A77BFA; border-radius:8px;"></div>
+                            <div><strong>My Memories</strong><br><small>24 Pages</small></div>
+                        </div>
+                        <div class="card" style="display:flex; gap:15px;">
+                            <div style="width:50px; height:65px; background:#FF9EAA; border-radius:8px;"></div>
+                            <div><strong>Summer 2026</strong><br><small>18 Pages</small></div>
+                        </div>
+                    </div>
+                    <div class="tab-bar"><div class="tab-item active">Home</div><div class="tab-item">Diary</div><div class="tab-item">Luna</div><div class="tab-item">Profile</div></div>
+                </div>
+
+                <!-- 1.2 Create New -->
+                <div id="s1-2" class="screen">
+                    <div class="header"><div class="header-title">Create New</div></div>
+                    <div class="content">
+                        <div class="card"><strong>New Journal Entry</strong><p><small>Write your thoughts and feelings.</small></p></div>
+                        <div class="card"><strong>New Memory Diary</strong><p><small>Create pages with photos, voice, stickers.</small></p></div>
+                    </div>
+                </div>
+
+                <!-- 1.3 Download Kit -->
+                <div id="s1-3" class="screen">
+                    <div class="header"><div class="header-title">Download Kit</div></div>
+                    <div class="content" style="text-align:center; padding-top:40px;">
+                        <div style="font-size:50px;">🎁</div>
+                        <h3>Download Diary Assets</h3>
+                        <p style="font-size:12px; color:#888; margin: 15px 0;">Stickers, paper textures, fonts and animations (~18 MB)</p>
+                        <button class="btn">Download (18 MB)</button>
+                    </div>
+                </div>
+
+                <!-- 1.4 First Page (Blank) -->
+                <div id="s1-4" class="screen">
+                    <div class="header"><div>&lt; Back</div><div>Saved ✓</div></div>
+                    <div class="content" style="background:#FFF; margin:10px; border-radius:10px; border:1px dashed #DDD;"></div>
+                    <div class="tab-bar"><div class="tab-item">Text</div><div class="tab-item">Photo</div><div class="tab-item">Sticker</div><div class="tab-item">Voice</div></div>
+                </div>
+
+                <!-- 1.5 Editing (With Elements) -->
+                <div id="s1-5" class="screen">
+                    <div class="header"><div>&lt; Back</div><div>Saved ✓</div></div>
+                    <div class="content">
+                        <div class="script-text">A perfect sunset</div>
+                        <div class="polaroid" style="margin-top:20px;"><img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300" alt="Sunset"></div>
+                    </div>
+                    <div class="tab-bar"><div class="tab-item">Text</div><div class="tab-item">Photo</div><div class="tab-item">Sticker</div><div class="tab-item">Voice</div></div>
+                </div>
+
+                <!-- 1.6 Read Mode -->
+                <div id="s1-6" class="screen">
+                    <div class="header"><div>&lt; Back</div><div>Edit ✏️</div></div>
+                    <div class="content" style="text-align:center;">
+                        <div class="script-text" style="margin-bottom:15px;">A perfect sunset</div>
+                        <div class="polaroid" style="margin: 0 auto;"><img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300" alt="Sunset"></div>
+                    </div>
+                </div>
+
+                <!-- 2.A Add Text -->
+                <div id="s2-a" class="screen">
+                    <div class="content">
+                        <div class="script-text">A perfect sunset</div>
+                    </div>
+                    <div class="bottom-sheet">
+                        <small>Font Style</small>
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <button class="btn" style="background:#EEE; color:#000;">Dancing Script</button>
+                            <button class="btn" style="width:auto;">28px</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2.B Add Photo -->
+                <div id="s2-b" class="screen">
+                    <div class="content">
+                        <div class="polaroid" style="border:2px solid var(--primary);"><img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300" alt="Sunset"></div>
+                    </div>
+                    <div class="bottom-sheet" style="display:flex; justify-content:space-around;">
+                        <div>🔄 Replace</div><div>✂️ Crop</div><div>🎨 Filter</div><div>🗑️ Delete</div>
+                    </div>
+                </div>
+
+                <!-- 2.C Add Sticker -->
+                <div id="s2-c" class="screen">
+                    <div class="content">
+                        <div class="script-text">Sunset vibes</div>
+                    </div>
+                    <div class="bottom-sheet">
+                        <div style="font-size:24px; display:flex; gap:15px;">🌸 🌼 ⭐ 🦋 🌺</div>
+                    </div>
+                </div>
+
+                <!-- 2.D Add Voice Note -->
+                <div id="s2-d" class="screen">
+                    <div class="content">
+                        <div class="card" style="background:#E8D7F1; display:flex; align-items:center; gap:10px;">
+                            <div>▶️</div>
+                            <div>──────────</div>
+                            <small>01:32</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2.E Add Mood -->
+                <div id="s2-e" class="screen">
+                    <div class="content"></div>
+                    <div class="bottom-sheet" style="text-align:center;">
+                        <small>How are you feeling?</small>
+                        <div style="font-size:28px; display:flex; justify-content:space-around; margin-top:10px;">😍 😊 😟 😡 😭</div>
+                    </div>
+                </div>
+
+                <!-- 2.F Object Menu -->
+                <div id="s2-f" class="screen">
+                    <div class="content">
+                        <div class="polaroid"><img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300" alt="Sunset"></div>
+                        <div class="card" style="position:absolute; top:80px; right:20px; width:120px; font-size:12px;">
+                            <div>✏️ Edit</div>
+                            <div>📋 Duplicate</div>
+                            <div>⬆️ Bring Forward</div>
+                            <div style="color:red;">🗑️ Delete</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3.1 Page Overview -->
+                <div id="s3-1" class="screen">
+                    <div class="header"><div class="header-title">Page Overview</div></div>
+                    <div class="content" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div class="card" style="height:100px; text-align:center;">Page 1</div>
+                        <div class="card" style="height:100px; text-align:center;">Page 2</div>
+                        <div class="card" style="height:100px; text-align:center;">Page 3</div>
+                        <div class="card" style="height:100px; text-align:center;">Page 4</div>
+                    </div>
+                </div>
+
+                <!-- 3.2 Calendar Timeline -->
+                <div id="s3-2" class="screen">
+                    <div class="header"><div class="header-title">Calendar Timeline</div></div>
+                    <div class="content">
+                        <div class="card" style="text-align:center;"><strong>April 2026</strong></div>
+                        <div class="card"><strong>16 Apr 2026</strong><p><small>A perfect sunset page added.</small></p></div>
+                    </div>
+                </div>
+
+                <!-- 3.3 Search -->
+                <div id="s3-3" class="screen">
+                    <div class="header"><input type="text" placeholder="🔍 Search sunset..." style="width:100%; padding:10px; border-radius:8px; border:1px solid #DDD;"></div>
+                    <div class="content">
+                        <small>Results (2)</small>
+                        <div class="card" style="margin-top:10px;"><strong>A perfect sunset</strong><br><small>My Memories - Page 2</small></div>
+                    </div>
+                </div>
+
+                <!-- 3.4 Luna AI Assistant -->
+                <div id="s3-4" class="screen">
+                    <div class="header"><div class="header-title">Luna AI</div></div>
+                    <div class="content" style="text-align:center;">
+                        <div style="font-size:40px;">🐱</div>
+                        <div class="card" style="margin-top:15px;">"This page looks beautiful! You have such amazing memories."</div>
+                    </div>
+                </div>
+
+                <!-- 3.5 Settings -->
+                <div id="s3-5" class="screen">
+                    <div class="header"><div class="header-title">Settings</div></div>
+                    <div class="content">
+                        <div class="card">🎨 Themes</div>
+                        <div class="card">📜 Paper Style</div>
+                        <div class="card">🔒 Lock Diary</div>
+                    </div>
+                </div>
+
+                <!-- 3.6 Lock Diary -->
+                <div id="s3-6" class="screen">
+                    <div class="content" style="text-align:center; padding-top:60px;">
+                        <div style="font-size:40px;">🔒</div>
+                        <h3>Lock Diary</h3>
+                        <div class="card" style="margin-top:20px; text-align:left;">📌 PIN Protection</div>
+                        <div class="card" style="text-align:left;">🖐️ Biometrics</div>
+                    </div>
+                </div>
+
+                <!-- 4.1 Buttons & Tabs -->
+                <div id="s4-1" class="screen">
+                    <div class="content" style="display:flex; flex-direction:column; gap:15px; padding-top:40px;">
+                        <button class="btn">Primary Button</button>
+                        <button class="btn" style="background:#FFF; color:var(--primary); border:1px solid var(--primary);">Secondary Button</button>
+                    </div>
+                </div>
+
+                <!-- 4.2 Stickers & Textures -->
+                <div id="s4-2" class="screen">
+                    <div class="content" style="text-align:center; padding-top:40px;">
+                        <h3>Stickers Asset Pack</h3>
+                        <div style="font-size:35px; display:grid; grid-template-columns: repeat(4, 1fr); gap:15px; margin-top:20px;">
+                            🌸 🌼 ⭐ 🦋 🌺 📸 🎀 💖
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT FOR SWITCHING SCREENS -->
+    <script>
+        function goTo(screenId, btn) {
+            // Hide all screens
+            const screens = document.querySelectorAll('.screen');
+            screens.forEach(s => s.classList.remove('active'));
+
+            // Remove active style from all sidebar buttons
+            const buttons = document.querySelectorAll('.nav-btn');
+            buttons.forEach(b => b.classList.remove('active'));
+
+            // Show selected screen and highlight button
+            document.getElementById(screenId).classList.add('active');
+            btn.classList.add('active');
+        }
+    </script>
+</body>
+</html>
