@@ -10,6 +10,13 @@ import { CycleAnalyticsScreen } from 'src/screens/cycle/CycleAnalyticsScreen';
 import { WellnessHomeScreen } from 'src/screens/wellness/WellnessHomeScreen';
 import { JournalListScreen } from 'src/screens/wellness/JournalListScreen';
 import { JournalEntryScreen } from 'src/screens/wellness/JournalEntryScreen';
+import { DiaryLibraryScreen } from 'src/screens/diary/DiaryLibraryScreen';
+import { DiaryScreen } from 'src/screens/diary/DiaryScreen';
+import { DiaryPageScreen } from 'src/screens/diary/DiaryPageScreen';
+import { DiaryEditorScreen } from 'src/screens/diary/DiaryEditorScreen';
+import { DiaryTimelineScreen } from 'src/screens/diary/DiaryTimelineScreen';
+import { DiarySearchScreen } from 'src/screens/diary/DiarySearchScreen';
+import { DiaryAssetInstallScreen } from 'src/screens/diary/DiaryAssetInstallScreen';
 import { MoodLogScreen } from 'src/screens/wellness/MoodLogScreen';
 import { MoodHistoryScreen } from 'src/screens/wellness/MoodHistoryScreen';
 import { BreathingListScreen } from 'src/screens/wellness/BreathingListScreen';
@@ -57,6 +64,12 @@ export function WellnessStack() {
       <WellnessNav.Screen name="WellnessHome" component={WellnessHomeScreen} options={{ title: 'Wellness' }} />
       <WellnessNav.Screen name="JournalList" component={JournalListScreen} options={{ title: 'Journal' }} />
       <WellnessNav.Screen name="JournalEntry" component={JournalEntryScreen} options={{ title: 'Journal Entry' }} />
+      <WellnessNav.Screen name="DiaryLibrary" component={DiaryLibraryScreen} options={{ title: 'Memory Diaries' }} />
+      <WellnessNav.Screen name="DiaryScreen" component={DiaryScreen} options={{ title: 'Diary' }} />
+      <WellnessNav.Screen name="DiaryPage" component={DiaryPageScreen} options={{ title: 'Memory Page' }} />
+      <WellnessNav.Screen name="DiaryEditor" component={DiaryEditorScreen} options={{ title: 'Edit Page', headerShown: false }} />
+      <WellnessNav.Screen name="DiaryTimeline" component={DiaryTimelineScreen} options={{ title: 'Timeline' }} />
+      <WellnessNav.Screen name="DiarySearch" component={DiarySearchScreen} options={{ title: 'Search' }} />
       <WellnessNav.Screen name="MoodLog" component={MoodLogScreen} options={{ title: 'Log Mood' }} />
       <WellnessNav.Screen name="MoodHistory" component={MoodHistoryScreen} options={{ title: 'Mood History' }} />
       <WellnessNav.Screen name="BreathingList" component={BreathingListScreen} options={{ title: 'Breathing' }} />
@@ -118,6 +131,7 @@ export function ProfileStack() {
       <ProfileNav.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
       <ProfileNav.Screen name="LinkedFamily" component={LinkedFamilyScreen} options={{ title: 'Linked Family' }} />
       <ProfileNav.Screen name="CompanionInstall" component={LunaInstallScreen} options={{ title: 'Luna Companion' }} />
+      <ProfileNav.Screen name="DiaryAssetInstall" component={DiaryAssetInstallScreen} options={{ title: 'Diary Assets' }} />
     </ProfileNav.Navigator>
   );
 }

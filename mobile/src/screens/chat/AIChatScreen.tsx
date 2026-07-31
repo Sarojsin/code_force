@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { FlatList, StyleSheet, View, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withRepeat, withTiming, Easing, withSequence } from 'react-native-reanimated';
@@ -158,13 +158,79 @@ function StreamText({ text }: { text: string }) {
   );
 }
 
+function ChatInputBar({ onSend }: { onSend: (text: string) => void }) {
+  const [inputText, setInputText] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+
+  const send = useCallback(() => {
+    if (!inputText.trim()) return;
+    onSend(inputText);
+    setInputText('');
+  }, [inputText, onSend]);
+
+  return (
+    <View style={[styles.inputBar, { backgroundColor: 'rgba(255,248,240,0.96)', borderTopColor: LUNA_ROSE + '55' }]}>
+      <TextInput
+        value={inputText}
+        onChangeText={setInputText}
+        placeholder="Ask Luna anything…"
+        placeholderTextColor={LUNA_MID}
+        multiline
+        maxLength={500}
+        accessibilityLabel="Message input"
+        style={[
+          styles.input,
+          {
+            color: LUNA_DARK,
+            backgroundColor: 'rgba(255,255,255,0.85)',
+            borderColor: LUNA_ROSE,
+          },
+        ]}
+      />
+      <View style={styles.inputActions}>
+        <Pressable
+          onPress={() => setIsRecording(v => !v)}
+          accessibilityLabel={isRecording ? 'Stop recording' : 'Voice input'}
+          style={[styles.iconAction, { backgroundColor: isRecording ? '#FFE5E5' : '#E8D5F5', borderRadius: 20 }]}
+        >
+          <View>
+            {isRecording && <PulseRing active={isRecording} />}
+            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <Path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <Path d="M19 10v2a7 7 0 01-14 0v-2" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <Line x1="12" y1="19" x2="12" y2="23" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" />
+              <Line x1="8" y1="23" x2="16" y2="23" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" />
+            </Svg>
+          </View>
+        </Pressable>
+        <Pressable
+          onPress={send}
+          disabled={!inputText.trim()}
+          accessibilityLabel="Send message"
+          style={[
+            styles.sendBtn,
+            {
+              backgroundColor: inputText.trim() ? LUNA_BLUSH : LUNA_ROSE,
+              shadowColor: inputText.trim() ? LUNA_BLUSH : 'transparent',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: inputText.trim() ? 0.35 : 0,
+              shadowRadius: 16,
+              elevation: inputText.trim() ? 8 : 0,
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 20, color: '#fff', lineHeight: 22 }}>↑</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 export function AIChatScreen() {
   const theme = useTheme();
   const { isConnected } = useNetworkStatus();
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
-  const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const [streamed, setStreamed] = useState<Record<string, number>>({});
   const [disclaimerShown, setDisclaimerShown] = useState(false);
@@ -209,8 +275,8 @@ export function AIChatScreen() {
     }, 500);
   }, [appendMessage]);
 
-  const handleSend = useCallback((text?: string) => {
-    const msgText = (text ?? inputText).trim();
+  const handleSend = useCallback((text: string) => {
+    const msgText = text.trim();
     if (!msgText) return;
     const msg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -219,10 +285,9 @@ export function AIChatScreen() {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     appendMessage(msg);
-    setInputText('');
     simulateAIResponse(msgText);
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-  }, [inputText, appendMessage, simulateAIResponse]);
+  }, [appendMessage, simulateAIResponse]);
 
   const renderItem = useCallback(({ item }: { item: ChatMessage }) => {
     if (item.id === TYPING_INDICATOR_ID) {
@@ -284,9 +349,12 @@ export function AIChatScreen() {
     );
   }, [theme, streamed]);
 
-  const displayedMessages = isTyping
-    ? [...messages, { id: TYPING_INDICATOR_ID, text: '', sender: 'ai' as const, timestamp: '' }]
-    : messages;
+  const displayedMessages = useMemo<ChatMessage[]>(
+    () => (isTyping
+      ? [...messages, { id: TYPING_INDICATOR_ID, text: '', sender: 'ai', timestamp: '' }]
+      : messages),
+    [isTyping, messages],
+  );
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: LUNA_CREAM }]} edges={['top']}>
@@ -360,60 +428,7 @@ export function AIChatScreen() {
           ))}
         </View>
 
-        <View style={[styles.inputBar, { backgroundColor: 'rgba(255,248,240,0.96)', borderTopColor: LUNA_ROSE + '55' }]}>
-          <TextInput
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Ask Luna anything…"
-            placeholderTextColor={LUNA_MID}
-            multiline
-            maxLength={500}
-            accessibilityLabel="Message input"
-            style={[
-              styles.input,
-              {
-                color: LUNA_DARK,
-                backgroundColor: 'rgba(255,255,255,0.85)',
-                borderColor: LUNA_ROSE,
-              },
-            ]}
-          />
-          <View style={styles.inputActions}>
-            <Pressable
-              onPress={() => setIsRecording(v => !v)}
-              accessibilityLabel={isRecording ? 'Stop recording' : 'Voice input'}
-              style={[styles.iconAction, { backgroundColor: isRecording ? '#FFE5E5' : '#E8D5F5', borderRadius: 20 }]}
-            >
-              <View>
-                {isRecording && <PulseRing active={isRecording} />}
-                <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <Path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  <Path d="M19 10v2a7 7 0 01-14 0v-2" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  <Line x1="12" y1="19" x2="12" y2="23" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" />
-                  <Line x1="8" y1="23" x2="16" y2="23" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" />
-                </Svg>
-              </View>
-            </Pressable>
-            <Pressable
-              onPress={() => handleSend()}
-              disabled={!inputText.trim()}
-              accessibilityLabel="Send message"
-              style={[
-                styles.sendBtn,
-                {
-                  backgroundColor: inputText.trim() ? LUNA_BLUSH : LUNA_ROSE,
-                  shadowColor: inputText.trim() ? LUNA_BLUSH : 'transparent',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: inputText.trim() ? 0.35 : 0,
-                  shadowRadius: 16,
-                  elevation: inputText.trim() ? 8 : 0,
-                },
-              ]}
-            >
-              <Text style={{ fontSize: 20, color: '#fff', lineHeight: 22 }}>↑</Text>
-            </Pressable>
-          </View>
-        </View>
+        <ChatInputBar onSend={handleSend} />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

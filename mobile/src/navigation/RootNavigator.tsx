@@ -23,6 +23,7 @@ import { SplashScreen } from 'src/screens/SplashScreen';
 import { AuthStack } from './AuthStack';
 import { OnboardingStack } from './OnboardingStack';
 import { MainTabs } from './MainTabs';
+import { navigationRef } from './rootNavigation';
 
 import type { RootStackParamList } from './types';
 
@@ -133,7 +134,7 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Root.Navigator screenOptions={{ headerShown: false, cardStyle: Platform.OS === 'web' ? ({ overflow: 'auto' } as any) : undefined }}>
         {user ? (
           showOnboarding ? (

@@ -10,7 +10,7 @@ export function HomeScreenRouter() {
   const hydrate = usePregnancyModeStore((s) => s.hydrate);
   const setWeek = usePregnancyModeStore((s) => s.setWeek);
 
-  useEffect(() => { hydrate(); }, [hydrate]);
+  useEffect(() => { hydrate(); }, []);
 
   if (isActive) {
     return (

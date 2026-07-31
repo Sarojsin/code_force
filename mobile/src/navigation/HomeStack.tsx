@@ -18,6 +18,13 @@ import { SafetyHomeScreen } from 'src/screens/safety/SafetyHomeScreen';
 import { EmergencyContactsScreen } from 'src/screens/safety/EmergencyContactsScreen';
 import { EmergencyContactEditScreen } from 'src/screens/safety/EmergencyContactEditScreen';
 import { SosHistoryScreen } from 'src/screens/safety/SosHistoryScreen';
+import { DiaryLibraryScreen } from 'src/screens/diary/DiaryLibraryScreen';
+import { DiaryScreen } from 'src/screens/diary/DiaryScreen';
+import { DiaryPageScreen } from 'src/screens/diary/DiaryPageScreen';
+import { DiaryEditorScreen } from 'src/screens/diary/DiaryEditorScreen';
+import { DiaryTimelineScreen } from 'src/screens/diary/DiaryTimelineScreen';
+import { DiarySearchScreen } from 'src/screens/diary/DiarySearchScreen';
+import { DiaryAssetInstallScreen } from 'src/screens/diary/DiaryAssetInstallScreen';
 
 import type { HomeStackParamList } from './types';
 
@@ -42,6 +49,13 @@ export function HomeStack() {
       <Stack.Screen name="AIChat" component={AIChatScreen} options={{ title: 'AI Chat', headerShown: false }} />
       <Stack.Screen name="JournalList" component={JournalListScreen} options={{ title: 'Journal' }} />
       <Stack.Screen name="JournalEntry" component={JournalEntryScreen} options={{ title: 'Journal Entry' }} />
+      <Stack.Screen name="DiaryLibrary" component={DiaryLibraryScreen} options={{ title: 'Memory Diaries' }} />
+      <Stack.Screen name="DiaryScreen" component={DiaryScreen} options={{ title: 'Diary' }} />
+      <Stack.Screen name="DiaryPage" component={DiaryPageScreen} options={{ title: 'Memory Page' }} />
+      <Stack.Screen name="DiaryEditor" component={DiaryEditorScreen} options={{ title: 'Edit Page', headerShown: false }} />
+      <Stack.Screen name="DiaryTimeline" component={DiaryTimelineScreen} options={{ title: 'Timeline' }} />
+      <Stack.Screen name="DiarySearch" component={DiarySearchScreen} options={{ title: 'Search' }} />
+      <Stack.Screen name="DiaryAssetInstall" component={DiaryAssetInstallScreen} options={{ title: 'Diary Assets' }} />
       <Stack.Screen name="BreathingList" component={BreathingListScreen} options={{ title: 'Breathing' }} />
       <Stack.Screen name="Insights" component={InsightsScreen} options={{ title: 'Insights' }} />
       <Stack.Screen name="HealthHub" component={HealthHubScreen} options={{ title: 'Health Hub' }} />

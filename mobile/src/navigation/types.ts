@@ -12,6 +12,12 @@ export type WellnessStackParamList = {
   WellnessHome: undefined;
   JournalList: undefined;
   JournalEntry: { id: string };
+  DiaryLibrary: { diaryId?: string } | undefined;
+  DiaryScreen: { diaryId: string };
+  DiaryPage: { diaryId: string; pageId: string };
+  DiaryEditor: { diaryId: string; pageDate?: string };
+  DiaryTimeline: { diaryId: string };
+  DiarySearch: undefined;
   MoodLog: undefined;
   MoodHistory: undefined;
   BreathingList: undefined;
@@ -51,6 +57,7 @@ export type ProfileStackParamList = {
   Settings: undefined;
   LinkedFamily: undefined;
   CompanionInstall: undefined;
+  DiaryAssetInstall: undefined;
 };
 
 export type ChatStackParamList = {
@@ -66,6 +73,13 @@ export type HomeStackParamList = {
   AIChat: undefined;
   JournalList: undefined;
   JournalEntry: { id: string };
+  DiaryLibrary: { diaryId?: string } | undefined;
+  DiaryScreen: { diaryId: string };
+  DiaryPage: { diaryId: string; pageId: string };
+  DiaryEditor: { diaryId: string; pageDate?: string };
+  DiaryTimeline: { diaryId: string };
+  DiarySearch: undefined;
+  DiaryAssetInstall: undefined;
   WellnessHub: undefined;
   HealthHub: undefined;
   MoodHistory: undefined;
