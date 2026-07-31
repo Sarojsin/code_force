@@ -21,8 +21,17 @@ from app.modules.sync.schemas import (
 logger = logging.getLogger("app.modules.sync")
 
 SYNCABLE_TABLES: list[type[Base]] = []
-_IDEMPOTENCY_CACHE: dict[str, SyncResultItem] = {}
+_IDEMPOTENCY_CACHE: dict[str, tuple[SyncResultItem, datetime]] = {}
 _IDEMPOTENCY_TTL = timedelta(hours=24)
+
+
+def _purge_expired_idempotency_cache() -> None:
+    now = datetime.now(UTC)
+    expired = [k for k, (_, ts) in list(_IDEMPOTENCY_CACHE.items()) if now - ts > _IDEMPOTENCY_TTL]
+    for k in expired:
+        del _IDEMPOTENCY_CACHE[k]
+    if expired:
+        logger.info("sync.idempotency_cache.purged", extra={"count": len(expired)})
 
 
 class SyncService:
@@ -41,6 +50,17 @@ class SyncService:
             "cycle/delete": self._cycle_delete,
             "cycle/correction": self._cycle_correction,
             "cycle/snooze": self._cycle_snooze,
+            "safety/contact/create": self._safety_contact_create,
+            "safety/contact/update": self._safety_contact_update,
+            "safety/contact/delete": self._safety_contact_delete,
+            "safety/sos/trigger": self._safety_sos_trigger,
+            "safety/sos/cancel": self._safety_sos_cancel,
+            "safety/sos/resolve": self._safety_sos_resolve,
+            "sos/trigger": self._safety_sos_trigger,
+            "breathing/complete": self._breathing_complete,
+            "family/create": self._family_create,
+            "family/update": self._family_update,
+            "family/delete": self._family_delete,
         }
 
     # ------------------------------------------------------------------
@@ -52,6 +72,7 @@ class SyncService:
         user_id: uuid.UUID,
         request: SyncBatchRequest,
     ) -> SyncBatchResponse:
+        _purge_expired_idempotency_cache()
         results: list[SyncResultItem] = []
         for idx, op in enumerate(request.operations):
             results.append(await self._handle(user_id, op, idx))
@@ -70,7 +91,7 @@ class SyncService:
         if op.idempotency_key:
             cached = _IDEMPOTENCY_CACHE.get(op.idempotency_key)
             if cached:
-                return cached
+                return cached[0]
 
         handler = self._handlers.get(op.type)
         if handler is None:
@@ -78,7 +99,7 @@ class SyncService:
         try:
             result = await handler(user_id, op, index)
             if op.idempotency_key:
-                _IDEMPOTENCY_CACHE[op.idempotency_key] = result
+                _IDEMPOTENCY_CACHE[op.idempotency_key] = (result, datetime.now(UTC))
             return result
         except Exception as exc:
             logger.exception("sync.handle_failed", extra={"type": op.type})
@@ -293,6 +314,181 @@ class SyncService:
         )
 
     # ------------------------------------------------------------------
+    # Safety — emergency contact handlers
+    # ------------------------------------------------------------------
+
+    async def _safety_contact_create(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
+        from app.modules.users.models import EmergencyContact
+
+        contact = EmergencyContact(
+            user_id=user_id,
+            name=op.data.get("name", ""),
+            phone_number=op.data.get("phone_number", ""),
+            relationship=op.data.get("relationship"),
+            is_primary=op.data.get("is_primary", False),
+            contact_user_id=uuid.UUID(op.data["contact_user_id"]) if op.data.get("contact_user_id") else None,
+        )
+        self.db.add(contact)
+        await self.db.flush()
+        await self.db.refresh(contact)
+        return SyncResultItem(index=index, status="created", entity_id=str(contact.id), temp_id=op.temp_id, server_data=self._serialize(contact))
+
+    async def _safety_contact_update(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
+        from app.modules.users.models import EmergencyContact
+
+        entity_id = uuid.UUID(op.data.get("id", ""))
+        stmt = select(EmergencyContact).where(EmergencyContact.id == entity_id, EmergencyContact.user_id == user_id)
+        row = (await self.db.execute(stmt)).scalar_one_or_none()
+        if not row:
+            return SyncResultItem(index=index, status="failed", entity_id=str(entity_id), temp_id=op.temp_id, error="Not found")
+        if "name" in op.data:
+            row.name = op.data["name"]
+        if "phone_number" in op.data:
+            row.phone_number = op.data["phone_number"]
+        if "relationship" in op.data:
+            row.relationship = op.data["relationship"]
+        if "is_primary" in op.data:
+            row.is_primary = op.data["is_primary"]
+        if "contact_user_id" in op.data:
+            row.contact_user_id = uuid.UUID(op.data["contact_user_id"]) if op.data["contact_user_id"] else None
+        await self.db.flush()
+        await self.db.refresh(row)
+        return SyncResultItem(index=index, status="updated", entity_id=str(entity_id), temp_id=op.temp_id, server_data=self._serialize(row))
+
+    async def _safety_contact_delete(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
+        from app.modules.users.models import EmergencyContact
+
+        entity_id = uuid.UUID(op.data.get("id", ""))
+        stmt = select(EmergencyContact).where(EmergencyContact.id == entity_id, EmergencyContact.user_id == user_id)
+        row = (await self.db.execute(stmt)).scalar_one_or_none()
+        if not row:
+            return SyncResultItem(index=index, status="deleted", entity_id=str(entity_id), temp_id=op.temp_id)
+        row.is_active = False
+        await self.db.flush()
+        return SyncResultItem(index=index, status="deleted", entity_id=str(entity_id), temp_id=op.temp_id)
+
+    # ------------------------------------------------------------------
+    # Safety — SOS handlers
+    # ------------------------------------------------------------------
+
+    async def _safety_sos_trigger(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
+        from app.modules.safety.models import SOSAlert
+
+        alert = SOSAlert(
+            user_id=user_id,
+            triggered_at=datetime.now(UTC),
+            latitude=op.data.get("latitude", 0),
+            longitude=op.data.get("longitude", 0),
+            location_accuracy_m=op.data.get("location_accuracy_m"),
+            idempotency_key=op.idempotency_key,
+            trigger_source=op.data.get("trigger_source"),
+        )
+        self.db.add(alert)
+        await self.db.flush()
+        await self.db.refresh(alert)
+        return SyncResultItem(index=index, status="created", entity_id=str(alert.id), temp_id=op.temp_id, server_data=self._serialize(alert))
+
+    async def _safety_sos_cancel(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
+        from app.modules.safety.models import SOSAlert
+
+        entity_id = uuid.UUID(op.data.get("id", ""))
+        stmt = select(SOSAlert).where(SOSAlert.id == entity_id, SOSAlert.user_id == user_id)
+        row = (await self.db.execute(stmt)).scalar_one_or_none()
+        if not row:
+            return SyncResultItem(index=index, status="failed", entity_id=str(entity_id), temp_id=op.temp_id, error="Not found")
+        row.cancelled_at = datetime.now(UTC)
+        row.resolved_at = datetime.now(UTC)
+        row.false_alarm = True
+        await self.db.flush()
+        await self.db.refresh(row)
+        return SyncResultItem(index=index, status="updated", entity_id=str(entity_id), temp_id=op.temp_id, server_data=self._serialize(row))
+
+    async def _safety_sos_resolve(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
+        from app.modules.safety.models import SOSAlert
+
+        entity_id = uuid.UUID(op.data.get("id", ""))
+        stmt = select(SOSAlert).where(SOSAlert.id == entity_id, SOSAlert.user_id == user_id)
+        row = (await self.db.execute(stmt)).scalar_one_or_none()
+        if not row:
+            return SyncResultItem(index=index, status="failed", entity_id=str(entity_id), temp_id=op.temp_id, error="Not found")
+        row.resolved_at = datetime.now(UTC)
+        await self.db.flush()
+        await self.db.refresh(row)
+        return SyncResultItem(index=index, status="updated", entity_id=str(entity_id), temp_id=op.temp_id, server_data=self._serialize(row))
+
+    # ------------------------------------------------------------------
+    # Breathing handlers
+    # ------------------------------------------------------------------
+
+    async def _breathing_complete(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
+        from app.modules.wellness.models import UserExerciseSession
+
+        exercise_id = op.data.get("exerciseId")
+        if not exercise_id:
+            return SyncResultItem(index=index, status="failed", temp_id=op.temp_id, error="Missing exerciseId")
+        session = UserExerciseSession(
+            user_id=user_id,
+            exercise_id=uuid.UUID(exercise_id),
+            completed_at=datetime.now(UTC),
+        )
+        self.db.add(session)
+        await self.db.flush()
+        await self.db.refresh(session)
+        return SyncResultItem(index=index, status="created", entity_id=str(session.id), temp_id=op.temp_id, server_data=self._serialize(session))
+
+    # ------------------------------------------------------------------
+    # Family link handlers
+    # ------------------------------------------------------------------
+
+    async def _family_create(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
+        from app.modules.family.models import FamilyLink
+
+        linked_user_id = op.data.get("linked_user_id")
+        link = FamilyLink(
+            user_id=user_id,
+            linked_user_id=uuid.UUID(linked_user_id) if linked_user_id else None,
+            permission_level=op.data.get("permission_level", 0),
+            invite_token=op.data.get("invite_token", ""),
+            token_expires_at=datetime.fromisoformat(op.data["token_expires_at"]) if op.data.get("token_expires_at") else datetime.now(UTC),
+            status=op.data.get("status", "pending"),
+        )
+        self.db.add(link)
+        await self.db.flush()
+        await self.db.refresh(link)
+        return SyncResultItem(index=index, status="created", entity_id=str(link.id), temp_id=op.temp_id, server_data=self._serialize(link))
+
+    async def _family_update(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
+        from app.modules.family.models import FamilyLink
+
+        entity_id = uuid.UUID(op.data.get("id", ""))
+        stmt = select(FamilyLink).where(FamilyLink.id == entity_id, FamilyLink.user_id == user_id)
+        row = (await self.db.execute(stmt)).scalar_one_or_none()
+        if not row:
+            return SyncResultItem(index=index, status="failed", entity_id=str(entity_id), temp_id=op.temp_id, error="Not found")
+        if "permission_level" in op.data:
+            row.permission_level = op.data["permission_level"]
+        if "status" in op.data:
+            row.status = op.data["status"]
+        if "linked_user_id" in op.data:
+            row.linked_user_id = uuid.UUID(op.data["linked_user_id"]) if op.data["linked_user_id"] else None
+        await self.db.flush()
+        await self.db.refresh(row)
+        return SyncResultItem(index=index, status="updated", entity_id=str(entity_id), temp_id=op.temp_id, server_data=self._serialize(row))
+
+    async def _family_delete(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
+        from app.modules.family.models import FamilyLink
+
+        entity_id = uuid.UUID(op.data.get("id", ""))
+        stmt = select(FamilyLink).where(FamilyLink.id == entity_id, FamilyLink.user_id == user_id)
+        row = (await self.db.execute(stmt)).scalar_one_or_none()
+        if not row:
+            return SyncResultItem(index=index, status="deleted", entity_id=str(entity_id), temp_id=op.temp_id)
+        row.is_active = False
+        row.status = "revoked"
+        await self.db.flush()
+        return SyncResultItem(index=index, status="deleted", entity_id=str(entity_id), temp_id=op.temp_id)
+
+    # ------------------------------------------------------------------
     # Conflict detection
     # ------------------------------------------------------------------
 
@@ -349,15 +545,34 @@ class SyncService:
         queryables: list[tuple[type[Base], str, str]] = []
 
         try:
-            from app.modules.wellness.models import JournalEntry, MoodLog
+            from app.modules.wellness.models import JournalEntry, MoodLog, UserExerciseSession
             queryables.append((JournalEntry, "journal", "journal_entry"))
             queryables.append((MoodLog, "mood", "mood_log"))
+            queryables.append((UserExerciseSession, "exercise_session", "user_exercise_sessions"))
         except ImportError:
             pass
 
         try:
             from app.modules.cycle.models import CycleEntry
             queryables.append((CycleEntry, "cycle", "cycle_entry"))
+        except ImportError:
+            pass
+
+        try:
+            from app.modules.users.models import EmergencyContact
+            queryables.append((EmergencyContact, "emergency_contact", "emergency_contacts"))
+        except ImportError:
+            pass
+
+        try:
+            from app.modules.safety.models import SOSAlert
+            queryables.append((SOSAlert, "sos_alert", "sos_alerts"))
+        except ImportError:
+            pass
+
+        try:
+            from app.modules.family.models import FamilyLink
+            queryables.append((FamilyLink, "family_link", "family_links"))
         except ImportError:
             pass
 

@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 class SyncOperation(BaseModel):
     type: str = Field(
         ...,
-        pattern=r"^(journal|mood|cycle|pregnancy_daily_log|emergency_contact)\/(create|update|delete|correction|snooze)$",
+        pattern=r"^(journal|mood|cycle|pregnancy_daily_log|emergency_contact|safety/contact|safety/sos|sos|breathing|family)/(create|update|delete|correction|snooze|trigger|cancel|resolve|complete)$",
     )
     data: dict[str, Any] = Field(default_factory=dict)
     temp_id: str | None = None

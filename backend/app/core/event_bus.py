@@ -38,10 +38,16 @@ class EventBus:
         if not handlers:
             logger.debug("event_bus.no_subscribers", extra={"event": event_name})
             return
-        await asyncio.gather(
+        results = await asyncio.gather(
             *(self._safe_invoke(h, event_name, payload) for h in handlers),
-            return_exceptions=False,
+            return_exceptions=True,
         )
+        exceptions = [r for r in results if isinstance(r, BaseException)]
+        if exceptions:
+            logger.warning(
+                "event_bus.handler_exceptions",
+                extra={"event": event_name, "count": len(exceptions)},
+            )
         logger.debug(
             "event_bus.dispatched",
             extra={"event": event_name, "handler_count": len(handlers)},
@@ -59,7 +65,14 @@ class EventBus:
         except Exception:
             # Rule §10: subscriber failure must not break the emitter.
             # Logged with traceback so Sentry can pick it up.
-            logger.exception("event_bus.subscriber_failed", extra={"event": event_name})
+            logger.exception(
+                "event_bus.subscriber_failed",
+                extra={
+                    "event": event_name,
+                    "handler": getattr(handler, "__name__", str(handler)),
+                    "payload_keys": list(payload.keys()),
+                },
+            )
 
 
 # Module-level singleton. Tests can reset it.

@@ -58,6 +58,8 @@ MODULE_INITS: list[Callable[[FastAPI, object], Awaitable[None] | None]] = [
     "app.modules.onboarding.routes:init_module",      # phase 1
     "app.modules.sync.routes:init_module",            # phase 5
     "app.modules.luna.routes:init_module",            # lunaplan8
+    "app.modules.diary.routes:init_module",           # diaryplan10
+    "app.modules.diary_assets.routes:init_module",    # diaryplan10 - assets
 ]
 
 

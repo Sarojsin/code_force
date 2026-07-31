@@ -57,6 +57,7 @@ class S3Settings(BaseSettings):
     aws_secret_access_key: str = ""
     bucket_videos: str = "shecare-videos"
     bucket_avatars: str = "shecare-avatars"
+    bucket_diary_media: str = "shecare-diary-media"
     region: str = "ap-south-1"
 
 
