@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, TextInput, ActivityIndicator, Pressable, ScrollView } from 'react-native';
+import { StyleSheet, View, TextInput, ActivityIndicator, Pressable } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -48,6 +48,50 @@ const ENERGY_LEVELS = [
 
 const SYMPTOMS = ['Cramps', 'Bloating', 'Headache', 'Fatigue', 'Nausea', 'Backache'];
 
+function MoodButton({ emoji, label, color, selected, onPress }: { emoji: string; label: string; color: string; selected: boolean; onPress: () => void }) {
+  const theme = useTheme();
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Animated.View style={animStyle}>
+      <Pressable
+        onPressIn={() => { scale.value = withSpring(0.9); }}
+        onPressOut={() => { scale.value = withSpring(1); }}
+        onPress={onPress}
+        accessibilityLabel={`${label} mood`}
+        accessibilityRole="button"
+        accessibilityHint={`Select ${label} mood`}
+        style={[
+          styles.moodBtn,
+          { borderRadius: 16, backgroundColor: selected ? color : 'rgba(0,0,0,0.04)' },
+          selected && { shadowColor: color, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+        ]}
+      >
+        <Txt style={{ fontSize: 28 }}>{emoji}</Txt>
+        <Txt variant="caption" style={{ color: selected ? theme.colors.textPrimary : theme.colors.textSoft, marginTop: 4 }}>{label}</Txt>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function EnergyButton({ emoji, label, selected, onPress }: { emoji: string; label: string; selected: boolean; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.energyBtn,
+        { borderRadius: 16 },
+        selected && { backgroundColor: theme.colors.primary },
+        !selected && { backgroundColor: 'rgba(0,0,0,0.04)' },
+      ]}
+    >
+        <Txt style={{ fontSize: 24 }}>{emoji}</Txt>
+        <Txt variant="caption" style={{ color: selected ? '#fff' : theme.colors.textSoft, fontSize: 9 }}>{label}</Txt>
+    </Pressable>
+  );
+}
+
 export function JournalEntryScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
@@ -59,48 +103,6 @@ export function JournalEntryScreen() {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [energyLevel, setEnergyLevel] = useState<number | null>(null);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
-
-  function MoodButton({ emoji, label, color, selected, onPress }: any) {
-    const scale = useSharedValue(1);
-    const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-    return (
-      <Animated.View style={animStyle}>
-        <Pressable
-          onPressIn={() => { scale.value = withSpring(0.9); }}
-          onPressOut={() => { scale.value = withSpring(1); }}
-          onPress={onPress}
-          accessibilityLabel={`${label} mood`}
-          accessibilityRole="button"
-          accessibilityHint={`Select ${label} mood`}
-          style={[
-            styles.moodBtn,
-            { borderRadius: 16, backgroundColor: selected ? color : 'rgba(0,0,0,0.04)' },
-            selected && { shadowColor: color, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-          ]}
-        >
-          <Txt style={{ fontSize: 28 }}>{emoji}</Txt>
-          <Txt variant="caption" style={{ color: selected ? theme.colors.textPrimary : theme.colors.textSoft, marginTop: 4 }}>{label}</Txt>
-        </Pressable>
-      </Animated.View>
-    );
-  }
-
-  function EnergyButton({ emoji, label, selected, onPress }: any) {
-    return (
-      <Pressable
-        onPress={onPress}
-        style={[
-          styles.energyBtn,
-          { borderRadius: 16 },
-          selected && { backgroundColor: theme.colors.primary },
-          !selected && { backgroundColor: 'rgba(0,0,0,0.04)' },
-        ]}
-      >
-          <Txt style={{ fontSize: 24 }}>{emoji}</Txt>
-          <Txt variant="caption" style={{ color: selected ? '#fff' : theme.colors.textSoft, fontSize: 9 }}>{label}</Txt>
-      </Pressable>
-    );
-  }
 
   const { control, handleSubmit, formState, watch, reset } = useForm<JournalForm>({
     resolver: zodResolver(journalSchema),
@@ -215,8 +217,7 @@ export function JournalEntryScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingWrapper>
-        <ScrollView contentContainerStyle={{ padding: 24 }}>
+      <KeyboardAvoidingWrapper contentContainerStyle={{ padding: 24 }}>
           <Txt style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSoft, letterSpacing: 1 }}>
             {format(new Date(), 'EEEE · MMMM d, yyyy').toUpperCase()}
           </Txt>
@@ -341,7 +342,6 @@ export function JournalEntryScreen() {
           >
             <Txt variant="body" color="muted">📖 View Past Entries</Txt>
           </Pressable>
-        </ScrollView>
       </KeyboardAvoidingWrapper>
     </SafeAreaView>
   );

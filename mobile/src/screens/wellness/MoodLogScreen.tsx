@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, Pressable, TextInput, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -69,13 +69,28 @@ function MoodTrendChart() {
   );
 }
 
+function MoodNotesInput({ onNotesChange }: { onNotesChange: (text: string) => void }) {
+  const theme = useTheme();
+  const [value, setValue] = useState('');
+  return (
+    <TextInput
+      value={value}
+      onChangeText={(text) => { setValue(text); onNotesChange(text); }}
+      placeholder="Add a note (optional)"
+      placeholderTextColor={theme.colors.textMuted}
+      style={[styles.notesInput, { borderColor: theme.colors.border, color: theme.colors.textPrimary, borderRadius: theme.radius.md }]}
+      accessibilityLabel="Mood note"
+    />
+  );
+}
+
 export function MoodLogScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
   const queryClient = useQueryClient();
-  const [selectedMood, setSelectedMood] = React.useState<string | null>(null);
-  const [intensity, setIntensity] = React.useState(5);
-  const [notes, setNotes] = React.useState('');
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [intensity, setIntensity] = useState(5);
+  const notesRef = useRef('');
 
   const handleMoodSelect = useCallback((label: string) => {
     setSelectedMood(label);
@@ -100,7 +115,7 @@ export function MoodLogScreen() {
 
   const handleSave = () => {
     if (!selectedMood) return;
-    mutation.mutate({ mood: selectedMood, intensity, notes: notes || undefined });
+    mutation.mutate({ mood: selectedMood, intensity, notes: notesRef.current || undefined });
   };
 
   return (
@@ -166,14 +181,7 @@ export function MoodLogScreen() {
               ))}
             </View>
 
-            <TextInput
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Add a note (optional)"
-              placeholderTextColor={theme.colors.textMuted}
-              style={[styles.notesInput, { borderColor: theme.colors.border, color: theme.colors.textPrimary, borderRadius: theme.radius.md }]}
-              accessibilityLabel="Mood note"
-            />
+            <MoodNotesInput onNotesChange={(text) => { notesRef.current = text; }} />
           </Card>
         )}
 

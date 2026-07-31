@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { FlatList, StyleSheet, View, Pressable, ActivityIndicator } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { FlatList, StyleSheet, View, Pressable, ActivityIndicator, Modal, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -59,6 +59,7 @@ const JournalItem = React.memo(function JournalItem({ item, onPress, theme }: { 
 export function JournalListScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
+  const [showNewEntrySheet, setShowNewEntrySheet] = useState(false);
 
   const tabBarHeight = useBottomTabBarHeight();
 
@@ -115,10 +116,35 @@ export function JournalListScreen() {
         <View style={styles.fab}>
           <Button
             label="+ New Entry"
-            onPress={() => navigation.navigate('JournalEntry', { id: 'new' })}
+            onPress={() => setShowNewEntrySheet(true)}
             fullWidth
           />
         </View>
+
+        <Modal visible={showNewEntrySheet} transparent animationType="slide" onRequestClose={() => setShowNewEntrySheet(false)}>
+          <Pressable style={styles.sheetOverlay} onPress={() => setShowNewEntrySheet(false)}>
+            <Pressable style={[styles.sheet, { backgroundColor: theme.colors.surface }]}>
+              <Txt variant="h3" style={{ marginBottom: theme.spacing.md }}>New Entry</Txt>
+              <Pressable
+                style={[styles.sheetOption, { backgroundColor: theme.colors.surface, borderRadius: theme.radius.md }]}
+                onPress={() => { setShowNewEntrySheet(false); navigation.navigate('JournalEntry', { id: 'new' }); }}
+              >
+                <Txt variant="body" style={{ fontFamily: 'Literata_400Regular' }}>✍️  Journal Entry</Txt>
+                <Txt variant="caption" color="secondary">Write a personal reflection</Txt>
+              </Pressable>
+              <Pressable
+                style={[styles.sheetOption, { backgroundColor: theme.colors.surface, borderRadius: theme.radius.md }]}
+                onPress={() => { setShowNewEntrySheet(false); navigation.navigate('DiaryLibrary', {}); }}
+              >
+                <Txt variant="body" style={{ fontFamily: 'LibreCaslonText_600SemiBold' }}>📖  Memory Diary</Txt>
+                <Txt variant="caption" color="secondary">Create a scrapbook page</Txt>
+              </Pressable>
+              <TouchableOpacity onPress={() => setShowNewEntrySheet(false)} style={[styles.sheetCancel, { borderRadius: theme.radius.pill }]}>
+                <Txt variant="body" color="secondary">Cancel</Txt>
+              </TouchableOpacity>
+            </Pressable>
+          </Pressable>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -131,4 +157,8 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
   moodTag: { paddingHorizontal: 8, paddingVertical: 2 },
   fab: { padding: 16 },
+  sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.3)' },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, gap: 12 },
+  sheetOption: { padding: 16, gap: 4 },
+  sheetCancel: { alignItems: 'center', padding: 12, marginTop: 4 },
 });

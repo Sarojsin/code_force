@@ -11,6 +11,8 @@ import { useCompanionStore } from '../../stores/companionStore';
 import { useAuthStore } from '../../stores/authStore';
 import { usePregnancyModeStore } from '../../stores/pregnancyModeStore';
 import { uninstallLuna } from '../../services/assetDownloader';
+import { useDiaryAssetStore } from '../../stores/diaryAssetStore';
+import { uninstallDiaryAssets } from '../../services/diaryAssetDownloader';
 import { LunaSprite } from '../../services/companion';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -101,6 +103,9 @@ export function SettingsScreen() {
   const companionLevel = useCompanionStore((s) => s.level);
   const companionTitle = useCompanionStore((s) => s.levelTitle);
   const companionXp = useCompanionStore((s) => s.xp);
+  const diaryInstallStatus = useDiaryAssetStore((s) => s.installStatus);
+  const diaryAssetsVersion = useDiaryAssetStore((s) => s.assetsVersion);
+  const diaryHydrated = useDiaryAssetStore((s) => s.isHydrated);
   const companionHydrated = useCompanionStore((s) => s.isHydrated);
   const installStatus = useCompanionStore((s) => s.installStatus);
   const assetsVersion = useCompanionStore((s) => s.assetsVersion);
@@ -291,6 +296,53 @@ export function SettingsScreen() {
               <SettingRow label="Mute Sounds" description="Disable meows and purrs" value={companionMuteSounds} onToggle={handleLunaToggle('muteSounds')} accessibilityLabel="Toggle mute Luna sounds" />
             </>
           )}
+        </SettingsSection>
+
+        <SettingsSection title="DIARY MODULE">
+          {diaryHydrated && diaryInstallStatus === 'ready' && (
+            <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border, paddingHorizontal: 16, paddingVertical: 10 }}>
+              <Txt style={{ fontSize: 24, marginRight: 10 }}>{'\u{1F4D6}'}</Txt>
+              <View style={{ flex: 1 }}>
+                <Txt variant="bodySmall" style={{ fontWeight: '600' }}>Memory Diary Assets</Txt>
+                <Txt variant="caption" color="muted">
+                  {diaryAssetsVersion && `v${diaryAssetsVersion} · `}Stickers, textures, fonts
+                </Txt>
+              </View>
+            </View>
+          )}
+          <SettingRow
+            label={diaryInstallStatus === 'ready' ? 'Uninstall Diary Assets' : 'Download Diary Assets'}
+            description={
+              diaryInstallStatus === 'ready'
+                ? 'Remove assets (pages saved)'
+                : 'Download stickers, textures, fonts (~18 MB)'
+            }
+            destructive={diaryInstallStatus === 'ready'}
+            showDisclosure
+            onPress={() => {
+              if (diaryInstallStatus === 'ready') {
+                Alert.alert(
+                  'Uninstall Diary Assets',
+                  'This removes stickers, textures, fonts, and sounds (~18 MB). Your diary pages are saved.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Uninstall',
+                      style: 'destructive',
+                      onPress: async () => {
+                        const user = useAuthStore.getState().user;
+                        if (user) await uninstallDiaryAssets(user.id);
+                        useDiaryAssetStore.getState().reset();
+                      },
+                    },
+                  ]
+                );
+              } else {
+                navigation.navigate('DiaryAssetInstall');
+              }
+            }}
+            accessibilityLabel="Diary assets install or uninstall"
+          />
         </SettingsSection>
 
         <SettingsSection title="SUPPORT">

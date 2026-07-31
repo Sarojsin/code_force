@@ -1,14 +1,14 @@
 import React, { useEffect, useRef } from 'react';
-import { ScrollView, StyleSheet, View, Pressable, Dimensions, AppState } from 'react-native';
+import { ScrollView, StyleSheet, View, Pressable, Dimensions, AppState, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withDelay } from 'react-native-reanimated';
 import Svg, { Circle as SvgCircle } from 'react-native-svg';
 
-import { Text, Skeleton } from 'src/components/ui';
+import { Text, Skeleton, AnimatedSection } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useCycleCalendar } from 'src/services/queries';
 import { useAuthStore } from 'src/stores/authStore';
+import { useDiaryAssetStore } from 'src/stores/diaryAssetStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LunaOverlay } from '../companion/LunaOverlay';
 import { initEventEngine } from '../../services/companion/EventEngine';
@@ -122,6 +122,15 @@ export function HomeDashboardScreen() {
       hydrateCompanion(user.id);
     }
   }, [user, hydrateCompanion]);
+
+  const hydrateDiaryAssets = useDiaryAssetStore((s) => s.hydrate);
+  const diaryAssetStatus = useDiaryAssetStore((s) => s.installStatus);
+
+  useEffect(() => {
+    if (user) {
+      hydrateDiaryAssets(user.id);
+    }
+  }, [user, hydrateDiaryAssets]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
@@ -340,28 +349,46 @@ export function HomeDashboardScreen() {
             <View style={styles.bentoRow}>
               <AnimatedSection delay={staggerItems[4]} style={{ flex: 1, marginRight: 6 }}>
                 <Pressable
-                  onPress={() => navigation.navigate('AIChat')}
-                  style={[styles.bentoCard, { backgroundColor: '#fff', borderRadius: 20 }]}
-                >
-                  <View style={[styles.bentoIcon, { borderRadius: 12 }]}>
-                    <LinearGradient colors={['#C4B5FD', '#F0ABFC']} style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} />
-                    <Text style={{ fontSize: 20 }}>💬</Text>
-                  </View>
-                  <Text variant="h3" style={{ marginTop: 8 }}>Luna AI</Text>
-                  <Text variant="caption" color="muted">Ask me anything about your health</Text>
-                </Pressable>
-              </AnimatedSection>
-              <AnimatedSection delay={staggerItems[4]} style={{ flex: 1, marginLeft: 6 }}>
-                <Pressable
-                  onPress={() => navigation.navigate('JournalList')}
+                  onPress={() => navigation.navigate('JournalEntry', { id: 'new' })}
                   style={[styles.bentoCard, { backgroundColor: '#fff', borderRadius: 20 }]}
                 >
                   <View style={[styles.bentoIcon, { borderRadius: 12 }]}>
                     <LinearGradient colors={['#A7F3D0', '#6EE7B7']} style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} />
-                    <Text style={{ fontSize: 20 }}>📝</Text>
+                    <Text style={{ fontSize: 20 }}>📒</Text>
                   </View>
-                  <Text variant="h3" style={{ marginTop: 8 }}>Journal</Text>
-                  <Text variant="caption" color="muted">Log symptoms & feelings</Text>
+                  <Text variant="h3" style={{ marginTop: 8 }}>Simple Journal</Text>
+                  <Text variant="caption" color="muted">Quick thoughts in seconds</Text>
+                </Pressable>
+              </AnimatedSection>
+              <AnimatedSection delay={staggerItems[4]} style={{ flex: 1, marginLeft: 6 }}>
+                <Pressable
+                  onPress={() => {
+                    if (diaryAssetStatus === 'ready') {
+                      navigation.navigate('DiaryLibrary');
+                    } else {
+                      Alert.alert(
+                        'Download Required',
+                        'Memory Diary needs ~18 MB of stickers, textures & fonts to create beautiful scrapbooks. Download now?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Download', onPress: () => navigation.navigate('DiaryAssetInstall') },
+                        ]
+                      );
+                    }
+                  }}
+                  style={[styles.bentoCard, { backgroundColor: '#fff', borderRadius: 20 }]}
+                >
+                  <View style={[styles.bentoIcon, { borderRadius: 12 }]}>
+                    <LinearGradient colors={['#E8D5B7', '#D4A574']} style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} />
+                    <Text style={{ fontSize: 20 }}>📖</Text>
+                  </View>
+                  <Text variant="h3" style={{ marginTop: 8 }}>Memory Diary</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text variant="caption" color="muted">Create a beautiful scrapbook</Text>
+                    {diaryAssetStatus !== 'ready' && (
+                      <Text style={{ fontSize: 10, color: '#D97706' }}>⬇</Text>
+                    )}
+                  </View>
                 </Pressable>
               </AnimatedSection>
             </View>
@@ -431,20 +458,6 @@ export function HomeDashboardScreen() {
       {lunaEnabled && <AchievementPopup achievement={currentPopup} onDismiss={dismissPopup} />}
     </SafeAreaView>
   );
-}
-
-function AnimatedSection({ children, delay, style }: { children: React.ReactNode; delay: number; style?: any }) {
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(20);
-  const animStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
-  }));
-  React.useEffect(() => {
-    opacity.value = withDelay(delay, withSpring(1, { damping: 20, stiffness: 150 }));
-    translateY.value = withDelay(delay, withSpring(0, { damping: 20, stiffness: 150 }));
-  }, [delay]);
-  return <Animated.View style={[animStyle, style]}>{children}</Animated.View>;
 }
 
 const styles = StyleSheet.create({

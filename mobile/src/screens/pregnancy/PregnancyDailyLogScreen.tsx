@@ -30,6 +30,34 @@ const logSchema = z.object({
 });
 type LogForm = z.infer<typeof logSchema>;
 
+function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  const theme = useTheme();
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Animated.View style={animStyle}>
+      <Pressable
+        onPressIn={() => { scale.value = withSpring(0.94); }}
+        onPressOut={() => { scale.value = withSpring(1); }}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityState={{ selected }}
+        accessibilityLabel={label}
+        style={[
+          styles.chip,
+          {
+            backgroundColor: selected ? theme.colors.accent : theme.colors.surface,
+            borderColor: selected ? theme.colors.accent : theme.colors.border,
+            borderRadius: theme.radius.pill,
+          },
+        ]}
+      >
+        <Txt variant="bodySmall" color={selected ? 'inverse' : 'primary'}>{label}</Txt>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export function PregnancyDailyLogScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
@@ -44,33 +72,6 @@ export function PregnancyDailyLogScreen() {
 
   const toggleItem = (item: string, list: string[], setter: (v: string[]) => void) => {
     setter(list.includes(item) ? list.filter(i => i !== item) : [...list, item]);
-  };
-
-  const Chip = ({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) => {
-    const scale = useSharedValue(1);
-    const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-    return (
-      <Animated.View style={animStyle}>
-        <Pressable
-          onPressIn={() => { scale.value = withSpring(0.94); }}
-          onPressOut={() => { scale.value = withSpring(1); }}
-          onPress={onPress}
-          accessibilityRole="button"
-          accessibilityState={{ selected }}
-          accessibilityLabel={label}
-          style={[
-            styles.chip,
-            {
-              backgroundColor: selected ? theme.colors.accent : theme.colors.surface,
-              borderColor: selected ? theme.colors.accent : theme.colors.border,
-              borderRadius: theme.radius.pill,
-            },
-          ]}
-        >
-          <Txt variant="bodySmall" color={selected ? 'inverse' : 'primary'}>{label}</Txt>
-        </Pressable>
-      </Animated.View>
-    );
   };
 
   const onSubmit = async (data: LogForm) => {
