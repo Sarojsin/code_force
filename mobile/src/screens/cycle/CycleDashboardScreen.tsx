@@ -313,7 +313,7 @@ export function CycleDashboardScreen() {
               },
             ]}
           >
-            <Text variant="h2" align="center" color="textSecondary">
+            <Text variant="h2" align="center" color="secondary">
               No active prediction
             </Text>
             <Text variant="body" align="center" style={{ marginTop: 8, opacity: 0.7 }}>

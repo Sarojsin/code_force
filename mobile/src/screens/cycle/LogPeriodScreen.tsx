@@ -25,6 +25,34 @@ const symptoms = ['Cramps', 'Bloating', 'Headache', 'Fatigue', 'Nausea', 'Backac
 const moods = ['Happy', 'Sad', 'Irritable', 'Anxious', 'Calm', 'Tired', 'Energetic', 'Emotional'];
 const flowLevels = ['Light', 'Medium', 'Heavy', 'Very Heavy'] as const;
 
+const Chip = React.memo(function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  const theme = useTheme();
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Animated.View style={animStyle}>
+      <Pressable
+        onPressIn={() => { scale.value = withSpring(0.94); }}
+        onPressOut={() => { scale.value = withSpring(1); }}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityState={{ selected }}
+        accessibilityLabel={label}
+        style={[
+          styles.chip,
+          {
+            backgroundColor: selected ? theme.colors.primary : theme.colors.surface,
+            borderColor: selected ? theme.colors.primary : theme.colors.border,
+            borderRadius: theme.radius.pill,
+          },
+        ]}
+      >
+        <Txt variant="bodySmall" color={selected ? 'inverse' : 'primary'}>{label}</Txt>
+      </Pressable>
+    </Animated.View>
+  );
+});
+
 const logPeriodSchema = z.object({
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().optional(),
@@ -69,33 +97,6 @@ export const LogPeriodScreen = React.memo(function LogPeriodScreen() {
       onSuccess: () => navigation.goBack(),
       onError: () => {},
     });
-  };
-
-  const Chip = ({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) => {
-    const scale = useSharedValue(1);
-    const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-    return (
-      <Animated.View style={animStyle}>
-        <Pressable
-          onPressIn={() => { scale.value = withSpring(0.94); }}
-          onPressOut={() => { scale.value = withSpring(1); }}
-          onPress={onPress}
-          accessibilityRole="button"
-          accessibilityState={{ selected }}
-          accessibilityLabel={label}
-          style={[
-            styles.chip,
-            {
-              backgroundColor: selected ? theme.colors.primary : theme.colors.surface,
-              borderColor: selected ? theme.colors.primary : theme.colors.border,
-              borderRadius: theme.radius.pill,
-            },
-          ]}
-        >
-          <Txt variant="bodySmall" color={selected ? 'inverse' : 'primary'}>{label}</Txt>
-        </Pressable>
-      </Animated.View>
-    );
   };
 
   return (
