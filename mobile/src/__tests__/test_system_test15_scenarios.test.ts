@@ -89,23 +89,16 @@ jest.mock('src/db/connection', () => ({
 }));
 
 import { act, renderHook } from '@testing-library/react-native';
-import * as Sentry from '@sentry/react-native';
 import { useAuthStore } from 'src/stores/authStore';
+import { makeUser } from './fixtures';
 import { useOfflineStore } from 'src/stores/offlineStore';
-import { syncAll, pushOperations, pullServerData } from 'src/services/sync/syncEngine';
-import { BaseLocalService } from 'src/services/localDb/BaseLocalService';
+import { syncAll, pullServerData } from 'src/services/sync/syncEngine';
 
 const mockTokenStore = jest.requireMock('src/services/api').tokenStore;
 const mockApiPost = jest.requireMock('src/services/api/client').api.post;
 const mockApiGet = jest.requireMock('src/services/api/client').api.get;
 const mockLogger = jest.requireMock('src/utils').logger;
 const mockEncryptedStorage = jest.requireMock('src/services/storage').EncryptedStorage;
-const mockToast = jest.requireMock('react-native-toast-message').default;
-
-class TestLocalService extends BaseLocalService<{ id: string; user_id: string }> {
-  protected table: any = { id: 'id' };
-  protected tableName = 'test_table';
-}
 
 beforeEach(async () => {
   jest.clearAllMocks();
@@ -117,7 +110,7 @@ beforeEach(async () => {
   });
 
   useOfflineStore.getState().clear();
-  useAuthStore.setState({ user: { id: 'test-user', email: 'test@test.com' }, isHydrated: true });
+  useAuthStore.setState({ user: makeUser({ id: 'test-user', email: 'test@test.com' }), isHydrated: true });
   mockTokenStore.getAccess.mockResolvedValue('mock-access-token');
 });
 
@@ -139,6 +132,7 @@ describe('Scenario 46: Network Flapping', () => {
       if (url === '/sync/changes') {
         return { data: { changes: [] } };
       }
+      return { data: { results: [] } };
     });
 
     const firstPromise = syncAll();

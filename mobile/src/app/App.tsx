@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { ActivityIndicator, AppState, AppStateStatus, StatusBar, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, AppStateStatus, InteractionManager, StatusBar, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import * as BackgroundFetch from 'expo-background-fetch';
@@ -84,11 +84,13 @@ function MigrationGate({ children }: { children: React.ReactNode }) {
     if (success && !cleaned.current) {
       cleaned.current = true;
       AsyncStorage.removeItem('REACT_QUERY_OFFLINE_CACHE').catch(() => {});
-      pruneLocalDb();
-      migrateStoreDataToSqlite().then(() => {
-        cleanupObsoleteKeys();
+      InteractionManager.runAfterInteractions(() => {
+        pruneLocalDb();
+        migrateStoreDataToSqlite().then(() => {
+          cleanupObsoleteKeys();
+        });
+        backfillSqliteIfNeeded();
       });
-      backfillSqliteIfNeeded();
     }
   }, [success]);
 
@@ -107,6 +109,14 @@ function MigrationGate({ children }: { children: React.ReactNode }) {
 export default function App() {
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const hydrate = useOfflineStore((s) => s.hydrate);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const debouncedSyncAll = useRef(() => {
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      syncAll().catch((err) => logger.error('sync.debounced_failed', err));
+    }, 300);
+  }).current;
 
   useEffect(() => {
     setQueryClient(queryClient);
@@ -127,7 +137,7 @@ export default function App() {
   useEffect(() => {
     const unsubNet = NetInfo.addEventListener((state) => {
       if (state.isConnected) {
-        syncAll().catch((err) => logger.error('sync.on_reconnect', err));
+        debouncedSyncAll();
       }
     });
 
@@ -136,7 +146,7 @@ export default function App() {
         logger.info('AppState.backgrounded');
       }
       if (next === 'active') {
-        syncAll().catch((err) => logger.error('sync.on_foreground', err));
+        debouncedSyncAll();
         updateLastKnownLocation();
       }
       appState.current = next;
@@ -145,8 +155,9 @@ export default function App() {
     return () => {
       unsubNet();
       sub.remove();
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     };
-  }, []);
+  }, [debouncedSyncAll]);
 
   useEffect(() => {
     updateLastKnownLocation();

@@ -93,16 +93,16 @@ function makeQuery(data: any[]) {
 const mockDrizzle = {
   select: jest.fn(() => ({
     from: jest.fn(() => ({
-      where: jest.fn((condition: any) => makeQuery([])),
+      where: jest.fn((_condition: any) => makeQuery([])),
     })),
   })),
   insert: jest.fn(() => ({
-    values: jest.fn(() => ({
+    values: jest.fn((_data: any) => ({
       onConflictDoUpdate: jest.fn(() => Promise.resolve()),
     })),
   })),
   update: jest.fn(() => ({
-    set: jest.fn(() => ({
+    set: jest.fn((_data: any) => ({
       where: jest.fn(() => Promise.resolve()),
     })),
   })),
@@ -110,7 +110,7 @@ const mockDrizzle = {
     where: jest.fn(() => Promise.resolve()),
   })),
   desc: jest.fn((col: any) => ({ type: 'desc', column: col })),
-};
+} as Record<string, jest.Mock<any, any[]>>;
 
 jest.mock('drizzle-orm', () => ({
   eq: jest.fn((a: any, b: any) => ({ a, b })),
@@ -126,13 +126,12 @@ jest.mock('src/db/connection', () => ({
 
 import { act, renderHook } from '@testing-library/react-native';
 import { useAuthStore } from 'src/stores/authStore';
+import { makeUser } from './fixtures';
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { BaseLocalService } from 'src/services/localDb/BaseLocalService';
 
 const mockTokenStore = jest.requireMock('src/services/api').tokenStore;
 const mockStorage = jest.requireMock('src/services/storage').EncryptedStorage;
-const mockAsyncStorage = jest.requireMock('@react-native-async-storage/async-storage');
-const mockLogger = jest.requireMock('src/utils').logger;
 
 beforeEach(async () => {
   jest.clearAllMocks();
@@ -442,7 +441,7 @@ describe('Scenario 35: Logout — data persistence and privacy', () => {
       const { result } = renderHook(() => useAuthStore());
 
       await act(async () => {
-        useAuthStore.setState({ user: { id: 'u35-2', email: 'test@test.com', role: 'user' }, isHydrated: true });
+        useAuthStore.setState({ user: makeUser({ id: 'u35-2', email: 'test@test.com' }), isHydrated: true });
       });
       expect(result.current.user).not.toBeNull();
 
@@ -474,7 +473,7 @@ describe('Scenario 35: Logout — data persistence and privacy', () => {
     it('reset sets user to null, tokens cleared, cache available for next hydrate', async () => {
       const { result } = renderHook(() => useAuthStore());
       await act(async () => {
-        useAuthStore.setState({ user: { id: 'u35-rq', email: 'rq@test.com', role: 'user' }, isHydrated: true });
+        useAuthStore.setState({ user: makeUser({ id: 'u35-rq', email: 'rq@test.com' }), isHydrated: true });
       });
       expect(result.current.user).not.toBeNull();
 

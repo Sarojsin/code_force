@@ -337,7 +337,7 @@ describe('Scenario 14: BS calendar switch', () => {
   // Date picker
   describe('BS date picker', () => {
     it('3-dropdown BS picker converts back to ISO on change', () => {
-      const bsToAd = (bsYear: number, bsMonth: number, bsDay: number): string => {
+      const bsToAd = (_bsYear: number, _bsMonth: number, _bsDay: number): string => {
         // Contract: converts BS date to ISO string
         return '2025-07-22';
       };
@@ -368,7 +368,7 @@ describe('Scenario 14: BS calendar switch', () => {
       expect(stored['calendarSystem']).toBe('BS');
 
       // Simulate app restart
-      const newStore = { system: 'AD' as 'AD' | 'BS', ...store };
+      const newStore = { ...store, system: 'AD' as 'AD' | 'BS' };
       newStore.system = (stored['calendarSystem'] as 'AD' | 'BS') || 'AD';
       expect(newStore.system).toBe('BS');
     });

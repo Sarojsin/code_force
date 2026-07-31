@@ -243,8 +243,6 @@ describe('syncAll', () => {
     ];
     qc.setQueryData.mockReturnValue(existingData);
     // Pre-set some data in the cache so the merge path is exercised
-    const { inferQueryKey } = require('src/services/sync/queryKeyMapper');
-    const qKey = inferQueryKey('cycle/correction', 'entry-1');
     (qc as any).getQueryData = jest.fn(() => existingData);
 
     mockApi.post.mockResolvedValue({

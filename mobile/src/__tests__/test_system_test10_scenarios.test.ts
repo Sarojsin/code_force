@@ -90,26 +90,26 @@ jest.mock('src/utils', () => ({
 // Mock drizzle-orm + expo-sqlite for BaseLocalService
 const mockDrizzle = {
   select: jest.fn(() => ({
-    from: jest.fn(() => ({
-      where: jest.fn(() => ({ limit: jest.fn(() => Promise.resolve([])) })),
+    from: jest.fn((_table: any) => ({
+      where: jest.fn((_condition: any) => ({ limit: jest.fn(() => Promise.resolve([])) })),
       limit: jest.fn(() => ({ offset: jest.fn(() => Promise.resolve([])) })),
       offset: jest.fn(() => Promise.resolve([])),
     })),
   })),
   insert: jest.fn(() => ({
-    values: jest.fn(() => ({
+    values: jest.fn((_data: any) => ({
       onConflictDoUpdate: jest.fn(() => Promise.resolve()),
     })),
   })),
   update: jest.fn(() => ({
-    set: jest.fn(() => ({
+    set: jest.fn((_data: any) => ({
       where: jest.fn(() => Promise.resolve()),
     })),
   })),
   delete: jest.fn(() => ({
     where: jest.fn(() => Promise.resolve()),
   })),
-};
+} as Record<string, jest.Mock<any, any[]>>;
 
 jest.mock('drizzle-orm', () => ({
   eq: jest.fn((a: any, b: any) => ({ a, b })),
@@ -124,11 +124,11 @@ import { act, renderHook } from '@testing-library/react-native';
 import { useAuthStore } from 'src/stores/authStore';
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { BaseLocalService } from 'src/services/localDb/BaseLocalService';
+import { makeUser } from './fixtures';
 
 const mockTokenStore = jest.requireMock('src/services/api').tokenStore;
 const mockStorage = jest.requireMock('src/services/storage').EncryptedStorage;
 const mockAsyncStorage = jest.requireMock('@react-native-async-storage/async-storage');
-const mockLogger = jest.requireMock('src/utils').logger;
 
 beforeEach(async () => {
   jest.clearAllMocks();
@@ -394,7 +394,6 @@ describe('Scenario 31: Background API refresh — silent UI update', () => {
 
     it('API 409 conflict: server_data overwrites SQLite', () => {
       const serverData = { id: '1', period_start_date: '2025-06-22' };
-      const clientData = { id: '1', period_start_date: '2025-06-20' };
       const resolved = serverData;
       expect(resolved.period_start_date).toBe('2025-06-22');
     });
@@ -629,7 +628,7 @@ describe('Scenario 32: Long offline period — weeks or months', () => {
   describe('client-side token expiry check during hydrate', () => {
     it('hydrate logs out user when access token has expired', async () => {
       mockTokenStore.getAccess.mockResolvedValue('expired-token');
-      useAuthStore.setState({ user: { id: 'u32-exp', email: 'expired@test.com', role: 'user' } });
+      useAuthStore.setState({ user: makeUser({ id: 'u32-exp', email: 'expired@test.com' }) });
 
       const { result } = renderHook(() => useAuthStore());
       await act(async () => { await result.current.hydrate(); });

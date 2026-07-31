@@ -1,3 +1,4 @@
+export * from './AnimatedSection';
 export * from './BackfillCard';
 export * from './BottomSheet';
 export * from './Button';

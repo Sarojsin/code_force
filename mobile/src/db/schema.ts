@@ -457,3 +457,123 @@ export const healthMetrics = sqliteTable('health_metrics', {
 
 export type HealthMetric = typeof healthMetrics.$inferSelect;
 export type NewHealthMetric = typeof healthMetrics.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// 22. Diary / Memory Diary (modular download)
+// ---------------------------------------------------------------------------
+export const diaries = sqliteTable('diaries', {
+  id: text('id').primaryKey(),
+  user_id: text('user_id').notNull(),
+  title: text('title').notNull(),
+  cover_color: text('cover_color').notNull().default('primary'),
+  texture_id: text('texture_id'),
+  font_id: text('font_id'),
+  page_count: integer('page_count').notNull().default(0),
+  is_locked: integer('is_locked', { mode: 'boolean' }).notNull().default(false),
+  lock_type: text('lock_type'),
+  is_active: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  created_at: isoDatetime('created_at'),
+  updated_at: isoDatetime('updated_at'),
+  synced_at: isoDatetime('synced_at'),
+});
+
+export const diaryPages = sqliteTable('diary_pages', {
+  id: text('id').primaryKey(),
+  diary_id: text('diary_id').notNull(),
+  page_number: integer('page_number').notNull(),
+  page_date: text('page_date').notNull(),
+
+  memory_title: text('memory_title'),
+  memory_tags: jsonCol<string[]>('memory_tags').default([]),
+  memory_people: jsonCol<string[]>('memory_people').default([]),
+  memory_location: text('memory_location'),
+  memory_weather: text('memory_weather'),
+  memory_mood: text('memory_mood'),
+
+  version: integer('version').notNull().default(1),
+
+  is_favorite: integer('is_favorite', { mode: 'boolean' }).notNull().default(false),
+  is_active: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  created_at: isoDatetime('created_at'),
+  updated_at: isoDatetime('updated_at'),
+  synced_at: isoDatetime('synced_at'),
+});
+
+export const diaryPageObjects = sqliteTable('diary_page_objects', {
+  id: text('id').primaryKey(),
+  page_id: text('page_id').notNull(),
+  object_type: text('object_type', {
+    enum: ['text', 'image', 'video', 'voice', 'mood', 'sticker'],
+  }).notNull(),
+
+  text_content: text('text_content'),
+  font_family: text('font_family'),
+  font_size: integer('font_size'),
+  color: text('color'),
+  text_alignment: text('text_alignment'),
+
+  media_id: text('media_id'),
+  caption: text('caption'),
+
+  thumbnail_s3_key: text('thumbnail_s3_key'),
+  video_duration_sec: integer('video_duration_sec'),
+
+  sticker_id: text('sticker_id'),
+
+  metadata: jsonCol('metadata').default('{}'),
+
+  position_x: integer('position_x').notNull(),
+  position_y: integer('position_y').notNull(),
+  width: integer('width'),
+  height: integer('height'),
+  rotation: integer('rotation').default(0),
+  z_index: integer('z_index').notNull().default(0),
+
+  is_active: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  created_at: isoDatetime('created_at'),
+  updated_at: isoDatetime('updated_at'),
+  synced_at: isoDatetime('synced_at'),
+});
+
+export const diaryMedia = sqliteTable('diary_media', {
+  id: text('id').primaryKey(),
+  user_id: text('user_id').notNull(),
+  media_type: text('media_type', { enum: ['image', 'video', 'voice'] }).notNull(),
+  file_size_bytes: integer('file_size_bytes').notNull(),
+  mime_type: text('mime_type').notNull(),
+
+  s3_key: text('s3_key'),
+  thumbnail_s3_key: text('thumbnail_s3_key'),
+  upload_status: text('upload_status').notNull().default('local'),
+
+  duration_sec: integer('duration_sec'),
+  width: integer('width'),
+  height: integer('height'),
+
+  local_file_path: text('local_file_path'),
+  is_active: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  created_at: isoDatetime('created_at'),
+  updated_at: isoDatetime('updated_at'),
+  synced_at: isoDatetime('synced_at'),
+});
+
+export const diaryAssets = sqliteTable('diary_assets', {
+  id: text('id').primaryKey(),
+  user_id: text('user_id').notNull(),
+  asset_version: text('asset_version'),
+  install_status: text('install_status', {
+    enum: ['none', 'downloading', 'ready', 'failed'],
+  }).notNull().default('none'),
+  installed_at: isoDatetimeOptional('installed_at'),
+});
+
+export type Diary = typeof diaries.$inferSelect;
+export type NewDiary = typeof diaries.$inferInsert;
+export type DiaryPage = typeof diaryPages.$inferSelect;
+export type NewDiaryPage = typeof diaryPages.$inferInsert;
+export type DiaryPageObject = typeof diaryPageObjects.$inferSelect;
+export type NewDiaryPageObject = typeof diaryPageObjects.$inferInsert;
+export type DiaryMedia = typeof diaryMedia.$inferSelect;
+export type NewDiaryMedia = typeof diaryMedia.$inferInsert;
+export type DiaryAsset = typeof diaryAssets.$inferSelect;
+export type NewDiaryAsset = typeof diaryAssets.$inferInsert;

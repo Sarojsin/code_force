@@ -92,8 +92,6 @@ import { BaseLocalService } from 'src/services/localDb/BaseLocalService';
 import { getDb } from 'src/db/connection';
 import migrations from 'src/db/migrations/migrations';
 
-const mockToast = jest.requireMock('react-native-toast-message').default;
-const mockLogger = jest.requireMock('src/utils').logger;
 const mockStorage = jest.requireMock('src/services/storage').EncryptedStorage;
 const mockTokenStore = jest.requireMock('src/services/api').tokenStore;
 

@@ -108,10 +108,11 @@ jest.mock('src/db/connection', () => ({
 
 import { act, renderHook } from '@testing-library/react-native';
 import { create } from 'zustand';
+import type { StoreApi, UseBoundStore } from 'zustand';
 import { useAuthStore } from 'src/stores/authStore';
+import { makeUser } from './fixtures';
 import { useOfflineStore } from 'src/stores/offlineStore';
-import { EncryptedStorage } from 'src/services/storage';
-import { syncAll, pushOperations, pullServerData, setQueryClient } from 'src/services/sync/syncEngine';
+import { syncAll, pullServerData } from 'src/services/sync/syncEngine';
 
 const mockTokenStore = jest.requireMock('src/services/api').tokenStore;
 const mockApiClient = jest.requireMock('src/services/api/client');
@@ -119,8 +120,6 @@ const mockApiPost = mockApiClient.api.post;
 const mockApiGet = mockApiClient.api.get;
 const mockLogger = jest.requireMock('src/utils').logger;
 const mockEncryptedStorage = jest.requireMock('src/services/storage').EncryptedStorage;
-const mockAsyncStorage = jest.requireMock('@react-native-async-storage/async-storage');
-const mockToast = jest.requireMock('react-native-toast-message').default;
 
 beforeEach(async () => {
   jest.clearAllMocks();
@@ -132,7 +131,7 @@ beforeEach(async () => {
   });
 
   useOfflineStore.getState().clear();
-  useAuthStore.setState({ user: { id: 'test-user', email: 'test@test.com' }, isHydrated: true });
+  useAuthStore.setState({ user: makeUser({ id: 'test-user', email: 'test@test.com' }), isHydrated: true });
   mockTokenStore.getAccess.mockResolvedValue('mock-access-token');
 });
 
@@ -154,6 +153,7 @@ describe('Scenario 36: Race Condition - Sync Stampede', () => {
       if (url === '/sync/changes') {
         return { data: { changes: [] } };
       }
+      return { data: { results: [] } };
     });
 
     const firstPromise = syncAll();
@@ -231,6 +231,7 @@ describe('Scenario 36: Race Condition - Sync Stampede', () => {
       if (url === '/sync/changes') {
         return { data: { changes: [] } };
       }
+      return { data: { results: [] } };
     });
 
     const { result } = renderHook(() => useOfflineStore());
@@ -354,7 +355,7 @@ describe('Scenario 38: Deep Link Conflict', () => {
     size: () => number;
   }
 
-  let useTestDeepLinkStore: ReturnType<typeof create<DeepLinkState>>;
+  let useTestDeepLinkStore: UseBoundStore<StoreApi<DeepLinkState>>;
 
   beforeEach(() => {
     useTestDeepLinkStore = create<DeepLinkState>((set, get) => ({
@@ -447,7 +448,7 @@ describe('Scenario 38: Deep Link Conflict', () => {
 describe('Scenario 39: Stale Refresh Token', () => {
 
   it('triggerSessionExpired clears auth state via reset', async () => {
-    useAuthStore.setState({ user: { id: 'u1', email: 'u1@test.com' }, isHydrated: true });
+    useAuthStore.setState({ user: makeUser({ id: 'u1', email: 'u1@test.com' }), isHydrated: true });
     expect(useAuthStore.getState().user).not.toBeNull();
 
     await act(async () => { await useAuthStore.getState().reset(); });
@@ -544,7 +545,6 @@ describe('Scenario 40: Large Offline Queue Exceeding SecureStore Limits', () => 
   });
 
   it('offlineStore.persist logs error without crashing on SecureStore failure', async () => {
-    const originalSetItem = mockEncryptedStorage.setItem;
     mockEncryptedStorage.setItem.mockRejectedValue(new Error('Keychain write failed'));
 
     const { result } = renderHook(() => useOfflineStore());

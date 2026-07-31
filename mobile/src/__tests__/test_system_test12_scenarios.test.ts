@@ -69,19 +69,19 @@ const mockDrizzle = {
     })),
   })),
   insert: jest.fn(() => ({
-    values: jest.fn(() => ({
+    values: jest.fn((_data: any) => ({
       onConflictDoUpdate: jest.fn(() => Promise.resolve()),
     })),
   })),
   update: jest.fn(() => ({
-    set: jest.fn(() => ({
+    set: jest.fn((_data: any) => ({
       where: jest.fn(() => Promise.resolve()),
     })),
   })),
   delete: jest.fn(() => ({
     where: jest.fn(() => Promise.resolve()),
   })),
-};
+} as Record<string, jest.Mock<any, any[]>>;
 
 jest.mock('drizzle-orm', () => ({
   eq: jest.fn((a: any, b: any) => ({ a, b })),
@@ -100,7 +100,6 @@ import { BaseLocalService } from 'src/services/localDb/BaseLocalService';
 
 const mockTokenStore = jest.requireMock('src/services/api').tokenStore;
 const mockStorage = jest.requireMock('src/services/storage').EncryptedStorage;
-const mockLogger = jest.requireMock('src/utils').logger;
 
 beforeEach(async () => {
   jest.clearAllMocks();

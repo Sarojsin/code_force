@@ -4,9 +4,6 @@ import * as schema from '../db/schema';
 import { localDb } from '../services/localDb';
 import { hydrateFromServerData, hydrateChangeItems } from '../services/sync/syncHydrate';
 import { pruneLocalDb } from '../services/localDb/pruneLocalDb';
-import { backfillSqliteIfNeeded } from '../services/localDb/backfillSqlite';
-import { migrateStoreDataToSqlite } from '../services/localDb/migrateStoreDataToSqlite';
-import { cleanupObsoleteKeys } from '../services/localDb/cleanupObsoleteKeys';
 
 jest.mock('../db/connection', () => ({
   getDb: jest.fn(),

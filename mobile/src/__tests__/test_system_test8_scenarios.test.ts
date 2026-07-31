@@ -218,9 +218,8 @@ describe('Scenario 23: SQLite fails gracefully', () => {
     it('optimistic UI + EncryptedStorage queue does not depend on SQLite', async () => {
       const { result } = renderHook(() => useOfflineStore());
 
-      let id = '';
       await act(async () => {
-        id = await result.current.enqueue({
+        await result.current.enqueue({
           type: 'cycle/correction',
           data: { period_start_date: '2025-06-10', period_end_date: '2025-06-13' },
           tempId: 'optimistic-1',

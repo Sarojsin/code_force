@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 
 interface Props {
   children: ReactNode;
@@ -15,17 +15,12 @@ export function KeyboardAvoidingWrapper({ children, offset, bounces = true, cont
     showsVerticalScrollIndicator: false,
     bounces,
   };
-  if (Platform.OS === 'android') {
-    return (
-      <View style={styles.flex}>
-        <ScrollView {...scrollProps}>
-          {children}
-        </ScrollView>
-      </View>
-    );
-  }
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={offset ?? 100}>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? (offset ?? 100) : 0}
+    >
       <ScrollView {...scrollProps}>
         {children}
       </ScrollView>

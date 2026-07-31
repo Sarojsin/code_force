@@ -97,8 +97,9 @@ jest.mock('src/db/connection', () => ({
 import { act, renderHook } from '@testing-library/react-native';
 import * as Sentry from '@sentry/react-native';
 import { useAuthStore } from 'src/stores/authStore';
+import { makeUser } from './fixtures';
 import { useOfflineStore } from 'src/stores/offlineStore';
-import { syncAll, pushOperations, pullServerData } from 'src/services/sync/syncEngine';
+import { syncAll } from 'src/services/sync/syncEngine';
 import { BaseLocalService } from 'src/services/localDb/BaseLocalService';
 
 const mockTokenStore = jest.requireMock('src/services/api').tokenStore;
@@ -121,7 +122,7 @@ beforeEach(async () => {
   });
 
   useOfflineStore.getState().clear();
-  useAuthStore.setState({ user: { id: 'test-user', email: 'test@test.com' }, isHydrated: true });
+  useAuthStore.setState({ user: makeUser({ id: 'test-user', email: 'test@test.com' }), isHydrated: true });
   mockTokenStore.getAccess.mockResolvedValue('mock-access-token');
 });
 
@@ -232,13 +233,6 @@ describe('Scenario 42: Timezone Shift', () => {
       const y = d.getUTCFullYear();
       const m = String(d.getUTCMonth() + 1).padStart(2, '0');
       const day = String(d.getUTCDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
-    }
-
-    function toDateStrLocal(d: Date): string {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
       return `${y}-${m}-${day}`;
     }
 

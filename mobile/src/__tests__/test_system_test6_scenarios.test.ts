@@ -340,10 +340,10 @@ describe('Scenario 20: Auto-Close Safety Net (Mobile Side)', () => {
         .filter((e) => e.period_end_date === null)
         .sort((a, b) => new Date(b.period_start_date).getTime() - new Date(a.period_start_date).getTime())[0];
 
-      latestOpen.period_end_date = '2025-07-12';
+      latestOpen!.period_end_date = '2025-07-12';
 
-      expect(entries.find((e) => e.id === 'e2').period_end_date).toBeNull();
-      expect(entries.find((e) => e.id === 'e3').period_end_date).toBe('2025-07-12');
+      expect(entries.find((e) => e.id === 'e2')!.period_end_date).toBeNull();
+      expect(entries.find((e) => e.id === 'e3')!.period_end_date).toBe('2025-07-12');
     });
   });
 });

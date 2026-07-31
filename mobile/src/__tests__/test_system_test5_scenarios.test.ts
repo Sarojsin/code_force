@@ -172,7 +172,7 @@ describe('Scenario 16: Sync 500 error — retry increments, no discard', () => {
       config: { headers: {} },
     });
 
-    const id = await enqueueOp(result);
+    await enqueueOp(result);
     expect(result.current.operations[0].retryCount).toBe(0);
 
     await act(async () => { await pushOperations(result.current.operations); });
@@ -201,7 +201,7 @@ describe('Scenario 16: Sync 500 error — retry increments, no discard', () => {
       config: { headers: {} },
     });
 
-    const id = await enqueueOp(result);
+    await enqueueOp(result);
     expect(result.current.size()).toBe(1);
 
     // Simulate 5 retries via the store's getPendingOperations + pushOperations flow

@@ -12,7 +12,9 @@
       "bundleIdentifier": "com.shecare.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "SheCare uses the microphone for voice journal entries.",
-        "NSPhotoLibraryUsageDescription": "SheCare accesses your photos for profile avatars."
+        "NSPhotoLibraryUsageDescription": "SheCare accesses your photos for profile avatars.",
+        "NSCameraUsageDescription": "SheCare needs camera access to add photos and videos to your memory diary.",
+        "NSPhotoLibraryAddUsageDescription": "SheCare saves edited photos to your library."
       }
     },
     "android": {
@@ -24,7 +26,10 @@
         "RECORD_AUDIO",
         "ACCESS_FINE_LOCATION",
         "VIBRATE",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE"
       ]
     },
     "plugins": [
@@ -48,7 +53,14 @@
         }
       ],
       "expo-image",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SheCare needs access to your photos for memory diary images.",
+          "cameraPermission": "SheCare needs camera access to capture photos and videos for your memory diary."
+        }
+      ]
     ],
     "doctor": {
       "reactNativeDirectoryCheck": {
