@@ -1,7 +1,7 @@
 import { getDb } from '../../db/connection';
 import { journalEntries } from '../../db/schema';
 import type { JournalEntry } from '../../db/schema';
-import { eq, desc, and, inArray, sql } from 'drizzle-orm';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { BaseLocalService } from './BaseLocalService';
 import { eventBus } from '../eventBus';
 

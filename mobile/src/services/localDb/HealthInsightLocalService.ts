@@ -1,7 +1,7 @@
 import { getDb } from '../../db/connection';
 import { healthInsights } from '../../db/schema';
 import type { HealthInsight } from '../../db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, and } from 'drizzle-orm';
 import { BaseLocalService } from './BaseLocalService';
 
 export class HealthInsightLocalService extends BaseLocalService<HealthInsight> {
@@ -30,8 +30,10 @@ export class HealthInsightLocalService extends BaseLocalService<HealthInsight> {
         .select()
         .from(healthInsights)
         .where(
-          eq(healthInsights.user_id, userId),
-          sql`${healthInsights.recommendation} LIKE ${'%' + category + '%'}`
+          and(
+            eq(healthInsights.user_id, userId),
+            sql`${healthInsights.recommendation} LIKE ${'%' + category + '%'}`
+          )
         )) as HealthInsight[];
     } catch (error) {
       this.handleError('getByCategory', error);

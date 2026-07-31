@@ -8,6 +8,7 @@ import { useAuthStore } from 'src/stores/authStore';
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { useSyncMetricsStore } from 'src/stores/syncMetricsStore';
 import { hydrateFromServerData, hydrateChangeItems } from './syncHydrate';
+import type { SyncChangeItem } from './types';
 
 import type { PendingOperation, SyncBatchResponse, SyncChangesResponse } from './types';
 
@@ -177,8 +178,11 @@ export async function pullServerData(): Promise<string | null> {
       // Hydrate SQLite with pulled changes
       hydrateChangeItems(changes);
 
-      if (_queryClient) {
-        _queryClient.invalidateQueries();
+      if (_queryClient && changes.length > 0) {
+        const invalidatedTypes = new Set(changes.map((c: SyncChangeItem) => c.entity_type));
+        for (const type of invalidatedTypes) {
+          _queryClient.invalidateQueries({ queryKey: [type] });
+        }
       }
     }
 

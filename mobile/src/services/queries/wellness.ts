@@ -23,7 +23,7 @@ export function useJournalEntries(params?: { page?: number; per_page?: number })
   return useQuery({
     queryKey: [...wellnessKeys.journal, params],
     queryFn: () => wellnessService.getJournalEntries(params?.per_page, params?.page),
-    staleTime: 0,
+    staleTime: 10 * 60 * 1000,
     retry: false,
   });
 }
@@ -66,7 +66,7 @@ export function useMoodLogs(params?: { page?: number; per_page?: number }) {
   return useQuery({
     queryKey: [...wellnessKeys.moodLogs, params],
     queryFn: () => wellnessService.getMoodLogs(params?.per_page),
-    staleTime: 0,
+    staleTime: 10 * 60 * 1000,
     retry: false,
   });
 }
@@ -146,7 +146,7 @@ export function useInsights() {
   return useQuery({
     queryKey: wellnessKeys.insights,
     queryFn: () => wellnessService.getInsights(),
-    staleTime: 0,
+    staleTime: 30 * 60 * 1000,
     retry: false,
   });
 }

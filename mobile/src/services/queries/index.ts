@@ -8,3 +8,4 @@ export * from './nurse_content';
 export * from './chat';
 export * from './admin';
 export * from './voice';
+export * from './diary';

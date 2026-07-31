@@ -23,7 +23,7 @@ export function useCycleEntries(params?: { limit?: number; offset?: number; mont
   return useQuery({
     queryKey: [...cycleKeys.entries, params],
     queryFn: () => cycleService.getEntries(params),
-    staleTime: 0,
+    staleTime: 10 * 60 * 1000,
     retry: false,
   });
 }
@@ -108,7 +108,7 @@ export function useCyclePredictions() {
   return useQuery({
     queryKey: cycleKeys.predictions,
     queryFn: () => cycleService.getPredictions(),
-    staleTime: 0,
+    staleTime: 10 * 60 * 1000,
     retry: false,
   });
 }
@@ -117,6 +117,7 @@ export function usePredictionHistory(limit = 12) {
   return useQuery({
     queryKey: [...cycleKeys.predictionHistory, limit],
     queryFn: () => cycleService.getPredictionHistory(limit),
+    staleTime: 10 * 60 * 1000,
   });
 }
 
@@ -124,7 +125,7 @@ export function useCycleCalendar(monthsBack = 3, monthsForward = 3) {
   return useQuery({
     queryKey: [...cycleKeys.calendar, monthsBack, monthsForward],
     queryFn: () => cycleService.getCalendar(monthsBack, monthsForward),
-    staleTime: 0,
+    staleTime: 10 * 60 * 1000,
     retry: false,
   });
 }
@@ -133,6 +134,7 @@ export function useCycleAnalytics() {
   return useQuery({
     queryKey: cycleKeys.analytics,
     queryFn: () => cycleService.getAnalytics(),
+    staleTime: 10 * 60 * 1000,
   });
 }
 
