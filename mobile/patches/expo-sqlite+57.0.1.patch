@@ -1,0 +1,33 @@
+diff --git a/node_modules/expo-sqlite/android/CMakeLists.txt b/node_modules/expo-sqlite/android/CMakeLists.txt
+index c15cf92..bba00cd 100644
+--- a/node_modules/expo-sqlite/android/CMakeLists.txt
++++ b/node_modules/expo-sqlite/android/CMakeLists.txt
+@@ -65,4 +65,5 @@ target_link_libraries(
+   ${LIBSQL_LIB}
+   fbjni::fbjni
+   android
++  c++_shared
+ )
+diff --git a/node_modules/expo-sqlite/android/src/main/cpp/NativeDatabaseBinding.cpp b/node_modules/expo-sqlite/android/src/main/cpp/NativeDatabaseBinding.cpp
+index fe13df8..0953b7b 100644
+--- a/node_modules/expo-sqlite/android/src/main/cpp/NativeDatabaseBinding.cpp
++++ b/node_modules/expo-sqlite/android/src/main/cpp/NativeDatabaseBinding.cpp
+@@ -120,8 +120,16 @@ int NativeDatabaseBinding::sqlite3_prepare_v2(
+     const std::string &source,
+     jni::alias_ref<NativeStatementBinding::javaobject> statement) {
+   NativeStatementBinding *cStatement = cthis(statement);
+-  return ::exsqlite3_prepare_v2(db, source.c_str(), source.size(),
+-                                &cStatement->stmt, nullptr);
++  cStatement->stmt = nullptr;
++  int ret = ::exsqlite3_prepare_v2(db, source.c_str(), source.size(),
++                                   &cStatement->stmt, nullptr);
++  if (ret == SQLITE_OK && cStatement->stmt == nullptr) {
++    std::string error(
++        "SQLite prepared a NULL statement from source that contains no SQL "
++        "(e.g. a comment-only statement). Refusing to continue.");
++    jni::throwNewJavaException(SQLiteErrorException::create(error).get());
++  }
++  return ret;
+ }
+ 
+ jni::local_ref<jni::JArrayByte>

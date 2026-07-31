@@ -47,8 +47,6 @@ export function pruneLocalDb(): void {
       logger.info('prune.predictions', { removed: trimmedPredictions.changes });
     }
 
-    db.runSync('VACUUM');
-
     logger.info('prune.complete');
   } catch (error) {
     logger.warn('prune.failed', error);

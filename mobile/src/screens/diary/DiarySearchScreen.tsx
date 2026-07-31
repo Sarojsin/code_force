@@ -1,24 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDiarySearch } from '../../services/queries/diary';
 import { diaryLocal } from '../../services/localDb';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 export function DiarySearchScreen({ navigation }: any) {
   const { top } = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [localResults, setLocalResults] = useState<any[]>([]);
-  const { data: serverResults } = useDiarySearch({ q: query });
+  const debouncedQuery = useDebouncedValue(query, 250);
+  const { data: serverResults } = useDiarySearch({ q: debouncedQuery });
 
-  const handleSearch = async (text: string) => {
-    setQuery(text);
-    if (text.length > 0) {
-      const results = await diaryLocal.search.search(text);
-      setLocalResults(results);
-    } else {
+  useEffect(() => {
+    let cancelled = false;
+    if (debouncedQuery.length === 0) {
       setLocalResults([]);
+      return;
     }
-  };
+    diaryLocal.search.search(debouncedQuery).then((results) => {
+      if (!cancelled) setLocalResults(results);
+    });
+    return () => { cancelled = true; };
+  }, [debouncedQuery]);
 
   const results = localResults.length > 0 ? localResults : serverResults;
 
@@ -33,7 +37,7 @@ export function DiarySearchScreen({ navigation }: any) {
           placeholder="🔍 Search sunset, birthday, mom..."
           placeholderTextColor="#88726f"
           value={query}
-          onChangeText={handleSearch}
+          onChangeText={setQuery}
           autoFocus
         />
       </View>

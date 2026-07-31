@@ -4,7 +4,7 @@ import { api } from 'src/services/api/client';
 import { logger } from 'src/utils';
 import { pullServerData } from './syncEngine';
 
-const TASK_NAME = 'shecare-background-sync';
+const TASK_NAME = 'shecare-background-housekeeping';
 
 const MINIMUM_FETCH_INTERVAL_SECONDS = 15 * 24 * 60 * 60; // 1,296,000 s = 15 days
 

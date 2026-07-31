@@ -8,6 +8,7 @@ import { useAuthStore } from 'src/stores/authStore';
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { useSyncMetricsStore } from 'src/stores/syncMetricsStore';
 import { hydrateFromServerData, hydrateChangeItems } from './syncHydrate';
+import { requestIdleIdle } from 'src/utils/idle';
 import type { SyncChangeItem } from './types';
 
 import type { PendingOperation, SyncBatchResponse, SyncChangesResponse } from './types';
@@ -78,14 +79,16 @@ export async function pushOperations(ops: PendingOperation[]): Promise<void> {
         succeeded.push(op.tempId || op.id);
         // Hydrate SQLite with server response
         if (result.server_data) {
-          hydrateFromServerData(op.type, result.server_data);
+          const serverData = result.server_data;
+          requestIdleIdle(() => { hydrateFromServerData(op.type, serverData); });
         }
       } else if (result.status === 'conflict') {
         logger.warn('sync.conflict', { entity_id: result.entity_id });
         succeeded.push(op.tempId || op.id);
         if (result.server_data && result.entity_id) {
           // Hydrate SQLite with server's version (truth)
-          hydrateFromServerData(op.type, result.server_data);
+          const serverData = result.server_data;
+          requestIdleIdle(() => { hydrateFromServerData(op.type, serverData); });
         }
         if (result.server_data && result.entity_id && _queryClient) {
           const { inferQueryKey, inferBaseQueryKey } = require('./queryKeyMapper');
@@ -176,7 +179,7 @@ export async function pullServerData(): Promise<string | null> {
       await EncryptedStorage.setItem('shecare.sync.lastPull', latestChange);
 
       // Hydrate SQLite with pulled changes
-      hydrateChangeItems(changes);
+      requestIdleIdle(() => { hydrateChangeItems(changes); });
 
       if (_queryClient && changes.length > 0) {
         const invalidatedTypes = new Set(changes.map((c: SyncChangeItem) => c.entity_type));

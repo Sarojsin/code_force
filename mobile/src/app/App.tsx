@@ -36,6 +36,7 @@ import { logger } from 'src/utils';
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { navigate } from 'src/navigation/rootNavigation';
 import { syncAll, setQueryClient } from 'src/services/sync';
+import { registerDbMaintenance } from 'src/services/sync/dbMaintenance';
 import { initSyncBreadcrumbs } from 'src/services/sync/sentrySyncBreadcrumbs';
 import { initSafetyQueueListener } from 'src/services/safetySyncQueue';
 import { pruneLocalDb } from 'src/services/localDb/pruneLocalDb';
@@ -132,6 +133,7 @@ export default function App() {
       stopOnTerminate: false,
       startOnBoot: true,
     }).catch((err) => logger.warn('background_fetch.register_failed', err));
+    registerDbMaintenance();
   }, []);
 
   useEffect(() => {

@@ -1,7 +1,10 @@
 import { localDb } from '../localDb';
 import { logger } from '../../utils';
+import { idle } from '../../utils/idle';
 import { useSyncMetricsStore } from '../../stores/syncMetricsStore';
 import type { SyncChangeItem } from './types';
+
+const HYDRATE_BATCH_SIZE = 25;
 
 const TYPE_TO_DB_METHOD: Record<string, keyof typeof localDb> = {
   'cycle/create': 'cycle',
@@ -84,7 +87,13 @@ export async function hydrateChangeItem(change: SyncChangeItem): Promise<void> {
 }
 
 export async function hydrateChangeItems(changes: SyncChangeItem[]): Promise<void> {
-  for (const change of changes) {
-    await hydrateChangeItem(change);
+  for (let i = 0; i < changes.length; i += HYDRATE_BATCH_SIZE) {
+    const batch = changes.slice(i, i + HYDRATE_BATCH_SIZE);
+    for (const change of batch) {
+      await hydrateChangeItem(change);
+    }
+    if (i + HYDRATE_BATCH_SIZE < changes.length) {
+      await idle();
+    }
   }
 }
