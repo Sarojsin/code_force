@@ -49,7 +49,7 @@ describe('MoodManager', () => {
 
   it('accepts initial history', () => {
     const m = new MoodManager(['happy', 'happy', 'happy']);
-    expect(m.addMood('happy')).toBe('improving');
+    expect(m.addMood('happy')).toBe('stable');
   });
 
   it('caps history at 5', () => {

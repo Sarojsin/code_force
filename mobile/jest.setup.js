@@ -30,12 +30,40 @@ jest.mock('expo-modules-core', () => {
   };
 });
 
-jest.mock('expo-sqlite', () => ({
-  openDatabaseSync: jest.fn(() => ({
-    runSync: jest.fn(),
-    getAllSync: jest.fn(() => []),
-    getFirstSync: jest.fn(() => null),
-    execSync: jest.fn(),
-    closeAsync: jest.fn(),
-  })),
-}));
+jest.mock('expo-sqlite', () => {
+  const Database = require('better-sqlite3');
+  const dbs = new Map();
+  return {
+    openDatabaseSync: jest.fn((name: string) => {
+      if (dbs.has(name)) return dbs.get(name);
+      const sqlite = new Database(':memory:');
+      const client = {
+        prepareSync: (sql: string) => {
+          const stmt = sqlite.prepare(sql);
+          return {
+            executeSync: (params: any[]) => {
+              const runResult = stmt.run(...(params ?? []));
+              return {
+                changes: runResult.changes,
+                lastInsertRowId: Number(runResult.lastInsertRowid ?? 0),
+                runSync: () => runResult,
+                getAllSync: () => stmt.raw().all(...(params ?? [])),
+                getFirstSync: () => stmt.raw().get(...(params ?? [])) ?? null,
+              };
+            },
+            executeForRawResultSync: (params: any[]) => ({
+              getAllSync: () => stmt.raw().all(...(params ?? [])),
+            }),
+          };
+        },
+        execSync: (sql: string) => sqlite.exec(sql),
+        runSync: (sql: string, params?: any[]) => sqlite.prepare(sql).run(...(params ?? [])),
+        getAllSync: (sql: string, params?: any[]) => sqlite.prepare(sql).all(...(params ?? [])),
+        getFirstSync: (sql: string, params?: any[]) => sqlite.prepare(sql).get(...(params ?? [])) ?? null,
+        closeAsync: () => sqlite.close(),
+      };
+      dbs.set(name, client);
+      return client;
+    }),
+  };
+});

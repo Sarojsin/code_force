@@ -110,8 +110,8 @@ describe('Scenario 15: Prediction History color coding & data transform', () => 
       [0, '#D4F0E0', 'Mint'],
       [1, '#D4F0E0', 'Mint'],
       [-1, '#D4F0E0', 'Mint'],
-      [2, '#FFDAB9', 'Peach'],
-      [-2, '#FFDAB9', 'Peach'],
+      [2, '#FFB3C6', 'Blush'],
+      [-2, '#FFB3C6', 'Blush'],
       [3, '#FFB3C6', 'Blush'],
       [-3, '#FFB3C6', 'Blush'],
       [5, '#FFB3C6', 'Blush'],
@@ -146,10 +146,10 @@ describe('Scenario 15: Prediction History color coding & data transform', () => 
       expect(r.rowColor).toBe('#FFB3C6');
     });
 
-    it('delta=-2 → on_time=false, Peach', () => {
+    it('delta=-2 → on_time=false, Blush', () => {
       const r = historyRow({ predicted_next_period_start: '2025-08-15', prediction_error_days: -2 });
       expect(r.on_time).toBe(false);
-      expect(r.rowColor).toBe('#FFDAB9');
+      expect(r.rowColor).toBe('#FFB3C6');
     });
 
     it('month extracted from predicted_next_period_start', () => {

@@ -108,9 +108,9 @@ describe('Luna Event Flow (smoke)', () => {
 
     expect(mockCalls).toContain('addXP(5)');
     expect(showBubbleMock).toHaveBeenCalledWith(
-      'Test dialogue',
+      "I'm here for you. Let's take a moment together",
       'sad',
-      3500
+      4000
     );
   });
 

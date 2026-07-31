@@ -109,6 +109,7 @@ const mockDrizzle = {
   delete: jest.fn(() => ({
     where: jest.fn(() => Promise.resolve()),
   })),
+  transaction: jest.fn(async (cb: any) => cb(mockDrizzle)),
 } as Record<string, jest.Mock<any, any[]>>;
 
 jest.mock('drizzle-orm', () => ({

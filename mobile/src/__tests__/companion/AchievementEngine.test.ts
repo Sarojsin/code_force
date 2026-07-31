@@ -11,16 +11,15 @@ jest.mock('../../services/localDb', () => ({
 }));
 
 const mockMemory: Record<string, any> = { achievements: [] };
-const mockStore = {
-  getState: () => ({
-    userId: 'test-user',
-    memory: mockMemory,
-    updateMemory: jest.fn(),
-  }),
-};
 
 jest.mock('../../stores/companionStore', () => ({
-  useCompanionStore: mockStore,
+  useCompanionStore: {
+    getState: () => ({
+      userId: 'test-user',
+      memory: mockMemory,
+      updateMemory: jest.fn(),
+    }),
+  },
 }));
 
 import { achievementEngine, ACHIEVEMENTS } from '../../services/companion/AchievementEngine';

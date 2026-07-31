@@ -1,5 +1,7 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import path from 'path';
 import * as schema from '../db/schema';
 import { localDb } from '../services/localDb';
 import { hydrateFromServerData, hydrateChangeItems } from '../services/sync/syncHydrate';
@@ -42,73 +44,9 @@ function createTestDb() {
   const sqlite = new Database(':memory:');
   const db = drizzle(sqlite, { schema });
 
-  sqlite.exec(`
-    CREATE TABLE IF NOT EXISTS cycle_entries (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, period_start_date TEXT NOT NULL,
-      period_end_date TEXT, flow_intensity TEXT, symptoms TEXT DEFAULT '[]',
-      mood_tags TEXT DEFAULT '[]', energy_level INTEGER, notes TEXT,
-      is_correction INTEGER DEFAULT 0, corrected_prediction_id TEXT,
-      created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
-      is_active INTEGER DEFAULT 1, deleted_at TEXT, synced_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS journal_entries (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, title TEXT, content TEXT NOT NULL,
-      mood TEXT, sentiment_score INTEGER, sentiment_label TEXT,
-      entry_date TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
-      is_active INTEGER DEFAULT 1, deleted_at TEXT, synced_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS mood_logs (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, mood TEXT NOT NULL,
-      intensity INTEGER NOT NULL, notes TEXT, logged_at TEXT NOT NULL,
-      is_active INTEGER DEFAULT 1, deleted_at TEXT, synced_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS emergency_contacts (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL,
-      phone_number TEXT NOT NULL, relationship TEXT, is_primary INTEGER DEFAULT 0,
-      contact_user_id TEXT, contact_user_id_linked_at TEXT,
-      is_active INTEGER DEFAULT 1, deleted_at TEXT, synced_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS sos_alerts (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, triggered_at TEXT,
-      latitude INTEGER NOT NULL, longitude INTEGER NOT NULL,
-      location_accuracy_m INTEGER, sms_status TEXT NOT NULL,
-      cancelled_at TEXT, resolved_at TEXT, false_alarm INTEGER DEFAULT 0,
-      manual_intervention_needed INTEGER DEFAULT 0, trigger_source TEXT,
-      is_active INTEGER DEFAULT 1, deleted_at TEXT, synced_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS family_links (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, linked_user_id TEXT,
-      status TEXT NOT NULL, permissions TEXT DEFAULT '[]',
-      created_at TEXT NOT NULL, is_active INTEGER DEFAULT 1,
-      deleted_at TEXT, synced_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS pregnancy_profiles (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, due_date TEXT,
-      weeks_pregnant INTEGER NOT NULL, trimester INTEGER NOT NULL,
-      baby_name TEXT, blood_type TEXT, allergies TEXT,
-      created_at TEXT NOT NULL, updated_at TEXT NOT NULL, synced_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS pregnancy_milestones (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, week INTEGER NOT NULL,
-      title TEXT NOT NULL, description TEXT NOT NULL, category TEXT NOT NULL,
-      is_completed INTEGER DEFAULT 0, completed_at TEXT, synced_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS health_insights (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
-      total_journal_entries INTEGER DEFAULT 0, total_mood_logs INTEGER DEFAULT 0,
-      average_mood_intensity INTEGER, most_common_mood TEXT, recommendation TEXT,
-      synced_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS feature_flags (
-      key TEXT PRIMARY KEY, value INTEGER DEFAULT 0, synced_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS sync_log (
-      id TEXT PRIMARY KEY, started_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS predictions (
-      id TEXT PRIMARY KEY, synced_at TEXT NOT NULL
-    );
-  `);
+  migrate(db, {
+    migrationsFolder: path.join(process.cwd(), 'src/db/migrations'),
+  });
 
   return { sqlite, db };
 }

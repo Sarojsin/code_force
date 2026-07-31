@@ -1,4 +1,4 @@
-jest.mock('../../api/client', () => ({
+jest.mock('../../services/api/client', () => ({
   api: {
     get: jest.fn().mockRejectedValue(new Error('Network error')),
   },

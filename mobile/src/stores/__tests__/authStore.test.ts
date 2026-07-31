@@ -37,9 +37,12 @@ const mockAuthService =
   jest.requireMock('src/services/api').authService;
 const mockTokenStore =
   jest.requireMock('src/services/api').tokenStore;
+const mockStorage =
+  jest.requireMock('src/services/storage').EncryptedStorage;
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks();
+  await mockStorage.clear();
 });
 
 it('starts with no user and not hydrated', () => {
