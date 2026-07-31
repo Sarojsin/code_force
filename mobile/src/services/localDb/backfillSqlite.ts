@@ -1,7 +1,6 @@
 import { queryClient } from '../../app/providers';
 import { localDb } from './index';
 import { logger } from '../../utils';
-import * as Sentry from '@sentry/react-native';
 
 const BACKFILLED_KEY = 'shecare.sqlite.backfilled';
 

@@ -10,3 +10,4 @@ export * from './chat';
 export * from './admin';
 export * from './voice';
 export * from './onboarding';
+export * from './diary';

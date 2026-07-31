@@ -21,6 +21,9 @@ type EventMap = {
   luna_installed: { userId: string };
   luna_uninstalled: { userId: string };
 
+  diary_assets_installed: { userId: string; version: string };
+  diary_assets_uninstalled: { userId: string };
+
   app_foregrounded: {};
   app_backgrounded: {};
   onboarding_completed: { userId: string };

@@ -93,22 +93,23 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 // Helper to trigger auto-logout, imported lazily to avoid circular deps
-function triggerSessionExpired(detail: string): void {
-  // Dynamically import stores to avoid circular dependency
-  const { useAuthStore } = require('src/stores/authStore');
+async function triggerSessionExpired(detail: string): Promise<void> {
+  const { useAuthStore } = await import('src/stores/authStore');
   useAuthStore.getState().reset();
 
   // Navigate to Auth screen
   try {
-    const { navigationRef } = require('src/navigation/rootNavigation');
-    navigationRef.navigate('Auth');
+    const { navigationRef } = await import('src/navigation/rootNavigation');
+    if (navigationRef.isReady()) {
+      navigationRef.navigate('Auth', { screen: 'Login' });
+    }
   } catch {
     // Navigation not ready yet — suppress
   }
 
   // Show toast
   try {
-    const Toast = require('react-native-toast-message').default;
+    const Toast = (await import('react-native-toast-message')).default;
     Toast.show({
       type: 'error',
       text1: 'Session Expired',

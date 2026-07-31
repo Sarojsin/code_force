@@ -28,15 +28,19 @@ export abstract class BaseLocalService<T extends { id: string }> {
     if (records.length === 0) return;
     try {
       const db = getDb();
-      for (const record of records) {
-        await db
-          .insert(this.table)
-          .values({ ...record, synced_at: new Date().toISOString() })
-          .onConflictDoUpdate({
-            target: this.table.id,
-            set: { ...record, synced_at: new Date().toISOString() },
-          });
-      }
+      const syncedAt = new Date().toISOString();
+      const target = this.idColumn ?? this.table.id;
+      await db.transaction(async (tx) => {
+        for (const record of records) {
+          await tx
+            .insert(this.table)
+            .values({ ...record, synced_at: syncedAt })
+            .onConflictDoUpdate({
+              target,
+              set: { ...record, synced_at: syncedAt },
+            });
+        }
+      });
     } catch (error) {
       this.handleError('upsertMany', error);
     }
@@ -108,6 +112,11 @@ export abstract class BaseLocalService<T extends { id: string }> {
   }
 
   protected handleError(method: string, error: unknown): void {
+    const msg = error instanceof Error ? error.message : '';
+    if (msg.includes('no such table')) {
+      logger.warn(`${this.tableName} table not yet migrated — suppress error`);
+      return;
+    }
     logger.error(`${this.tableName}.${method} failed`, error);
     Sentry.captureException(error, {
       tags: { service: 'BaseLocalService', method, table: this.tableName },
