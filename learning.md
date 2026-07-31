@@ -547,3 +547,30 @@ The implementation has 4 critical bugs that will cause observable production inc
 2. **Lost corrections** — two rapid corrections to the same prediction silently overwrite the linkage, corrupting the correction audit trail.
 3. **Silent notification failures** — on worker crash, the Redis lock prevents all recovery, so every user whose P-3 falls on that day receives zero notifications.
 4. **Incorrect ML metrics** — concurrent corrections create a lost-update race that skews `total_cycles_logged` and `avg_prediction_error_days`, degrading prediction quality silently.
+
+
+start.ps1 is for the dev workflow — it writes the WiFi IP to .env, starts the backend (port 8000), then runs npx expo start --dev-client (Metro). It is not needed for what's on your device right now.
+
+Two paths:
+
+To test the release build already installed (recommended for checking lag):
+
+Just open the app: tap the SheCare icon, or adb shell am start -n com.shecare.app/.MainActivity
+No Metro, no start.ps1 needed. (It runs standalone with the embedded bundle.)
+Note: data screens hit the API at .env's URL — if the backend isn't running, they'll show cache/error states. You can start only the backend with cd E:\her_care\backend; .\.venv\Scripts\Activate.ps1; uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload.
+To go back to the dev workflow (start.ps1):
+
+start.ps1 starts backend + Metro, but the installed app is now the release build — a release dev-client embeds its bundle and ignores Metro. You'd first reinstall the debug build: npx expo run:android (or --variant debug), then run start.ps1.
+Why it opens without expo run:android: npx expo run:android only does the build + install — it compiles the app and puts the APK on your phone. Once installed, it's just a normal Android app: you tap the icon and it launches. The release APK already embeds the JavaScript bundle inside it, so there's no server to connect to.
+
+Why it's fast: Dev mode was the bottleneck. In dev (npx expo start), every render runs:
+
+JS over Metro with dev-server round-trips and hot-reload checks
+Unminified code + dev-only warnings/overhead
+Debug-mode Hermes (no bytecode optimizations)
+A release build gets:
+
+Hermes precompiled bytecode AOT (much faster JS execution)
+Minified/bundled JS, no Metro, no debugger checks
+Optimized native builds (no debug symbols/dev flags)
+So the lag you felt before was mostly dev-mode overhead, not your code. The app itself was fine.
