@@ -8,16 +8,27 @@ export abstract class BaseLocalService<T extends { id: string }> {
   protected abstract tableName: string;
   protected idColumn: any = null;
 
+  private normalize(record: T): T {
+    const now = new Date().toISOString();
+    return {
+      ...record,
+      created_at: (record as any).created_at ?? now,
+      updated_at: (record as any).updated_at ?? now,
+      synced_at: now,
+    };
+  }
+
   async upsert(record: T): Promise<void> {
     try {
       const db = getDb();
       const target = this.idColumn ?? this.table.id;
+      const values = this.normalize(record);
       await db
         .insert(this.table)
-        .values({ ...record, synced_at: new Date().toISOString() })
+        .values(values)
         .onConflictDoUpdate({
           target,
-          set: { ...record, synced_at: new Date().toISOString() },
+          set: values,
         });
     } catch (error) {
       this.handleError('upsert', error);
@@ -28,16 +39,16 @@ export abstract class BaseLocalService<T extends { id: string }> {
     if (records.length === 0) return;
     try {
       const db = getDb();
-      const syncedAt = new Date().toISOString();
       const target = this.idColumn ?? this.table.id;
       await db.transaction(async (tx) => {
         for (const record of records) {
+          const values = this.normalize(record);
           await tx
             .insert(this.table)
-            .values({ ...record, synced_at: syncedAt })
+            .values(values)
             .onConflictDoUpdate({
               target,
-              set: { ...record, synced_at: syncedAt },
+              set: values,
             });
         }
       });
