@@ -17,6 +17,8 @@ import { useCompanionStore } from '../../stores/companionStore';
 import { usePregnancyModeStore } from '../../stores/pregnancyModeStore';
 import { useAchievementStore } from '../../stores/achievementStore';
 import { AchievementPopup } from '../../components/ui/AchievementPopup';
+import { CheckInCard } from '../../components/home/CheckInCard';
+import { CatchUpCard } from '../../components/home/CatchUpCard';
 import { eventBus } from '../../services/eventBus';
 
 type Nav = any;
@@ -143,7 +145,7 @@ export function HomeDashboardScreen() {
     return () => sub.remove();
   }, []);
 
-  const staggerItems = [50, 100, 150, 200, 250, 300, 350, 400];
+  const staggerItems = [50, 100, 150, 200, 250, 300, 350, 400, 450];
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
@@ -290,6 +292,10 @@ export function HomeDashboardScreen() {
             </View>
 
             <AnimatedSection delay={staggerItems[2]}>
+              <CheckInCard calData={calData} />
+            </AnimatedSection>
+
+            <AnimatedSection delay={staggerItems[3]}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.phaseTimeline}>
                 {['Menstrual', 'Follicular', 'Ovulation', 'Luteal'].map((p) => {
                   const active = p === phaseName;
@@ -315,7 +321,11 @@ export function HomeDashboardScreen() {
               </ScrollView>
             </AnimatedSection>
 
-            <AnimatedSection delay={staggerItems[3]}>
+            <AnimatedSection delay={staggerItems[4]}>
+              <CatchUpCard />
+            </AnimatedSection>
+
+            <AnimatedSection delay={staggerItems[5]}>
               <Pressable
                 onPress={() => navigation.navigate('CyclePredictions')}
                 style={[styles.aiCard, { borderRadius: 20 }]}
@@ -347,7 +357,7 @@ export function HomeDashboardScreen() {
             </AnimatedSection>
 
             <View style={styles.bentoRow}>
-              <AnimatedSection delay={staggerItems[4]} style={{ flex: 1, marginRight: 6 }}>
+              <AnimatedSection delay={staggerItems[6]} style={{ flex: 1, marginRight: 6 }}>
                 <Pressable
                   onPress={() => navigation.navigate('JournalEntry', { id: 'new' })}
                   style={[styles.bentoCard, { backgroundColor: '#fff', borderRadius: 20 }]}
@@ -360,7 +370,7 @@ export function HomeDashboardScreen() {
                   <Text variant="caption" color="muted">Quick thoughts in seconds</Text>
                 </Pressable>
               </AnimatedSection>
-              <AnimatedSection delay={staggerItems[4]} style={{ flex: 1, marginLeft: 6 }}>
+              <AnimatedSection delay={staggerItems[6]} style={{ flex: 1, marginLeft: 6 }}>
                 <Pressable
                   onPress={() => {
                     if (diaryAssetStatus === 'ready') {
@@ -393,7 +403,7 @@ export function HomeDashboardScreen() {
               </AnimatedSection>
             </View>
 
-            <AnimatedSection delay={staggerItems[5]}>
+            <AnimatedSection delay={staggerItems[7]}>
               <View style={[styles.analyticsCard, { backgroundColor: '#fff', borderRadius: 20 }]}>
                 <Text variant="h3" style={{ marginBottom: 12 }}>Cycle Analytics</Text>
                 <View style={styles.barChart}>
@@ -415,7 +425,7 @@ export function HomeDashboardScreen() {
               </View>
             </AnimatedSection>
 
-            <AnimatedSection delay={staggerItems[6]}>
+            <AnimatedSection delay={staggerItems[8]}>
               <Text variant="h3" style={{ marginBottom: 12 }}>Wellness Videos</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {[

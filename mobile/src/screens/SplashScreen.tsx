@@ -6,7 +6,7 @@
 
 import React, { useEffect } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing, SharedValue } from 'react-native-reanimated';
 import Svg, { Path, Circle as SvgCircle, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 
 import { Text } from 'src/components/ui';
@@ -14,6 +14,11 @@ import { Text } from 'src/components/ui';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const LOGO_SIZE = Math.min(SCREEN_WIDTH * 0.5, 200);
 const PADDING_X = (SCREEN_WIDTH - LOGO_SIZE) / 2;
+
+function LoadingDot({ dot }: { dot: SharedValue<number> }) {
+  const dotStyle = useAnimatedStyle(() => ({ opacity: dot.value }));
+  return <Animated.View style={[styles.dot, dotStyle]} />;
+}
 
 export function SplashScreen({ onFinish }: { onFinish: () => void }) {
   // Aurora background animation
@@ -131,12 +136,9 @@ export function SplashScreen({ onFinish }: { onFinish: () => void }) {
 
       {/* Loading dots */}
       <View style={styles.dotsContainer}>
-        {dots.map((dot, i) => {
-          const dotStyle = useAnimatedStyle(() => ({ opacity: dot.value }));
-          return (
-            <Animated.View key={i} style={[styles.dot, dotStyle]} />
-          );
-        })}
+        {dots.map((dot, i) => (
+          <LoadingDot key={i} dot={dot} />
+        ))}
       </View>
     </View>
   );
