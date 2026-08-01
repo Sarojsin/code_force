@@ -6,7 +6,7 @@ import { useOfflineStore } from 'src/stores/offlineStore';
 import { useEndDateStore } from 'src/stores/endDateStore';
 import { isNetworkError } from 'src/services/sync';
 import { scheduleEndDateNotification } from 'src/services/endDateNotifications';
-import { calculateCyclePhases, applyPhaseToDays } from 'src/utils';
+import { calculateCyclePhases, applyPhaseToDays, toLocalDateStr, parseISODateLocal } from 'src/utils';
 import { generateId } from 'src/utils';
 
 import { upsertCycleEntry, upsertSnoozeEvent } from 'src/services/localDb/writeThroughHelpers';
@@ -122,7 +122,8 @@ export function usePredictionHistory(limit = 12) {
 export function useCycleCalendar(monthsBack = 3, monthsForward = 3) {
   return useQuery({
     queryKey: [...cycleKeys.calendar, monthsBack, monthsForward],
-    queryFn: () => cycleService.getCalendar(monthsBack, monthsForward),
+    queryFn: () =>
+      cycleService.getCalendar(monthsBack, monthsForward, toLocalDateStr(new Date())),
     staleTime: 10 * 60 * 1000,
     retry: false,
   });
@@ -163,23 +164,23 @@ export function useLogCorrection() {
         // Estimate period length from cached prediction, or fall back to 5
         const cachedAvgLen = (() => {
           if (old.predictions?.predicted_period_end && old.predictions?.predicted_next_period_start) {
-            const s = new Date(old.predictions.predicted_next_period_start + 'T00:00:00');
-            const e = new Date(old.predictions.predicted_period_end + 'T00:00:00');
+            const s = parseISODateLocal(old.predictions.predicted_next_period_start);
+            const e = parseISODateLocal(old.predictions.predicted_period_end);
             const est = Math.round((e.getTime() - s.getTime()) / 86400000) + 1;
             if (est >= 1 && est <= 14) return est;
           }
           return 5;
         })();
 
-        const periodStart = new Date(variables.period_start_date + 'T00:00:00');
+        const periodStart = parseISODateLocal(variables.period_start_date);
         const periodEnd = variables.period_end_date
-          ? new Date(variables.period_end_date + 'T00:00:00')
+          ? parseISODateLocal(variables.period_end_date)
           : new Date(periodStart.getTime() + cachedAvgLen * 86400000);
         const periodLength = Math.round((periodEnd.getTime() - periodStart.getTime()) / 86400000) + 1;
 
         let cycleLength = 28;
         if (old.predictions?.predicted_next_period_start) {
-          const predStart = new Date(old.predictions.predicted_next_period_start + 'T00:00:00');
+          const predStart = parseISODateLocal(old.predictions.predicted_next_period_start);
           const diff = Math.round((predStart.getTime() - periodStart.getTime()) / 86400000);
           if (diff > 0 && diff < 60) {
             cycleLength = diff;
@@ -189,7 +190,7 @@ export function useLogCorrection() {
         // 1. Cancel old predicted period days near the correction date → c
         for (const [key, code] of Object.entries(days)) {
           if (code === 'p') {
-            const dayDate = new Date(key + 'T00:00:00');
+            const dayDate = parseISODateLocal(key);
             const diffFromStart = Math.round((periodStart.getTime() - dayDate.getTime()) / 86400000);
             if (diffFromStart >= -14 && diffFromStart <= 10) {
               days[key] = 'c';
@@ -211,8 +212,8 @@ export function useLogCorrection() {
         const nextPeriodInDays = Math.max(0, Math.round((nextPeriodStart.getTime() - today.getTime()) / 86400000));
         const updatedPredictions = old.predictions ? {
           ...old.predictions,
-          predicted_next_period_start: nextPeriodStart.toISOString().split('T')[0],
-          predicted_period_end: new Date(nextPeriodStart.getTime() + cachedAvgLen * 86400000).toISOString().split('T')[0],
+          predicted_next_period_start: toLocalDateStr(nextPeriodStart),
+          predicted_period_end: toLocalDateStr(new Date(nextPeriodStart.getTime() + cachedAvgLen * 86400000)),
         } : old.predictions;
 
         return { ...old, days, predictions: updatedPredictions, next_period_in_days: nextPeriodInDays, needs_checkin: false, _optimistic: true };

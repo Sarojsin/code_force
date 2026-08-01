@@ -7,6 +7,7 @@ import { Card, StickyCard, Text } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useCreateMoodLog, useMoodLogs } from 'src/services/queries';
 import { usePeriodCheckIn } from 'src/hooks/usePeriodCheckIn';
+import { toLocalDateStr } from 'src/utils/date';
 import type { CalendarResponse } from 'src/services/api';
 
 type Nav = any;
@@ -23,7 +24,7 @@ const QUICK_MOODS = [
 ];
 
 function todayDateStr(): string {
-  return new Date().toISOString().split('T')[0];
+  return toLocalDateStr(new Date());
 }
 
 interface CheckInCardProps {

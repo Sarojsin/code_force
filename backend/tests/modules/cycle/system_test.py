@@ -504,9 +504,11 @@ async def test_route_scenario4_early_period(
         assert cal["days"].get(d) == "P", f"{d} should be dark pink"
     # today is "T"
     assert cal["days"].get("2026-06-15") == "T"
-    # cancelled prediction period shows as "c"
+    # The confirmed period's follicular phase (period_end+1 .. fertile_start-1)
+    # now wins over the cancelled-prediction marker per the precedence ladder
+    # (Fl > c) — the early period at 06-15 renders its real phases instead.
     for d in ("2026-06-20", "2026-06-21", "2026-06-22"):
-        assert cal["days"].get(d) == "c", f"{d} should be cancelled grey"
+        assert cal["days"].get(d) == "Fl", f"{d} should be confirmed follicular"
 
 
 @freeze_time("2026-06-25")

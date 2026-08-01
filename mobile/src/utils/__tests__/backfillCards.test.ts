@@ -63,4 +63,22 @@ describe('getBackfillCards', () => {
       expect(card.expectedEnd).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
   });
+
+  it('derives the real average cycle from consecutive gaps in [20, 45]', () => {
+    // entries DESC — consecutive gaps 30, 30, 30 → avg 30
+    const entries = [
+      { period_start_date: '2026-05-27' },
+      { period_start_date: '2026-04-27' },
+      { period_start_date: '2026-03-28' },
+      { period_start_date: '2026-02-26' },
+    ];
+    // daysSince = 56 → floor(56 / 30) - 1 = 0 → no cards (28 default would give 1)
+    expect(getBackfillCards(entries, today)).toEqual([]);
+  });
+
+  it('respects an explicit avgCycle override', () => {
+    const entries = [{ period_start_date: '2026-05-27' }];
+    // floor(56 / 30) - 1 = 0, whereas the 28 default yields 1 card
+    expect(getBackfillCards(entries, today, 30)).toEqual([]);
+  });
 });

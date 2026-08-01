@@ -34,6 +34,7 @@ jest.mock('src/services/storage', () => ({
 }));
 jest.mock('src/utils', () => ({
   generateId: jest.fn(() => 'test-uuid'),
+  toLocalDateStr: jest.fn((d: Date) => d.toISOString().slice(0, 10)),
   logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
@@ -269,7 +270,9 @@ describe('Scenario 5b: old period in calendar', () => {
   it('useCycleCalendar queries with months_back param', async () => {
     (cycleService.getCalendar as jest.Mock).mockResolvedValue({ days: {} });
     renderHook(() => useCycleCalendar(6, 3), { wrapper });
-    await waitFor(() => expect(cycleService.getCalendar).toHaveBeenCalledWith(6, 3));
+    await waitFor(() =>
+      expect(cycleService.getCalendar).toHaveBeenCalledWith(6, 3, expect.any(String)),
+    );
   });
 });
 

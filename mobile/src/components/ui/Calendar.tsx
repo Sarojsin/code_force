@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
-import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, withSpring, withDelay } from 'react-native-reanimated';
 import {
   startOfMonth,
   endOfMonth,
@@ -17,6 +17,7 @@ import {
 
 import { useTheme } from 'src/theme';
 import { Text } from './Text';
+import { Skeleton } from './Skeleton';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -30,14 +31,17 @@ const PHASES = [
 const DAY_TYPE_COLORS: Record<string, { bg: string; text: string; dashed?: boolean }> = {
   P: { bg: '#FF6B8A', text: '#FFFFFF' },
   p: { bg: '#FFE4EC', text: '#B83058' },
-  u: { bg: 'transparent', text: '#FF6B8A' },
+  u: { bg: '#FFE4EC', text: '#B83058', dashed: true },
   c: { bg: '#E0E0E0', text: '#9E9E9E' },
+  Fl: { bg: '#FFDAB9', text: '#A0621A' },
+  fl: { bg: '#FFF0E0', text: '#A0621A' },
   F: { bg: '#CE93D8', text: '#FFFFFF' },
   f: { bg: '#F3E5F5', text: '#7B1FA2' },
   O: { bg: '#81C784', text: '#FFFFFF' },
   o: { bg: '#E8F5E9', text: '#2E7D32' },
   L: { bg: '#90CAF9', text: '#FFFFFF' },
   l: { bg: '#E3F2FD', text: '#1565C0' },
+  pw: { bg: '#FFE9F0', text: '#B83058', dashed: true },
   T: { bg: '#42A5F5', text: '#FFFFFF' },
 };
 
@@ -51,14 +55,25 @@ export interface CalendarProps {
   animatingDates?: Set<string>;
   showPhaseLegend?: boolean;
   phaseAccentForDate?: (dateStr: string) => string | undefined;
+  showHeader?: boolean;
+  isLoading?: boolean;
+  dimmedDates?: Set<string>;
+  month?: Date;
+  onMonthChange?: (month: Date) => void;
 }
 
 export const Calendar = React.memo(function Calendar({
   selectedDate, onDateSelect, markedDates, minDate, maxDate, encodedDays, animatingDates,
-  showPhaseLegend, phaseAccentForDate,
+  showPhaseLegend, phaseAccentForDate, showHeader = true, isLoading = false, dimmedDates,
+  month, onMonthChange,
 }: CalendarProps) {
   const theme = useTheme();
-  const [currentMonth, setCurrentMonth] = useState<Date>(selectedDate ?? new Date());
+  const [internalMonth, setInternalMonth] = useState<Date>(selectedDate ?? new Date());
+  const currentMonth = month ?? internalMonth;
+  const setCurrentMonth = (updater: (m: Date) => Date) => {
+    if (onMonthChange) onMonthChange(updater(currentMonth));
+    else setInternalMonth(updater(currentMonth));
+  };
 
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
@@ -87,11 +102,12 @@ export const Calendar = React.memo(function Calendar({
           const dayType = encodedDays?.[dateStr] ?? 'none';
           const typeColor = DAY_TYPE_COLORS[dayType];
           const isStrikethrough = dayType === 'c';
-          const isPredicted = dayType === 'u';
+          const isPredicted = !!typeColor?.dashed;
 
           const animating = animatingDates?.has(dateStr);
           const phaseAccent = phaseAccentForDate?.(dateStr);
           const selectedBg = selected ? (phaseAccent ?? theme.colors.primary) : undefined;
+          const dimmed = dimmedDates !== undefined && dimmedDates.has(dateStr);
 
           const cellBorder = selected ? 0 : (today && !selected ? 2 : (isPredicted ? 1.5 : 0));
           const cellBorderColor = today && !selected ? '#FF6B8A' : (isPredicted ? '#FF6B8A' : 'transparent');
@@ -116,6 +132,7 @@ export const Calendar = React.memo(function Calendar({
                 style={[
                   styles.dayCell,
                   { borderRadius: 14 },
+                  dimmed && styles.dimmed,
                   selected && { backgroundColor: selectedBg ?? theme.colors.primary },
                   !selected && typeColor?.bg && typeColor.bg !== 'transparent' && { backgroundColor: typeColor.bg },
                   cellBorder > 0 && { borderWidth: cellBorder, borderColor: cellBorderColor, borderStyle: cellBorderStyle as any },
@@ -150,38 +167,40 @@ export const Calendar = React.memo(function Calendar({
         })}
       </View>
     )),
-    [days, currentMonth, selectedDate, markedDates, minDate, maxDate, encodedDays, animatingDates, phaseAccentForDate, onDateSelect, theme.colors],
+    [days, currentMonth, selectedDate, markedDates, minDate, maxDate, encodedDays, animatingDates, phaseAccentForDate, onDateSelect, dimmedDates, theme.colors],
   );
 
   return (
     <View accessibilityLabel="Calendar" accessibilityRole="list">
-      <View style={[styles.header, { marginBottom: theme.spacing.md }]}>
-        <Pressable
-          onPress={() => canGoPrev && setCurrentMonth((m) => subMonths(m, 1))}
-          disabled={!canGoPrev}
-          accessibilityLabel="Previous month"
-          accessibilityRole="button"
-          hitSlop={8}
-          style={[styles.arrow, { minHeight: theme.minTouchTarget, minWidth: theme.minTouchTarget }]}
-        >
-          <Text variant="body" color={canGoPrev ? 'primary' : 'muted'}>
-            {'<'}
-          </Text>
-        </Pressable>
-        <Text variant="h3">{format(currentMonth, 'MMMM yyyy')}</Text>
-        <Pressable
-          onPress={() => canGoNext && setCurrentMonth((m) => addMonths(m, 1))}
-          disabled={!canGoNext}
-          accessibilityLabel="Next month"
-          accessibilityRole="button"
-          hitSlop={8}
-          style={[styles.arrow, { minHeight: theme.minTouchTarget, minWidth: theme.minTouchTarget }]}
-        >
-          <Text variant="body" color={canGoNext ? 'primary' : 'muted'}>
-            {'>'}
-          </Text>
-        </Pressable>
-      </View>
+      {showHeader && (
+        <View style={[styles.header, { marginBottom: theme.spacing.md }]}>
+          <Pressable
+            onPress={() => canGoPrev && setCurrentMonth((m) => subMonths(m, 1))}
+            disabled={!canGoPrev}
+            accessibilityLabel="Previous month"
+            accessibilityRole="button"
+            hitSlop={8}
+            style={[styles.arrow, { minHeight: theme.minTouchTarget, minWidth: theme.minTouchTarget }]}
+          >
+            <Text variant="body" color={canGoPrev ? 'primary' : 'muted'}>
+              {'<'}
+            </Text>
+          </Pressable>
+          <Text variant="h3">{format(currentMonth, 'MMMM yyyy')}</Text>
+          <Pressable
+            onPress={() => canGoNext && setCurrentMonth((m) => addMonths(m, 1))}
+            disabled={!canGoNext}
+            accessibilityLabel="Next month"
+            accessibilityRole="button"
+            hitSlop={8}
+            style={[styles.arrow, { minHeight: theme.minTouchTarget, minWidth: theme.minTouchTarget }]}
+          >
+            <Text variant="body" color={canGoNext ? 'primary' : 'muted'}>
+              {'>'}
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       {showPhaseLegend && (
         <View style={styles.phaseLegend}>
@@ -204,10 +223,37 @@ export const Calendar = React.memo(function Calendar({
         ))}
       </View>
 
-      {dayGrid}
+      {isLoading ? <LoadingSkeleton /> : dayGrid}
     </View>
   );
 });
+
+function LoadingSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 5 }, (_, weekIdx) => (
+        <View key={weekIdx} style={styles.weekRow}>
+          {Array.from({ length: 7 }, (_, dayIdx) => (
+            <SkeletonDayCell key={`${weekIdx}-${dayIdx}`} index={weekIdx * 7 + dayIdx} />
+          ))}
+        </View>
+      ))}
+    </>
+  );
+}
+
+function SkeletonDayCell({ index }: { index: number }) {
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: withDelay(index * 30, withSpring(1, { damping: 20 })),
+  }));
+  return (
+    <View style={styles.dayCellWeekday}>
+      <Animated.View style={animStyle}>
+        <Skeleton width={32} height={32} style={{ borderRadius: 16 }} />
+      </Animated.View>
+    </View>
+  );
+}
 
 function AnimatingWrapper({ animating, children }: { animating?: boolean; children: React.ReactNode }) {
   const animStyle = useAnimatedStyle(() => {
@@ -227,6 +273,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  dimmed: { opacity: 0.35 },
   dayCellWeekday: {
     width: 46,
     alignItems: 'center',

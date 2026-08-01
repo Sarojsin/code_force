@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { CalendarResponse } from 'src/services/api';
 import { useLogCorrection, useLogSnooze } from 'src/services/queries';
+import { toLocalDateStr } from 'src/utils/date';
 
 const SNOOZE_KEY = 'shecare.sticky_snooze';
 
@@ -29,7 +30,7 @@ function addDays(date: Date, days: number): Date {
 }
 
 function toDateStr(date: Date): string {
-  return date.toISOString().split('T')[0];
+  return toLocalDateStr(date);
 }
 
 export function usePeriodCheckIn(calData?: CalendarResponse | null): PeriodCheckIn {

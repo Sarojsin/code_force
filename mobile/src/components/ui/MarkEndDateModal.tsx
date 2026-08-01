@@ -7,6 +7,7 @@ import { Modal } from './Modal';
 import { DatePickerField } from './DatePickerField';
 import { Button } from './Button';
 import { Text } from './Text';
+import { toLocalDateStr } from 'src/utils/date';
 
 const endDateSchema = z.object({
   endDate: z.string().min(1, 'Please select a date'),
@@ -22,7 +23,7 @@ interface MarkEndDateModalProps {
 }
 
 function toDateStr(date: Date): string {
-  return date.toISOString().split('T')[0];
+  return toLocalDateStr(date);
 }
 
 export function MarkEndDateModal({
