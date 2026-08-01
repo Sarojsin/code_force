@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, View, Pressable, ScrollView, TextInput } from 'react-native';
+import { StyleSheet, View, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useForm } from 'react-hook-form';
@@ -9,7 +9,7 @@ import Svg, { Path } from 'react-native-svg';
 import Toast from 'react-native-toast-message';
 import { format, addMonths, subMonths } from 'date-fns';
 
-import { Text, Button, BottomSheet, DatePickerField, Calendar, MoodPicker, SymptomGrid, Skeleton } from 'src/components/ui';
+import { Text, Button, BottomSheet, DatePickerField, Calendar, DayDetailSheet, Skeleton } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import {
   useCycleCalendar,
@@ -21,6 +21,8 @@ import {
 } from 'src/services/queries';
 import { computeCycleDay, computePhaseRanges, PHASE_META, toLocalDateStr } from 'src/utils';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useEndDateStore } from 'src/stores/endDateStore';
+import { cancelEndDateNotification } from 'src/services/endDateNotifications';
 import type { PhaseRange } from 'src/utils/cyclePhases';
 
 const overrideSchema = z.object({
@@ -46,9 +48,6 @@ const PHASES = [
   { key: 'O', emoji: '🌟', label: 'Ovulation', color: '#81C784', letters: 'Oo' },
   { key: 'L', emoji: '🌙', label: 'Luteal', color: '#90CAF9', letters: 'Ll' },
 ];
-
-const SYMPTOMS = ['Cramps', 'Bloating', 'Headache', 'Fatigue', 'Nausea', 'Backache', 'Breast tenderness', 'Acne'];
-const INTENSITY_OPTIONS = [1, 2, 3, 4, 5];
 
 const OVERVIEW_META: Record<PhaseRange['key'], (typeof PHASE_META)['menstrual']> = {
   menstrual: PHASE_META.menstrual,
@@ -89,14 +88,12 @@ export function CalendarScreen() {
   const [showOverride, setShowOverride] = useState(false);
   const [activePhaseFilter, setActivePhaseFilter] = useState<string | null>(null);
 
-  const [showMoodSheet, setShowMoodSheet] = useState(false);
+  const [showDaySheet, setShowDaySheet] = useState(false);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodIntensity, setMoodIntensity] = useState(5);
 
-  const [showNoteSheet, setShowNoteSheet] = useState(false);
   const [noteText, setNoteText] = useState('');
 
-  const [showSymptomSheet, setShowSymptomSheet] = useState(false);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
 
   const { control, handleSubmit, reset } = useForm<OverrideForm>({
@@ -111,6 +108,8 @@ export function CalendarScreen() {
   const createJournal = useCreateJournalEntry();
   const updateCycleEntry = useUpdateCycleEntry();
   const encodedDays = useMemo(() => calData?.days ?? {}, [calData]);
+  const prediction = calData?.predictions ?? null;
+  const endDateStore = useEndDateStore();
 
   const today = useMemo(() => new Date(), []);
   const cycleDay = computeCycleDay(calData?.days, today);
@@ -162,10 +161,21 @@ export function CalendarScreen() {
     );
   });
 
-  const openMoodSheet = () => {
+  const openDaySheet = () => {
     setSelectedMood(null);
     setMoodIntensity(5);
-    setShowMoodSheet(true);
+    setNoteText('');
+    setSelectedSymptoms(coveringEntry?.symptoms ?? []);
+    setShowDaySheet(true);
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    setSelectedMood(null);
+    setMoodIntensity(5);
+    setNoteText('');
+    setSelectedSymptoms([]); // reset; repopulated on open via coveringEntry
+    setShowDaySheet(true);
   };
 
   const handleSaveMood = () => {
@@ -174,18 +184,12 @@ export function CalendarScreen() {
       { mood: selectedMood, intensity: moodIntensity },
       {
         onSuccess: () => {
-          setShowMoodSheet(false);
           setSelectedMood(null);
           setMoodIntensity(5);
           Toast.show({ type: 'success', text1: 'Mood logged' });
         },
       },
     );
-  };
-
-  const openNoteSheet = () => {
-    setNoteText('');
-    setShowNoteSheet(true);
   };
 
   const handleSaveNote = () => {
@@ -195,17 +199,11 @@ export function CalendarScreen() {
       { content, entry_date: selectedStr },
       {
         onSuccess: () => {
-          setShowNoteSheet(false);
           setNoteText('');
           Toast.show({ type: 'success', text1: 'Note saved' });
         },
       },
     );
-  };
-
-  const openSymptomSheet = () => {
-    setSelectedSymptoms(coveringEntry?.symptoms ?? []);
-    setShowSymptomSheet(true);
   };
 
   const handleSaveSymptoms = () => {
@@ -214,8 +212,51 @@ export function CalendarScreen() {
       { id: coveringEntry.id, data: { symptoms: selectedSymptoms } },
       {
         onSuccess: () => {
-          setShowSymptomSheet(false);
           Toast.show({ type: 'success', text1: 'Symptoms updated' });
+        },
+      },
+    );
+  };
+
+  const handleFlagStart = (date: Date) => {
+    const dateStr = toDateStr(date);
+    if (encodedDays[dateStr] === 'P') {
+      Toast.show({ type: 'info', text1: 'Period already logged for this date' });
+      return;
+    }
+    logCorrection.mutate(
+      { period_start_date: dateStr, corrected_prediction_id: prediction?.id ?? null },
+      {
+        onSuccess: () => {
+          setShowDaySheet(false);
+          setSelectedDate(null);
+        },
+      },
+    );
+  };
+
+  const handleFlagEnd = (date: Date) => {
+    const openEntry = cycleEntries.find((e) => !e.period_end_date);
+    if (!openEntry) {
+      Toast.show({ type: 'info', text1: 'No active period to end' });
+      return;
+    }
+    const endStr = toDateStr(date);
+    if (endStr <= openEntry.period_start_date) {
+      Toast.show({ type: 'error', text1: 'End date must be after start date' });
+      return;
+    }
+    updateCycleEntry.mutate(
+      { id: openEntry.id, data: { period_end_date: endStr } },
+      {
+        onSuccess: () => {
+          if (endDateStore.notificationId) {
+            cancelEndDateNotification(endDateStore.notificationId);
+          }
+          endDateStore.clearPending();
+          setShowDaySheet(false);
+          setSelectedDate(null);
+          Toast.show({ type: 'success', text1: 'Period end saved' });
         },
       },
     );
@@ -288,7 +329,7 @@ export function CalendarScreen() {
           month={currentMonth}
           onMonthChange={setCurrentMonth}
           selectedDate={selectedDate ?? undefined}
-          onDateSelect={setSelectedDate}
+          onDateSelect={handleDateSelect}
           encodedDays={encodedDays}
           phaseAccentForDate={getPhaseAccent}
           dimmedDates={dimmedDates}
@@ -308,27 +349,14 @@ export function CalendarScreen() {
             <Text variant="body" color="secondary" style={{ marginTop: 8 }}>{selectedPhase.description}</Text>
             <View style={styles.detailActions}>
               <Pressable
-                onPress={openSymptomSheet}
-                disabled={!coveringEntry}
+                onPress={openDaySheet}
                 accessibilityRole="button"
-                accessibilityState={{ disabled: !coveringEntry }}
                 style={[
                   styles.detailChip,
                   { backgroundColor: theme.colors.primary, borderRadius: 100 },
-                  !coveringEntry && { opacity: 0.4 },
                 ]}
               >
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>Log symptoms</Text>
-              </Pressable>
-              <Pressable onPress={openNoteSheet} accessibilityRole="button" style={styles.detailChip}>
-                <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '600' }}>Add note</Text>
-              </Pressable>
-              <Pressable
-                onPress={openMoodSheet}
-                accessibilityRole="button"
-                style={[styles.detailChip, { backgroundColor: theme.colors.accentMuted, borderRadius: 100 }]}
-              >
-                <Text style={{ color: theme.colors.accent, fontSize: 12, fontWeight: '600' }}>Log mood</Text>
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>Log period & details</Text>
               </Pressable>
             </View>
             {!coveringEntry && (
@@ -393,89 +421,32 @@ export function CalendarScreen() {
           </View>
         </BottomSheet>
 
-        <BottomSheet visible={showMoodSheet} onClose={() => setShowMoodSheet(false)} title="Log mood">
-          <View style={{ gap: 16 }}>
-            <MoodPicker selected={selectedMood} onSelect={setSelectedMood} />
-            <View style={{ gap: 8 }}>
-              <Text variant="bodySmall" color="secondary">Intensity: {moodIntensity}</Text>
-              <View style={styles.intensityRow}>
-                {INTENSITY_OPTIONS.map((n) => (
-                  <Pressable
-                    key={n}
-                    onPress={() => setMoodIntensity(n)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Intensity ${n}`}
-                    accessibilityState={{ selected: moodIntensity === n }}
-                    style={[
-                      styles.intensityDot,
-                      {
-                        borderRadius: 18,
-                        backgroundColor: n <= moodIntensity ? theme.colors.primary : theme.colors.border,
-                        borderWidth: moodIntensity === n ? 2 : 0,
-                        borderColor: theme.colors.primary,
-                      },
-                    ]}
-                  />
-                ))}
-              </View>
-            </View>
-            <Button
-              label="Save mood"
-              onPress={handleSaveMood}
-              disabled={!selectedMood}
-              loading={createMoodLog.isPending}
-              fullWidth
-            />
-          </View>
-        </BottomSheet>
-
-        <BottomSheet visible={showNoteSheet} onClose={() => setShowNoteSheet(false)} title="Add note">
-          <View style={{ gap: 16 }}>
-            <TextInput
-              value={noteText}
-              onChangeText={setNoteText}
-              placeholder="Write a note for this day..."
-              placeholderTextColor={theme.colors.textMuted}
-              multiline
-              accessibilityLabel="Note for this day"
-              style={[
-                styles.noteInput,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.border,
-                  color: theme.colors.textPrimary,
-                  borderRadius: theme.radius.lg,
-                  minHeight: 120,
-                  textAlignVertical: 'top',
-                },
-              ]}
-            />
-            <Button
-              label="Save note"
-              onPress={handleSaveNote}
-              disabled={!noteText.trim()}
-              loading={createJournal.isPending}
-              fullWidth
-            />
-          </View>
-        </BottomSheet>
-
-        <BottomSheet visible={showSymptomSheet} onClose={() => setShowSymptomSheet(false)} title="Log symptoms">
-          <View style={{ gap: 16 }}>
-            <SymptomGrid selected={selectedSymptoms} onToggle={(s) =>
+        {selectedDate && (
+          <DayDetailSheet
+            visible={showDaySheet}
+            date={selectedDate}
+            phase={selectedPhase}
+            coveringEntry={coveringEntry}
+            onClose={() => setShowDaySheet(false)}
+            onFlagStart={handleFlagStart}
+            onFlagEnd={handleFlagEnd}
+            symptoms={selectedSymptoms}
+            onToggleSymptom={(s) =>
               setSelectedSymptoms((prev) =>
                 prev.includes(s) ? prev.filter((i) => i !== s) : [...prev, s],
               )}
-              symptoms={SYMPTOMS}
-            />
-            <Button
-              label="Save symptoms"
-              onPress={handleSaveSymptoms}
-              loading={updateCycleEntry.isPending}
-              fullWidth
-            />
-          </View>
-        </BottomSheet>
+            onSaveSymptoms={handleSaveSymptoms}
+            symptomsLoading={updateCycleEntry.isPending}
+            mood={selectedMood}
+            onSelectMood={setSelectedMood}
+            onSaveMood={handleSaveMood}
+            moodLoading={createMoodLog.isPending}
+            noteText={noteText}
+            onChangeNote={setNoteText}
+            onSaveNote={handleSaveNote}
+            noteLoading={createJournal.isPending}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -555,18 +526,5 @@ const styles = StyleSheet.create({
   dateBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-  },
-  intensityRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  intensityDot: {
-    width: 32,
-    height: 32,
-  },
-  noteInput: {
-    borderWidth: 1.5,
-    padding: 14,
-    fontSize: 16,
   },
 });

@@ -1,4 +1,9 @@
-import { computeCycleDay, computePhaseRanges, getCurrentCycleAnchor } from 'src/utils/cyclePhases';
+import {
+  computeCycleDay,
+  computePhaseRanges,
+  extendPeriodBlock,
+  getCurrentCycleAnchor,
+} from 'src/utils/cyclePhases';
 
 const today = new Date(2026, 6, 22, 12, 0, 0); // 2026-07-22
 
@@ -82,5 +87,41 @@ describe('computePhaseRanges', () => {
     const ranges = computePhaseRanges(days, today);
     const menstrual = ranges.find((r) => r.key === 'menstrual')!;
     expect(menstrual.endDay).toBe(3);
+  });
+});
+
+describe('extendPeriodBlock', () => {
+  const start = new Date(2026, 6, 1); // 2026-07-01
+
+  it('end-only: keeps existing block and extends P days through the end date', () => {
+    const days = { '2026-07-01': 'P', '2026-07-02': 'P' };
+    const result = extendPeriodBlock(days, start, new Date(2026, 6, 4), 28);
+    expect(result['2026-07-01']).toBe('P');
+    expect(result['2026-07-02']).toBe('P');
+    expect(result['2026-07-03']).toBe('P');
+    expect(result['2026-07-04']).toBe('P');
+    expect(result['2026-07-05']).toBe('Fl');
+  });
+
+  it('start-only: a single confirmed day yields a 1-day block', () => {
+    const result = extendPeriodBlock({}, start, start, 28);
+    expect(result['2026-07-01']).toBe('P');
+    expect(result['2026-07-02']).toBe('Fl');
+  });
+
+  it('extend: shifts the downstream confirmed ladder after the new end', () => {
+    const days = { '2026-07-01': 'P', '2026-07-02': 'P', '2026-07-03': 'P' };
+    const result = extendPeriodBlock(days, start, new Date(2026, 6, 6), 28);
+    // P now spans 07-01..07-06
+    expect(result['2026-07-06']).toBe('P');
+    // Follicular begins immediately after the extended block
+    expect(result['2026-07-07']).toBe('Fl');
+  });
+
+  it('does not overwrite an existing confirmed P with a shorter recomputed run', () => {
+    const days = { '2026-07-01': 'P', '2026-07-02': 'P', '2026-07-03': 'P' };
+    const result = extendPeriodBlock(days, start, new Date(2026, 6, 2), 28);
+    // End earlier than existing run: P days still present (fill-only semantics)
+    expect(result['2026-07-03']).toBe('P');
   });
 });

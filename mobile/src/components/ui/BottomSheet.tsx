@@ -1,5 +1,5 @@
 import React, { ReactNode, useEffect, useCallback, useMemo } from 'react';
-import { StyleSheet, View, Pressable, BackHandler, Dimensions, ScrollView } from 'react-native';
+import { StyleSheet, View, Pressable, Dimensions, ScrollView, Modal as RNModal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -69,12 +69,6 @@ export function BottomSheet({
     }
   }, [visible, translateY, opacity, translateToSnap, snapPoints.length]);
 
-  useEffect(() => {
-    const handler = () => { if (visible) { onClose(); return true; } return false; };
-    const subscription = BackHandler.addEventListener('hardwareBackPress', handler);
-    return () => subscription.remove();
-  }, [visible, onClose]);
-
   const backdropStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
 
@@ -106,7 +100,8 @@ export function BottomSheet({
   if (!visible) return null;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <RNModal visible transparent animationType="none" onRequestClose={onClose}>
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Animated.View style={[styles.backdrop, backdropStyle]}>
         <Pressable
           onPress={onClose}
@@ -148,7 +143,8 @@ export function BottomSheet({
           </ScrollView>
         </Animated.View>
       </GestureDetector>
-    </View>
+      </View>
+    </RNModal>
   );
 }
 

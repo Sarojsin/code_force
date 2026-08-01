@@ -6,6 +6,7 @@ export * from './Calendar';
 export * from './Card';
 export * from './CelebrationAnimation';
 export * from './DatePickerField';
+export * from './DayDetailSheet';
 export * from './EmptyState';
 export * from './EndDatePromptCard';
 export * from './FormField';

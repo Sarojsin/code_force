@@ -197,6 +197,25 @@ export function computePhaseRanges(
   });
 }
 
+/**
+ * Extends the confirmed period block (`P`) on a calendar day map from the
+ * entry's start date to the given end date. Recomputes the full confirmed
+ * phase ladder for that cycle so the dark-pink block instantly reflects the
+ * new end date (mirrors the backend `_apply_confirmed_phases` ladder).
+ */
+export function extendPeriodBlock(
+  days: Record<string, string>,
+  periodStart: Date,
+  periodEnd: Date,
+  cycleLength = 28,
+): Record<string, string> {
+  const result = { ...days };
+  const periodLength = computePeriodLength(periodStart, periodEnd, 5);
+  const confirmedPhases = calculateCyclePhases(periodStart, cycleLength, periodLength);
+  applyPhaseToDays(result, confirmedPhases, 'P');
+  return result;
+}
+
 export function computeNotificationDay(
   avgPeriodLength: number | null,
   fallback = 3
