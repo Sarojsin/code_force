@@ -259,7 +259,7 @@ No SIGSEGV + app reaches `Migrated store data to SQLite` = fixed.
 - `patches/expo-sqlite+57.0.1.patch` (applied via `patch-package` on `npm ci`) adds a NULL-statement guard in `NativeDatabaseBinding.cpp::sqlite3_prepare_v2`, turning this crash into a catchable `SQLiteErrorException`. **Requires a native rebuild** (`npx expo run:android` / `eas build`) to take effect.
 - Never place `--> statement-breakpoint` inside a comment line in any future migration.
 
-
+hi
 # my way
 cd backend
 poetry shell
