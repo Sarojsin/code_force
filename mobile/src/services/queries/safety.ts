@@ -35,7 +35,6 @@ export function useEmergencyContacts() {
 
 export function useCreateEmergencyContact() {
   const qc = useQueryClient();
-  const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (data: EmergencyContactCreate) => safetyService.createEmergencyContact(data),
     onSuccess: (result) => {
@@ -45,7 +44,7 @@ export function useCreateEmergencyContact() {
     onError: (error, data) => {
       if (isNetworkError(error)) {
         const tempId = generateId();
-        offlineStore.enqueue({
+        useOfflineStore.getState().enqueue({
           type: 'safety/contact/create',
           endpoint: '/api/v1/safety/emergency-contacts',
           data: data as unknown as Record<string, unknown>,
@@ -69,7 +68,6 @@ export function useCreateEmergencyContact() {
 
 export function useUpdateEmergencyContact() {
   const qc = useQueryClient();
-  const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: EmergencyContactUpdate }) =>
       safetyService.updateEmergencyContact(id, data),
@@ -79,7 +77,7 @@ export function useUpdateEmergencyContact() {
     },
     onError: (error, variables) => {
       if (isNetworkError(error)) {
-        offlineStore.enqueue({
+        useOfflineStore.getState().enqueue({
           type: 'safety/contact/update',
           endpoint: `/api/v1/safety/emergency-contacts/${variables.id}`,
           data: { id: variables.id, ...variables.data },
@@ -101,7 +99,6 @@ export function useUpdateEmergencyContact() {
 
 export function useDeleteEmergencyContact() {
   const qc = useQueryClient();
-  const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (id: string) => safetyService.deleteEmergencyContact(id),
     onSuccess: (_result, id) => {
@@ -110,7 +107,7 @@ export function useDeleteEmergencyContact() {
     },
     onError: (error, id) => {
       if (isNetworkError(error)) {
-        offlineStore.enqueue({
+        useOfflineStore.getState().enqueue({
           type: 'safety/contact/delete',
           endpoint: `/api/v1/safety/emergency-contacts/${id}`,
           data: { id },
@@ -132,7 +129,6 @@ export function useDeleteEmergencyContact() {
 
 export function useTriggerSos() {
   const qc = useQueryClient();
-  const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: ({ data, idempotencyKey }: { data: SosTriggerRequest; idempotencyKey: string }) =>
       safetyService.triggerSos(data, idempotencyKey),
@@ -145,7 +141,7 @@ export function useTriggerSos() {
     },
     onError: (error, variables) => {
       if (isNetworkError(error)) {
-        offlineStore.enqueue({
+        useOfflineStore.getState().enqueue({
           type: 'safety/sos/trigger',
           endpoint: '/api/v1/safety/sos/trigger',
           data: variables.data as unknown as Record<string, unknown>,
@@ -188,7 +184,6 @@ export function useSosHistory() {
 
 export function useCancelSos() {
   const qc = useQueryClient();
-  const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (alertId: string) => safetyService.cancelSos(alertId),
     onSuccess: (result) => {
@@ -200,7 +195,7 @@ export function useCancelSos() {
     },
     onError: (error, alertId) => {
       if (isNetworkError(error)) {
-        offlineStore.enqueue({
+        useOfflineStore.getState().enqueue({
           type: 'safety/sos/cancel',
           endpoint: `/api/v1/safety/sos/${alertId}/cancel`,
           data: { sos_id: alertId },
@@ -219,7 +214,6 @@ export function useCancelSos() {
 
 export function useResolveSos() {
   const qc = useQueryClient();
-  const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (alertId: string) => safetyService.resolveSos(alertId),
     onSuccess: (result) => {
@@ -231,7 +225,7 @@ export function useResolveSos() {
     },
     onError: (error, alertId) => {
       if (isNetworkError(error)) {
-        offlineStore.enqueue({
+        useOfflineStore.getState().enqueue({
           type: 'safety/sos/resolve',
           endpoint: `/api/v1/safety/sos/${alertId}/resolve`,
           data: { sos_id: alertId },

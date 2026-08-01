@@ -30,7 +30,6 @@ export function useJournalEntries(params?: { page?: number; per_page?: number })
 
 export function useCreateJournalEntry() {
   const qc = useQueryClient();
-  const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (data: Partial<JournalEntry>) => wellnessService.createJournalEntry(data as any),
     onSuccess: (result) => {
@@ -40,7 +39,7 @@ export function useCreateJournalEntry() {
     onError: (error, data) => {
       if (isNetworkError(error)) {
         const tempId = generateId();
-        offlineStore.enqueue({
+        useOfflineStore.getState().enqueue({
           type: 'journal/create',
           endpoint: '/api/v1/wellness/journal',
           data: data as unknown as Record<string, unknown>,
@@ -73,7 +72,6 @@ export function useMoodLogs(params?: { page?: number; per_page?: number }) {
 
 export function useCreateMoodLog() {
   const qc = useQueryClient();
-  const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (data: Partial<MoodLog>) => wellnessService.createMoodLog(data as any),
     onSuccess: (result) => {
@@ -83,7 +81,7 @@ export function useCreateMoodLog() {
     onError: (error, data) => {
       if (isNetworkError(error)) {
         const tempId = generateId();
-        offlineStore.enqueue({
+        useOfflineStore.getState().enqueue({
           type: 'mood/create',
           endpoint: '/api/v1/wellness/mood',
           data: data as unknown as Record<string, unknown>,
@@ -114,7 +112,6 @@ export function useBreathingExercises() {
 
 export function useCompleteBreathingSession() {
   const qc = useQueryClient();
-  const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (exerciseId: string) => wellnessService.completeBreathingSession(exerciseId),
     onSuccess: () => {
@@ -122,7 +119,7 @@ export function useCompleteBreathingSession() {
     },
     onError: (error, exerciseId) => {
       if (isNetworkError(error)) {
-        offlineStore.enqueue({
+        useOfflineStore.getState().enqueue({
           type: 'breathing/complete',
           endpoint: '/api/v1/wellness/breathing/complete',
           data: { exerciseId },

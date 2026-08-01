@@ -30,7 +30,6 @@ export function useCycleEntries(params?: { limit?: number; offset?: number; mont
 
 export function useCreateCycleEntry() {
   const qc = useQueryClient();
-  const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: (data: Partial<CycleEntry>) => cycleService.createEntry(data),
     onSuccess: (result) => {
@@ -43,7 +42,7 @@ export function useCreateCycleEntry() {
     onError: (error, data) => {
       if (isNetworkError(error)) {
         const tempId = generateId();
-        offlineStore.enqueue({
+        useOfflineStore.getState().enqueue({
           type: 'cycle/create',
           endpoint: '/api/v1/cycle/entries',
           data,
@@ -74,7 +73,6 @@ export function useCreateCycleEntry() {
 
 export function useUpdateCycleEntry() {
   const qc = useQueryClient();
-  const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<CycleEntry> }) =>
       cycleService.updateEntry(id, data),
@@ -84,7 +82,7 @@ export function useUpdateCycleEntry() {
     },
     onError: (error, variables) => {
       if (isNetworkError(error)) {
-        offlineStore.enqueue({
+        useOfflineStore.getState().enqueue({
           type: 'cycle/update',
           endpoint: `/api/v1/cycle/entries/${variables.id}`,
           data: { id: variables.id, ...variables.data },
@@ -140,7 +138,6 @@ export function useCycleAnalytics() {
 
 export function useLogCorrection() {
   const qc = useQueryClient();
-  const offlineStore = useOfflineStore();
 
   return useMutation({
     mutationFn: (data: {
@@ -262,7 +259,7 @@ export function useLogCorrection() {
       }
 
       if (isNetworkError(error)) {
-        offlineStore.enqueue({
+        useOfflineStore.getState().enqueue({
           type: 'cycle/correction',
           endpoint: '/api/v1/cycle/corrections',
           data: variables,
@@ -288,7 +285,6 @@ export function useLogCorrection() {
 
 export function useLogSnooze() {
   const qc = useQueryClient();
-  const offlineStore = useOfflineStore();
   return useMutation({
     mutationFn: ({ predictedCycleId, dayOffset }: { predictedCycleId: string; dayOffset: number }) =>
       cycleService.logSnooze(predictedCycleId, dayOffset),
@@ -301,7 +297,7 @@ export function useLogSnooze() {
     },
     onError: (error, variables) => {
       if (isNetworkError(error)) {
-        offlineStore.enqueue({
+        useOfflineStore.getState().enqueue({
           type: 'cycle/snooze',
           endpoint: '/api/v1/cycle/snooze',
           data: variables,
