@@ -77,21 +77,25 @@ function getPhaseForDate(encodedDay: string | undefined): { emoji: string; label
   return { emoji: '🌸', label: 'Transition', color: '#E8E8E8', description: '' };
 }
 
+function SkeletonDayCell({ index }: { index: number }) {
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: withDelay(index * 30, withSpring(1, { damping: 20 })),
+  }));
+  return (
+    <View style={styles.dayCell}>
+      <Animated.View style={animStyle}>
+        <Skeleton width={32} height={32} style={{ borderRadius: 16 }} />
+      </Animated.View>
+    </View>
+  );
+}
+
 function LoadingSkeleton() {
   return (
     <View style={styles.weekRow}>
-      {Array.from({ length: 35 }).map((_, i) => {
-        const animStyle = useAnimatedStyle(() => ({
-          opacity: withDelay(i * 30, withSpring(1, { damping: 20 })),
-        }));
-        return (
-          <View key={i} style={styles.dayCell}>
-            <Animated.View style={animStyle}>
-              <Skeleton width={32} height={32} style={{ borderRadius: 16 }} />
-            </Animated.View>
-          </View>
-        );
-      })}
+      {Array.from({ length: 35 }).map((_, i) => (
+        <SkeletonDayCell key={i} index={i} />
+      ))}
     </View>
   );
 }

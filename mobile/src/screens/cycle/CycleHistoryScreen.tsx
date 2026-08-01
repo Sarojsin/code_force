@@ -41,6 +41,30 @@ export function CycleHistoryScreen() {
   const theme = useTheme();
   const { data: entries, isLoading } = useCycleEntries({ limit: 50 });
 
+  const sortedEntries = useMemo(() => {
+    if (!entries) return [];
+    return [...entries].sort(
+      (a, b) => new Date(b.period_start_date + 'T00:00:00').getTime() - new Date(a.period_start_date + 'T00:00:00').getTime(),
+    );
+  }, [entries]);
+
+  const renderItem = useCallback(({ item, index }: { item: CEntry; index: number }) => (
+    <CycleCard item={item} cycleNum={sortedEntries.length - index} />
+  ), [sortedEntries.length]);
+
+  const listHeader = useMemo(() => (
+    <View style={{ marginBottom: theme.spacing.lg }}>
+      <Txt variant="h1">Cycle History</Txt>
+      <Txt variant="body" color="secondary">Your past cycles and patterns.</Txt>
+    </View>
+  ), [theme.spacing.lg]);
+
+  const listEmpty = useMemo(() => (
+    <Card>
+      <Txt variant="body" color="secondary" align="center">No cycles logged yet.</Txt>
+    </Card>
+  ), []);
+
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
@@ -54,17 +78,6 @@ export function CycleHistoryScreen() {
     );
   }
 
-  const sortedEntries = useMemo(() => {
-    if (!entries) return [];
-    return [...entries].sort(
-      (a, b) => new Date(b.period_start_date + 'T00:00:00').getTime() - new Date(a.period_start_date + 'T00:00:00').getTime(),
-    );
-  }, [entries]);
-
-  const renderItem = useCallback(({ item, index }: { item: CEntry; index: number }) => (
-    <CycleCard item={item} cycleNum={sortedEntries.length - index} />
-  ), [sortedEntries.length]);
-
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <FlatList
@@ -76,17 +89,8 @@ export function CycleHistoryScreen() {
         maxToRenderPerBatch={10}
         removeClippedSubviews={true}
         initialNumToRender={7}
-        ListHeaderComponent={useMemo(() => (
-          <View style={{ marginBottom: theme.spacing.lg }}>
-            <Txt variant="h1">Cycle History</Txt>
-            <Txt variant="body" color="secondary">Your past cycles and patterns.</Txt>
-          </View>
-        ), [])}
-        ListEmptyComponent={useMemo(() => (
-          <Card>
-            <Txt variant="body" color="secondary" align="center">No cycles logged yet.</Txt>
-          </Card>
-        ), [])}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={listEmpty}
       />
     </SafeAreaView>
   );

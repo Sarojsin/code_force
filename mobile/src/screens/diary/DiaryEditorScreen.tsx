@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, PanResponder, Alert, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
@@ -8,26 +8,11 @@ import { diaryLocal } from '../../services/localDb';
 import { useDiary, useCreatePage } from '../../services/queries/diary';
 import { useDiaryMediaUpload } from '../../services/diary/useDiaryMediaUpload';
 import { FloatingToolbar } from './components/FloatingToolbar';
-import { PolaroidFrame } from './components/PolaroidFrame';
-import { ResizeHandles } from './components/ResizeHandles';
-import { MemoryChip } from './components/MemoryChip';
-import { DateStamp } from './components/DateStamp';
-import { MoodBadge } from './components/MoodBadge';
-import { VintageStamp } from './components/VintageStamp';
 import { ObjectToolOverlay } from './components/ObjectToolOverlay';
 import { StickerPicker } from './components/StickerPicker';
 import { MoodPicker } from './components/MoodPicker';
 import { ScrapbookCanvas } from './components/ScrapbookCanvas';
-
-interface CanvasObject {
-  id: string; page_id: string; object_type: string;
-  position_x: number; position_y: number;
-  width: number; height: number; rotation: number; z_index: number;
-  text_content?: string | null; font_family?: string | null;
-  font_size?: number | null; color?: string | null;
-  media_id?: string | null; sticker_id?: string | null;
-  is_active: boolean;
-}
+import { DraggableObject, CanvasObject } from './components/DraggableObject';
 
 export function DiaryEditorScreen({ route, navigation }: any) {
   const { diaryId, pageDate } = route.params ?? {} as any;
@@ -313,115 +298,42 @@ export function DiaryEditorScreen({ route, navigation }: any) {
 
   const selected = objects.find(o => o.id === selectedId);
 
-  function DraggableObject({ obj, isSelected }: { obj: CanvasObject; isSelected: boolean }) {
-    const pan = useRef(PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => setSelectedId(obj.id),
-      onPanResponderMove: (_, gs) => {
-        const updated = objects.map(o =>
-          o.id === obj.id ? { ...o, position_x: o.position_x + gs.dx / 2, position_y: o.position_y + gs.dy / 2 } : o
-        );
-        setObjects(updated);
-      },
-      onPanResponderRelease: (_, gs) => {
-        if (Math.abs(gs.dx) > 5 || Math.abs(gs.dy) > 5) {
-          updateObject(obj.id, {
-            position_x: obj.position_x + gs.dx / 2,
-            position_y: obj.position_y + gs.dy / 2,
-          });
-        }
-      },
-    })).current;
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
 
-    function renderContent() {
-      switch (obj.object_type) {
-        case 'text':
-          if (editingTextId === obj.id) {
-            return (
-              <TextInput
-                style={[styles.textInput, obj.font_family ? { fontFamily: obj.font_family } : null, obj.font_size ? { fontSize: obj.font_size } : null]}
-                value={editTextContent}
-                onChangeText={setEditTextContent}
-                onBlur={() => {
-                  updateObject(obj.id, { text_content: editTextContent });
-                  setEditingTextId(null);
-                }}
-                autoFocus
-                multiline
-              />
-            );
-          }
-          return (
-            <TouchableOpacity onPress={() => { setEditingTextId(obj.id); setEditTextContent(obj.text_content ?? ''); }}>
-              <Text style={[styles.textContent, obj.font_family ? { fontFamily: obj.font_family } : null, obj.font_size ? { fontSize: obj.font_size } : null]}>
-                {obj.text_content}
-              </Text>
-            </TouchableOpacity>
-          );
-        case 'sticker':
-          return <Text style={styles.sticker}>{obj.sticker_id ?? '🌸'}</Text>;
-        case 'photo':
-          return <PolaroidFrame imageUri={obj.media_id ?? undefined} width={obj.width} rotation={obj.rotation} />;
-        case 'image':
-          return <Image source={{ uri: obj.media_id ?? undefined }} style={{ width: obj.width, height: obj.height, borderRadius: 4 }} resizeMode="cover" />;
-        case 'video':
-          return (
-            <View style={{ width: obj.width, height: obj.height, backgroundColor: '#1b1c17', borderRadius: 4, justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ fontSize: 32 }}>🎬</Text>
-              <Text style={{ fontFamily: 'WorkSans_500Medium', fontSize: 10, color: '#fff', marginTop: 4 }}>Video</Text>
-            </View>
-          );
-        case 'voice':
-          return (
-            <View style={{ width: obj.width, height: obj.height, backgroundColor: '#f0eee6', borderRadius: 8, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}>
-              <Text style={{ fontSize: 20 }}>🎤</Text>
-              <Text style={{ fontFamily: 'WorkSans_500Medium', fontSize: 12, color: '#554240' }}>Voice note</Text>
-            </View>
-          );
-        case 'memory_tag':
-          return <MemoryChip label={obj.text_content ?? 'tag'} variant="tag" />;
-        case 'memory_location':
-          return <MemoryChip label={obj.text_content ?? ''} variant="location" />;
-        case 'memory_person':
-          return <MemoryChip label={obj.text_content ?? ''} variant="person" />;
-        case 'date':
-          return <DateStamp date={today} />;
-        case 'mood':
-          return <MoodBadge mood={obj.text_content ?? 'calm'} />;
-        case 'stamp':
-          return <VintageStamp text={obj.text_content ?? 'treasured'} rotation={obj.rotation} />;
-        default:
-          return <Text style={styles.unknown}>?</Text>;
-      }
+  const handleDragStart = useCallback((id: string) => {
+    const obj = objects.find(o => o.id === id);
+    if (obj) dragStartRef.current = { x: obj.position_x, y: obj.position_y };
+  }, [objects]);
+
+  const handleDragMove = useCallback((id: string, dx: number, dy: number) => {
+    const start = dragStartRef.current;
+    if (!start) return;
+    setObjects(prev => prev.map(o =>
+      o.id === id ? { ...o, position_x: start.x + dx / 2, position_y: start.y + dy / 2 } : o
+    ));
+  }, []);
+
+  const handleDragRelease = useCallback((id: string, dx: number, dy: number) => {
+    const start = dragStartRef.current;
+    dragStartRef.current = null;
+    if (!start) return;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      updateObject(id, {
+        position_x: start.x + dx / 2,
+        position_y: start.y + dy / 2,
+      });
     }
+  }, [updateObject]);
 
-    return (
-      <View
-        style={[
-          styles.object,
-          {
-            left: obj.position_x, top: obj.position_y,
-            width: obj.width, height: obj.height,
-            transform: [{ rotate: `${obj.rotation ?? 0}deg` }],
-            zIndex: obj.z_index,
-          },
-          isSelected && styles.selected,
-        ]}
-        {...pan.panHandlers}
-      >
-        {renderContent()}
-        {isSelected && (
-          <ResizeHandles
-            width={obj.width}
-            height={obj.height}
-            onResize={(w, h) => updateObject(obj.id, { width: Math.max(40, w), height: Math.max(40, h) })}
-            onRotate={(deg) => updateObject(obj.id, { rotation: (obj.rotation ?? 0) + deg })}
-          />
-        )}
-      </View>
-    );
-  }
+  const handleStartEdit = useCallback((id: string, content: string) => {
+    setEditingTextId(id);
+    setEditTextContent(content);
+  }, []);
+
+  const handleEditBlur = useCallback((id: string, text: string) => {
+    updateObject(id, { text_content: text });
+    setEditingTextId(null);
+  }, [updateObject]);
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>
@@ -446,7 +358,22 @@ export function DiaryEditorScreen({ route, navigation }: any) {
           .filter(o => o.is_active)
           .sort((a, b) => a.z_index - b.z_index)
           .map(obj => (
-            <DraggableObject key={obj.id} obj={obj} isSelected={selectedId === obj.id} />
+            <DraggableObject
+              key={obj.id}
+              obj={obj}
+              isSelected={selectedId === obj.id}
+              today={today}
+              editingTextId={editingTextId}
+              editTextContent={editTextContent}
+              onSelect={setSelectedId}
+              onDragStart={handleDragStart}
+              onDragMove={handleDragMove}
+              onDragRelease={handleDragRelease}
+              onUpdate={updateObject}
+              onStartEdit={handleStartEdit}
+              onEditChange={setEditTextContent}
+              onEditBlur={handleEditBlur}
+            />
           ))}
       </ScrapbookCanvas>
 
@@ -510,16 +437,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   checkText: { color: '#fff', fontSize: 16 },
-  object: { position: 'absolute', minWidth: 40, minHeight: 40 },
-  selected: { borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#410403', borderRadius: 4 },
-  textContent: { fontSize: 18, color: '#1b1c17', lineHeight: 30 },
-  textInput: {
-    fontSize: 18, color: '#1b1c17', lineHeight: 30,
-    backgroundColor: '#fffcf5', padding: 8, borderRadius: 4,
-    borderWidth: 1, borderColor: '#e4e3db', minWidth: 160,
-  },
-  sticker: { fontSize: 48 },
-  unknown: { fontSize: 20, color: '#88726f' },
   toolOverlayWrap: {
     position: 'absolute', bottom: 120, alignSelf: 'center',
   },

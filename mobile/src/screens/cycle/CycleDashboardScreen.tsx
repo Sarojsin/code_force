@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -6,27 +6,18 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 
 import { BackfillCard, Button, Calendar, Card, DatePickerField, BottomSheet, EndDatePromptCard, MarkEndDateModal, StickyCard, Text, Skeleton } from 'src/components/ui';
 import { PredictionDetailCard } from 'src/components/ui/PredictionDetailCard';
 import { useTheme, shadow } from 'src/theme';
-import { useCycleCalendar, useCycleEntries, useCreateCycleEntry, useLogCorrection, useLogSnooze, useUpdateCycleEntry } from 'src/services/queries';
+import { useCycleCalendar, useLogCorrection } from 'src/services/queries';
 import { useEndDateStore } from 'src/stores/endDateStore';
-import { cancelEndDateNotification } from 'src/services/endDateNotifications';
+import { useCatchUp } from 'src/hooks/useCatchUp';
+import { usePeriodCheckIn } from 'src/hooks/usePeriodCheckIn';
 import { globalModelClient } from 'src/services/ml/globalModel';
 import type { CycleStackParamList } from 'src/navigation/types';
 
 type Nav = StackNavigationProp<CycleStackParamList, 'CycleDashboard'>;
-
-const SNOOZE_KEY = 'shecare.sticky_snooze';
-
-interface SnoozeState {
-  predictionId: string;
-  dayOffset: number;
-  snoozedAt: string;
-}
 
 const overrideSchema = z.object({ overrideDate: z.string().min(1, 'Please select a date') });
 
@@ -38,212 +29,49 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
-function toDateStr(date: Date): string {
-  return date.toISOString().split('T')[0];
-}
-
 export function CycleDashboardScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
   const { data: calData, isLoading } = useCycleCalendar(3, 3);
   const logCorrection = useLogCorrection();
-  const logSnooze = useLogSnooze();
-  const updateEntry = useUpdateCycleEntry();
-  const { data: entries } = useCycleEntries({ limit: 1 });
-  const createEntry = useCreateCycleEntry();
+  const {
+    backfillCards,
+    busyMonth,
+    isDoneOrSkipped,
+    isSkipped,
+    handleFill,
+    handleSkip,
+    endDate,
+    confirmEndDate,
+    skipEndDate,
+    endDateLoading,
+  } = useCatchUp();
+  const checkIn = usePeriodCheckIn(calData);
 
   const todayRef = useRef(new Date());
   const noopRef = useRef(() => {});
-  const [snoozeState, setSnoozeState] = useState<SnoozeState | null>(null);
   const [showOverride, setShowOverride] = useState(false);
   const [showEndDateModal, setShowEndDateModal] = useState(false);
-  const [backfillDone, setBackfillDone] = useState<string[]>([]);
-  const [backfillSkipped, setBackfillSkipped] = useState<string[]>([]);
-  const [backfillBusy, setBackfillBusy] = useState<string | null>(null);
   const route = useRoute<any>();
 
-  // ---- Backfill detection ----
-  const backfillCards = (() => {
-    const lastEntry = entries?.[0];
-    if (!lastEntry) return [];
-    if (lastEntry.cycle_type === 'anovulatory') return [];
-    const lastStart = new Date(lastEntry.period_start_date + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const daysSince = Math.round((today.getTime() - lastStart.getTime()) / 86400000);
-    if (daysSince < 56) return []; // < 2 missed cycles → no cards
-
-    const avgCycle = 28;
-    const missedCycles = Math.min(3, Math.floor(daysSince / avgCycle) - 1);
-    if (missedCycles <= 0) return [];
-
-    const cards: Array<{ monthLabel: string; expectedStart: string; expectedEnd: string }> = [];
-    for (let i = 0; i < missedCycles; i++) {
-      const cycleStart = new Date(lastStart.getTime() + (missedCycles - i) * avgCycle * 86400000);
-      const cycleEnd = new Date(cycleStart.getTime() + 4 * 86400000);
-      const monthLabel = cycleStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      cards.push({
-        monthLabel,
-        expectedStart: cycleStart.toISOString().split('T')[0],
-        expectedEnd: cycleEnd.toISOString().split('T')[0],
-      });
-    }
-    return cards;
-  })();
-
-  const handleBackfillFill = useCallback(
-    (expectedStart: string, expectedEnd: string, monthLabel: string) => {
-      setBackfillBusy(monthLabel);
-      createEntry.mutate(
-        {
-          period_start_date: expectedStart,
-          period_end_date: expectedEnd,
-          cycle_type: 'menstrual',
-        },
-        {
-          onSuccess: () => {
-            setBackfillDone((prev) => [...prev, monthLabel]);
-            setBackfillBusy(null);
-          },
-          onError: () => setBackfillBusy(null),
-        },
-      );
-    },
-    [createEntry],
-  );
-
-  const handleBackfillSkip = useCallback(
-    (expectedStart: string, expectedEnd: string, monthLabel: string) => {
-      setBackfillBusy(monthLabel);
-      createEntry.mutate(
-        {
-          period_start_date: expectedStart,
-          period_end_date: expectedEnd,
-          cycle_type: 'anovulatory',
-        },
-        {
-          onSuccess: () => {
-            setBackfillSkipped((prev) => [...prev, monthLabel]);
-            setBackfillBusy(null);
-          },
-          onError: () => setBackfillBusy(null),
-        },
-      );
-    },
-    [createEntry],
-  );
-
-  const doneOrSkipped = (ml: string) => backfillDone.includes(ml) || backfillSkipped.includes(ml);
-  const entryId = useEndDateStore((s) => s.entryId);
   const periodStartDate = useEndDateStore((s) => s.periodStartDate);
-  const notificationId = useEndDateStore((s) => s.notificationId);
-  const clearPending = useEndDateStore((s) => s.clearPending);
 
   useEffect(() => {
     if (route.params?.markEndDate && periodStartDate) {
       setShowEndDateModal(true);
     }
   }, [route.params?.markEndDate, periodStartDate]);
+
   const overrideForm = useForm<OverrideForm>({
     resolver: zodResolver(overrideSchema),
-    defaultValues: { overrideDate: toDateStr(new Date()) },
+    defaultValues: { overrideDate: new Date().toISOString().split('T')[0] },
   });
 
   useEffect(() => {
     globalModelClient.ensureLatest().catch(() => null);
   }, []);
 
-  useEffect(() => {
-    AsyncStorage.getItem(SNOOZE_KEY).then((val) => {
-      if (val) {
-        try {
-          setSnoozeState(JSON.parse(val));
-        } catch {}
-      }
-    });
-  }, []);
-
-  const persistSnooze = useCallback(async (state: SnoozeState | null) => {
-    if (state) {
-      await AsyncStorage.setItem(SNOOZE_KEY, JSON.stringify(state));
-    } else {
-      await AsyncStorage.removeItem(SNOOZE_KEY);
-    }
-    setSnoozeState(state);
-  }, []);
-
   const prediction = calData?.predictions ?? null;
-  const today = new Date();
-
-  const showStickyCard = (() => {
-    if (!prediction) return false;
-    if (!calData?.needs_checkin) return false;
-    if (snoozeState) {
-      const snoozedAt = new Date(snoozeState.snoozedAt);
-      const snoozedDay = toDateStr(snoozedAt);
-      const todayStr = toDateStr(today);
-      if (snoozedDay === todayStr) return false;
-      const snoozeEnd = addDays(snoozedAt, snoozeState.dayOffset);
-      if (today <= snoozeEnd) return false;
-    }
-    return true;
-  })();
-
-  const handleConfirm = useCallback(
-    (predictionId: string, confirmedDate: string) => {
-      logCorrection.mutate(
-        { period_start_date: confirmedDate, corrected_prediction_id: predictionId },
-        { onSuccess: () => persistSnooze(null) },
-      );
-    },
-    [logCorrection, persistSnooze],
-  );
-
-  const handleAdjust = useCallback(
-    (predictionId: string, newDate: string) => {
-      logCorrection.mutate(
-        { period_start_date: newDate, corrected_prediction_id: predictionId },
-        { onSuccess: () => persistSnooze(null) },
-      );
-    },
-    [logCorrection, persistSnooze],
-  );
-
-  const handleSnooze = useCallback(
-    (predictionId: string, _dayOffset: number) => {
-      const currentOffset = snoozeState?.predictionId === predictionId ? snoozeState.dayOffset + 1 : 1;
-      logSnooze.mutate(
-        { predictedCycleId: predictionId, dayOffset: currentOffset },
-        { onSuccess: () => persistSnooze({ predictionId, dayOffset: currentOffset, snoozedAt: toDateStr(today) }) },
-      );
-    },
-    [logSnooze, persistSnooze, snoozeState, today],
-  );
-
-  const handleConfirmEndDate = useCallback(
-    (endDate: string) => {
-      if (!entryId) return;
-      updateEntry.mutate(
-        { id: entryId, data: { period_end_date: endDate } },
-        { onSuccess: () => {
-          if (notificationId) cancelEndDateNotification(notificationId).catch(() => {});
-          clearPending();
-          setShowEndDateModal(false);
-        }},
-      );
-    },
-    [updateEntry, entryId, notificationId, clearPending],
-  );
-
-  const handleSkipEndDate = useCallback(() => {
-    if (notificationId) cancelEndDateNotification(notificationId).catch(() => {});
-    clearPending();
-    setShowEndDateModal(false);
-  }, [notificationId, clearPending]);
-
-  const daysSinceStart = periodStartDate
-    ? Math.max(0, Math.round((today.getTime() - new Date(periodStartDate + 'T00:00:00').getTime()) / 86400000))
-    : 0;
 
   const handlePermanentOverride = overrideForm.handleSubmit((data) => {
     logCorrection.mutate(
@@ -279,18 +107,18 @@ export function CycleDashboardScreen() {
         </Text>
 
         {backfillCards.map((card, idx) => {
-          const filled = doneOrSkipped(card.monthLabel);
-          const previousDone = idx === 0 || doneOrSkipped(backfillCards[idx - 1].monthLabel);
+          const filled = isDoneOrSkipped(card.monthLabel);
+          const previousDone = idx === 0 || isDoneOrSkipped(backfillCards[idx - 1].monthLabel);
           return (
             <BackfillCard
               key={card.monthLabel}
               monthLabel={card.monthLabel}
               cardNumber={idx + 1}
               disabled={!previousDone && !filled}
-              isSkipped={backfillSkipped.includes(card.monthLabel)}
-              onFill={(s, e) => handleBackfillFill(s, e, card.monthLabel)}
-              onSkip={() => handleBackfillSkip(card.expectedStart, card.expectedEnd, card.monthLabel)}
-              loading={backfillBusy === card.monthLabel}
+              isSkipped={isSkipped(card.monthLabel)}
+              onFill={(s, e) => handleFill(s, e, card.monthLabel)}
+              onSkip={() => handleSkip(card.expectedStart, card.expectedEnd, card.monthLabel)}
+              loading={busyMonth === card.monthLabel}
             />
           );
         })}
@@ -324,24 +152,24 @@ export function CycleDashboardScreen() {
 
         {prediction && (
           <StickyCard
-            predictedDate={prediction.predicted_next_period_start}
-            predictionId={prediction.id}
-            visible={showStickyCard}
-            loading={logCorrection.isPending || logSnooze.isPending}
-            onConfirm={handleConfirm}
-            onAdjust={handleAdjust}
-            onSnooze={handleSnooze}
+            predictedDate={checkIn.predictedDate}
+            predictionId={checkIn.predictionId}
+            visible={checkIn.visible}
+            loading={checkIn.loading}
+            onConfirm={checkIn.onConfirm}
+            onAdjust={checkIn.onAdjust}
+            onSnooze={checkIn.onSnooze}
           />
         )}
 
-        {periodStartDate && (
+        {endDate && (
           <EndDatePromptCard
             visible
-            periodStartDate={periodStartDate}
-            daysSinceStart={daysSinceStart}
+            periodStartDate={endDate.periodStartDate ?? ''}
+            daysSinceStart={endDate.daysSinceStart}
             onConfirmEndDate={() => setShowEndDateModal(true)}
-            onSkip={handleSkipEndDate}
-            loading={logCorrection.isPending}
+            onSkip={skipEndDate}
+            loading={endDateLoading}
           />
         )}
 
@@ -440,14 +268,14 @@ export function CycleDashboardScreen() {
         />
       </BottomSheet>
 
-      {periodStartDate && (
+      {endDate && endDate.periodStartDate && (
         <MarkEndDateModal
           visible={showEndDateModal}
           onClose={() => setShowEndDateModal(false)}
-          onConfirm={handleConfirmEndDate}
-          onSkip={handleSkipEndDate}
-          loading={logCorrection.isPending}
-          periodStartDate={periodStartDate}
+          onConfirm={confirmEndDate}
+          onSkip={skipEndDate}
+          loading={endDateLoading}
+          periodStartDate={endDate.periodStartDate}
         />
       )}
     </SafeAreaView>
