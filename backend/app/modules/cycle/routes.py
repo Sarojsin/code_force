@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import os
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Header, HTTPException, Query, Response, status
 from fastapi.responses import FileResponse
@@ -286,9 +287,21 @@ async def get_calendar(
     svc: CycleServiceDep,
     months_back: int = Query(3, ge=1, le=12),
     months_forward: int = Query(3, ge=1, le=12),
+    today: str | None = Query(None, description="Client-local date (YYYY-MM-DD) anchoring the today marker and check-in window"),
     if_none_match: str | None = Header(None, alias="If-None-Match"),
 ) -> Response:
-    data = await svc.get_calendar(current_user.id, months_back=months_back, months_forward=months_forward)
+    today_ref: date | None = None
+    if today:
+        try:
+            today_ref = date.fromisoformat(today)
+        except ValueError:
+            today_ref = None
+    data = await svc.get_calendar(
+        current_user.id,
+        months_back=months_back,
+        months_forward=months_forward,
+        today=today_ref,
+    )
     cal = CalendarResponse(**data)
     body = cal.model_dump_json().encode()
     etag = hashlib.sha256(body).hexdigest()

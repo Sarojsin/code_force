@@ -396,3 +396,108 @@ async def test_scenario6_fifo_offline_queue(svc: CycleService, user: User) -> No
     assert results.results[1].server_data is not None
     assert results.results[0].server_data.get("period_start_date") == "2026-06-20"
     assert results.results[1].server_data.get("period_start_date") == "2026-07-18"
+
+
+# =============================================================================
+# Wrong-log → Correction: logged June 16, corrected to June 20
+# =============================================================================
+# Action: Prediction was June 16. User logs it (wrong), then taps
+#         "No, adjust date" and corrects to June 20 (period_end June 24).
+# Expected:
+#   - prediction_error_days = +4 (June 20 - June 16)
+#   - avg_prediction_error_days shifts to +4
+#   - Calendar shows 'P' on the new confirmed period (June 20-24)
+#   - Calendar shows 'p' on the next predicted cycle
+#   - total_cycles_logged increments to 1
+#   - is_dirty_for_retraining becomes True
+# =============================================================================
+
+
+@pytest.mark.asyncio
+async def test_wrong_log_correction_june16_to_june20(svc: CycleService, user: User, cycle_entry: CycleEntry) -> None:
+    """Explicit 'adjust date' correction: June 16 prediction corrected to June 20."""
+    # --- Arrange: prediction for June 16 ---
+    pred = await svc.compute_predictions(user.id)
+    pred.predicted_next_period_start = date(2026, 6, 16)
+    await svc.db.flush()
+
+    # --- Act: correct the wrong log to June 20 ---
+    entry = await svc.log_correction(
+        user_id=user.id,
+        period_start_date=date(2026, 6, 20),
+        period_end_date=date(2026, 6, 24),
+        corrected_prediction_id=pred.id,
+    )
+
+    # --- Assert: correction links ---
+    assert entry.is_correction is True
+    assert entry.corrected_prediction_id == pred.id
+    assert entry.period_start_date == date(2026, 6, 20)
+    assert entry.period_end_date == date(2026, 6, 24)
+
+    # --- Assert: prediction_error_days = +4 ---
+    await svc.db.refresh(pred)
+    assert pred.prediction_error_days == 4  # June 20 - June 16 = +4
+
+    # --- Assert: ML metrics updated ---
+    await svc.db.refresh(user)
+    assert user.avg_prediction_error_days == 4.0
+    assert user.total_cycles_logged == 1
+    assert user.is_dirty_for_retraining is True
+
+    # --- Assert: calendar shows confirmed 'P' on June 20-24 ---
+    cal = await svc.get_calendar(user.id, months_back=3, months_forward=3)
+    days = cal["days"]
+    confirmed_window = [
+        (date(2026, 6, 20) + timedelta(days=i)).isoformat()
+        for i in range(5)
+    ]
+    for d in confirmed_window:
+        assert days.get(d) == "P", f"Expected 'P' on {d}, got {days.get(d)}"
+
+    # --- Assert: a fresh prediction was recomputed (next cycle 'p') ---
+    assert cal["predictions"] is not None
+    assert cal["predictions"]["id"] != pred.id
+    assert cal["next_period_in_days"] is not None
+
+
+@pytest.mark.asyncio
+async def test_wrong_log_autolink_new_entry_june20(svc: CycleService, user: User, cycle_entry: CycleEntry) -> None:
+    """Auto-link variant: instead of adjusting, user logs a NEW period on June 20.
+
+    `_try_auto_link_prediction` should link it to the June 16 prediction
+    (within the widened window) and mark the entry as a correction.
+    """
+    # --- Arrange: prediction for June 16 with a widened window ---
+    pred = await svc.compute_predictions(user.id)
+    pred.predicted_next_period_start = date(2026, 6, 16)
+    pred.prediction_window_days = 5  # irregular user → max(3, 5) = 5-day window
+    await svc.db.flush()
+
+    # --- Act: log a NEW period on June 20 (no corrected_prediction_id) ---
+    entry = await svc.create_entry(
+        user.id,
+        CycleEntryCreate(period_start_date=date(2026, 6, 20), period_end_date=date(2026, 6, 24)),
+    )
+
+    # --- Assert: auto-link set corrected_prediction_id via _try_auto_link_prediction ---
+    assert entry.is_correction is True
+    assert entry.corrected_prediction_id == pred.id
+    await svc.db.refresh(pred)
+    assert pred.actual_cycle_entry_id == entry.id
+    assert pred.prediction_error_days == 4  # June 20 - June 16 = +4
+
+    # --- Assert: ML metrics updated ---
+    await svc.db.refresh(user)
+    assert user.avg_prediction_error_days == 4.0
+    assert user.is_dirty_for_retraining is True
+
+    # --- Assert: calendar shows 'c' on old predicted days, 'P' on new period ---
+    cal = await svc.get_calendar(user.id, months_back=3, months_forward=3)
+    days = cal["days"]
+    # Old predicted period June 16-19 (June 20 is now confirmed P) → cancelled
+    assert days.get("2026-06-16") == "c"
+    assert days.get("2026-06-19") == "c"
+    # New confirmed period June 20-24
+    assert days.get("2026-06-20") == "P"
+    assert days.get("2026-06-24") == "P"

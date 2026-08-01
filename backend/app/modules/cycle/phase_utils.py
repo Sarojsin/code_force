@@ -30,6 +30,8 @@ def calculate_cycle_phases(
     return {
         "period_start": period_start,
         "period_end": period_end,
+        "follicular_start": period_end + timedelta(days=1),
+        "follicular_end": fertile_start - timedelta(days=1),
         "fertile_start": fertile_start,
         "fertile_end": fertile_end,
         "ovulation_date": ovulation_date,

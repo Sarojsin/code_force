@@ -4,6 +4,7 @@ import { useTheme } from 'src/theme';
 import { Card } from './Card';
 import { Text } from './Text';
 import { Button } from './Button';
+import { parseISODateLocal, toLocalDateStr } from 'src/utils/date';
 
 interface BackfillCardProps {
   monthLabel: string;
@@ -77,9 +78,9 @@ export function BackfillCard({
               <DateInput
                 label="Start"
                 onSubmit={(d) => {
-                  const end = new Date(d);
+                  const end = parseISODateLocal(d);
                   end.setDate(end.getDate() + 4);
-                  onFill(d, end.toISOString().split('T')[0]);
+                  onFill(d, toLocalDateStr(end));
                 }}
               />
             </View>
@@ -116,7 +117,7 @@ function DateInput({ label, onSubmit }: { label: string; onSubmit: (date: string
         onPress={() => {
           const d = new Date();
           d.setMonth(d.getMonth() - 1);
-          const iso = d.toISOString().split('T')[0];
+          const iso = toLocalDateStr(d);
           setValue(iso);
           onSubmit(iso);
         }}
@@ -131,7 +132,7 @@ function DateInput({ label, onSubmit }: { label: string; onSubmit: (date: string
         accessibilityLabel={label}
       >
         <Text variant="body" color={value ? 'primary' : 'muted'}>
-          {value || `Tap (e.g. ${new Date().toISOString().split('T')[0]})`}
+          {value || `Tap (e.g. ${toLocalDateStr(new Date())})`}
         </Text>
       </Pressable>
     </View>

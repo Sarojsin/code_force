@@ -123,7 +123,7 @@ class CycleService:
         return entry
 
     async def _try_auto_link_prediction(self, user_id: uuid.UUID, entry: CycleEntry) -> None:
-        window = get_settings().cycle.auto_link_window_days
+        base_window = get_settings().cycle.auto_link_window_days
         stmt = (
             select(PredictedCycle)
             .where(PredictedCycle.user_id == user_id)
@@ -133,8 +133,9 @@ class CycleService:
         )
         predictions = (await self.db.execute(stmt)).scalars().all()
         for pred in predictions:
+            link_window = max(base_window, pred.prediction_window_days or 0)
             diff = (entry.period_start_date - pred.predicted_next_period_start).days
-            if -window <= diff <= window:
+            if -link_window <= diff <= link_window:
                 pred.actual_cycle_entry_id = entry.id
                 pred.prediction_error_days = diff
                 entry.is_correction = True
@@ -349,7 +350,8 @@ class CycleService:
         u = user if isinstance(user, User) else None
         avg_error = u.avg_prediction_error_days if u else None
 
-        predicted_length, confidence, window = fallback_prediction(cycle_lengths, avg_error)
+        pred_std = u.cycle_length_std_dev if (u and u.cycle_length_std_dev is not None) else None
+        predicted_length, confidence, window = fallback_prediction(cycle_lengths, avg_error, pred_std)
 
         latest_start = max(start_dates)
         next_start = latest_start + timedelta(days=predicted_length)
@@ -503,10 +505,11 @@ class CycleService:
 
     async def get_calendar(
         self, user_id: uuid.UUID, months_back: int = 3, months_forward: int = 3,
+        today: date | None = None,
     ) -> dict:
         start = date.today() - timedelta(days=months_back * 30)
         end = date.today() + timedelta(days=months_forward * 30)
-        today_ref = date.today()
+        today_ref = today or date.today()
         today_str = today_ref.isoformat()
 
         entries_stmt = (
@@ -566,7 +569,7 @@ class CycleService:
         for i, pred in enumerate(active_preds):
             cycle_len = self._pred_cycle_length(active_preds, i, avg_cycle_length)
             phases = calculate_cycle_phases(pred.predicted_next_period_start, cycle_len, avg_period_length)
-            self._apply_predicted_phases(days, phases)
+            self._apply_predicted_phases(days, phases, pred.prediction_window_days)
 
         days[today_str] = "T"
 
@@ -593,8 +596,13 @@ class CycleService:
             active_pred = predictions[0]
             if active_pred.actual_cycle_entry_id is None:
                 pred_date = active_pred.predicted_next_period_start
-                window_start = pred_date - timedelta(days=3)
-                window_end = pred_date + timedelta(days=6)
+                pwd = active_pred.prediction_window_days
+                if pwd:
+                    window_start = pred_date - timedelta(days=max(3, pwd))
+                    window_end = pred_date + timedelta(days=max(6, pwd + 1))
+                else:
+                    window_start = pred_date - timedelta(days=3)
+                    window_end = pred_date + timedelta(days=6)
                 if window_start <= today_ref <= window_end:
                     has_recent_period = any(
                         e.period_start_date >= today_ref - timedelta(days=14)
@@ -637,12 +645,20 @@ class CycleService:
     def _apply_confirmed_phases(days: dict[str, str], phases: dict[str, date]) -> None:
         for d in CycleService._iter_date_range(phases["period_start"], phases["period_end"]):
             days[d.isoformat()] = "P"
+        fs, fe = phases["follicular_start"], phases["follicular_end"]
+        if fe >= fs:
+            for d in CycleService._iter_date_range(fs, fe):
+                key = d.isoformat()
+                if key not in days:
+                    days[key] = "Fl"
         for d in CycleService._iter_date_range(phases["fertile_start"], phases["fertile_end"]):
             key = d.isoformat()
             if key not in days:
                 days[key] = "F"
+        # D1: the ovulation day must render as O, not F (fertile_end == ovulation).
+        # Only override the fertile code — never clobber a higher-priority code.
         ov_key = phases["ovulation_date"].isoformat()
-        if ov_key not in days:
+        if days.get(ov_key) == "F":
             days[ov_key] = "O"
         for d in CycleService._iter_date_range(phases["luteal_start"], phases["luteal_end"]):
             key = d.isoformat()
@@ -659,17 +675,37 @@ class CycleService:
                 days[key] = "u"
 
     @staticmethod
-    def _apply_predicted_phases(days: dict[str, str], phases: dict[str, date]) -> None:
+    def _apply_predicted_phases(days: dict[str, str], phases: dict[str, date], window: int | None = None) -> None:
+        # B: prediction-window band FIRST so fertile/luteal (only-if-absent) still win.
+        if window and window > 0:
+            lead = CycleService._iter_date_range(
+                phases["period_start"] - timedelta(days=window),
+                phases["period_start"] - timedelta(days=1),
+            )
+            trail = CycleService._iter_date_range(
+                phases["period_end"] + timedelta(days=1),
+                phases["period_end"] + timedelta(days=window),
+            )
+            for d in list(lead) + list(trail):
+                key = d.isoformat()
+                if key not in days:
+                    days[key] = "pw"
         for d in CycleService._iter_date_range(phases["period_start"], phases["period_end"]):
             key = d.isoformat()
             if key not in days:
                 days[key] = "p"
+        fs, fe = phases["follicular_start"], phases["follicular_end"]
+        if fe >= fs:
+            for d in CycleService._iter_date_range(fs, fe):
+                key = d.isoformat()
+                if key not in days:
+                    days[key] = "fl"
         for d in CycleService._iter_date_range(phases["fertile_start"], phases["fertile_end"]):
             key = d.isoformat()
             if key not in days:
                 days[key] = "f"
         ov_key = phases["ovulation_date"].isoformat()
-        if ov_key not in days:
+        if days.get(ov_key) == "f":
             days[ov_key] = "o"
         for d in CycleService._iter_date_range(phases["luteal_start"], phases["luteal_end"]):
             key = d.isoformat()
@@ -930,17 +966,17 @@ class CycleService:
         rows = (await self.db.execute(stmt)).scalars().all()
 
         if len(rows) >= 2:
-            intervals = []
+            diffs = []
             for i in range(1, len(rows)):
-                diff = (rows[i] - rows[i - 1]).days
-                if 20 <= diff <= 45:
-                    intervals.append(diff)
-            if intervals:
-                user.avg_cycle_length = round(sum(intervals) / len(intervals), 1)
-                if len(intervals) >= 2:
-                    user.cycle_length_std_dev = round(stdev(intervals), 1)
-                else:
-                    user.cycle_length_std_dev = None
+                diffs.append((rows[i] - rows[i - 1]).days)
+            avg_intervals = [d for d in diffs if 20 <= d <= 45]
+            std_intervals = [d for d in diffs if 15 <= d <= 60]
+            if avg_intervals:
+                user.avg_cycle_length = round(sum(avg_intervals) / len(avg_intervals), 1)
+            if len(std_intervals) >= 2:
+                user.cycle_length_std_dev = round(stdev(std_intervals), 1)
+            else:
+                user.cycle_length_std_dev = None
 
         await self.db.flush()
 

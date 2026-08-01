@@ -4,6 +4,7 @@ import { View, StyleSheet } from 'react-native';
 import { BackfillCard, Card, EndDatePromptCard, Text } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useCatchUp } from 'src/hooks/useCatchUp';
+import { toLocalDateStr } from 'src/utils/date';
 
 export function CatchUpCard() {
   const theme = useTheme();
@@ -34,7 +35,7 @@ export function CatchUpCard() {
           periodStartDate={endDate.periodStartDate}
           daysSinceStart={endDate.daysSinceStart}
           onConfirmEndDate={() =>
-            confirmEndDate(new Date().toISOString().split('T')[0])
+            confirmEndDate(toLocalDateStr(new Date()))
           }
           onSkip={skipEndDate}
           loading={endDateLoading}

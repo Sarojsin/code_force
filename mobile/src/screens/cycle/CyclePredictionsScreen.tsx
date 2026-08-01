@@ -10,6 +10,7 @@ import { Button, DatePickerField, BottomSheet, Skeleton, Text } from 'src/compon
 import { PredictionDetailCard } from 'src/components/ui/PredictionDetailCard';
 import { useTheme } from 'src/theme';
 import { useCyclePredictions, usePredictionHistory, useLogCorrection } from 'src/services/queries/cycle';
+import { toLocalDateStr } from 'src/utils/date';
 
 const overrideSchema = z.object({
   overrideDate: z.string().min(1, 'Please select a date'),
@@ -25,7 +26,7 @@ const DATA_QUALITY_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 function toDateStr(date: Date): string {
-  return date.toISOString().split('T')[0];
+  return toLocalDateStr(date);
 }
 
 function addDays(date: Date, days: number): Date {

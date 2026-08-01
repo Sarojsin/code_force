@@ -109,9 +109,9 @@ export const cycleService = {
     return unwrap(res.data).items;
   },
 
-  async getCalendar(monthsBack = 3, monthsForward = 3): Promise<CalendarResponse> {
+  async getCalendar(monthsBack = 3, monthsForward = 3, today?: string): Promise<CalendarResponse> {
     const res = await api.get('/cycle/calendar', {
-      params: { months_back: monthsBack, months_forward: monthsForward },
+      params: { months_back: monthsBack, months_forward: monthsForward, today },
     });
     return unwrap(res.data);
   },

@@ -41,11 +41,14 @@ describe('Scenario 13: 4-phase calendar rollover', () => {
   // ── calculateCyclePhases ──────────────────────────────────────
 
   describe('calculateCyclePhases', () => {
-    it('calculates all 6 phase boundaries from period_start + cycle_length', () => {
+    it('calculates all 8 phase boundaries from period_start + cycle_length', () => {
       const start = date('2025-06-05');
       const phases = calculateCyclePhases(start, 28, 5);
       expect(fmt(phases.periodStart)).toBe('2025-06-05');
       expect(fmt(phases.periodEnd)).toBe('2025-06-09');
+      // follicular = period_end + 1 … fertile_start − 1
+      expect(fmt(phases.follicularStart)).toBe('2025-06-10');
+      expect(fmt(phases.follicularEnd)).toBe('2025-06-14');
       // ovulation_offset = max(10, min(28-14, 40)) = 14
       expect(fmt(phases.ovulationDate)).toBe('2025-06-19');
       expect(fmt(phases.fertileStart)).toBe('2025-06-15');
@@ -92,23 +95,33 @@ describe('Scenario 13: 4-phase calendar rollover', () => {
       }
     });
 
+    it('marks follicular phase with Fl between period and fertile', () => {
+      const days: DaysMap = {};
+      const phases = calculateCyclePhases(date('2025-06-05'), 28, 5);
+      applyPhaseToDays(days, phases, 'P');
+      const keys = dayKeys(date('2025-06-10'), date('2025-06-14'));
+      for (const k of keys) {
+        expect(days[k]).toBe('Fl');
+      }
+    });
+
     it('marks fertile window with F (dark purple)', () => {
       const days: DaysMap = {};
       const phases = calculateCyclePhases(date('2025-06-05'), 28, 5);
       applyPhaseToDays(days, phases, 'P');
-      const keys = dayKeys(date('2025-06-15'), date('2025-06-19'));
+      const keys = dayKeys(date('2025-06-15'), date('2025-06-18'));
       for (const k of keys) {
         expect(days[k]).toBe('F');
       }
     });
 
-    // Ovulation is within the fertile window; applyPhaseToDays applies
-    // fertile BEFORE ovulation, so the first-write-wins guard leaves F.
-    it('ovulation day shows F (fertile window applied first)', () => {
+    // Ovulation sits inside the fertile window; the ovulation day overrides
+    // the fertile code so O is actually emitted.
+    it('ovulation day shows O (overrides fertile window)', () => {
       const days: DaysMap = {};
       const phases = calculateCyclePhases(date('2025-06-05'), 28, 5);
       applyPhaseToDays(days, phases, 'P');
-      expect(days['2025-06-19']).toBe('F');
+      expect(days['2025-06-19']).toBe('O');
     });
 
     it('marks luteal phase with L (dark blue)', () => {
@@ -135,21 +148,31 @@ describe('Scenario 13: 4-phase calendar rollover', () => {
       }
     });
 
+    it('marks follicular phase with fl (light peach)', () => {
+      const days: DaysMap = {};
+      const phases = calculateCyclePhases(date('2025-07-03'), 28, 5);
+      applyPhaseToDays(days, phases, 'p');
+      const keys = dayKeys(date('2025-07-08'), date('2025-07-12'));
+      for (const k of keys) {
+        expect(days[k]).toBe('fl');
+      }
+    });
+
     it('marks fertile window with f (light purple)', () => {
       const days: DaysMap = {};
       const phases = calculateCyclePhases(date('2025-07-03'), 28, 5);
       applyPhaseToDays(days, phases, 'p');
-      const keys = dayKeys(date('2025-07-13'), date('2025-07-17'));
+      const keys = dayKeys(date('2025-07-13'), date('2025-07-16'));
       for (const k of keys) {
         expect(days[k]).toBe('f');
       }
     });
 
-    it('ovulation day shows f (fertile window applied first)', () => {
+    it('ovulation day shows o (overrides fertile window)', () => {
       const days: DaysMap = {};
       const phases = calculateCyclePhases(date('2025-07-03'), 28, 5);
       applyPhaseToDays(days, phases, 'p');
-      expect(days['2025-07-17']).toBe('f');
+      expect(days['2025-07-17']).toBe('o');
     });
 
     it('marks luteal phase with l (light blue)', () => {
@@ -211,9 +234,9 @@ describe('Scenario 13: 4-phase calendar rollover', () => {
       // Old predicted dates are cancelled
       expect(days['2025-06-01']).toBe('c');
       expect(days['2025-06-04']).toBe('c');
-      // June 5 was predicted (p), then cancelled logic didn't touch it,
-      // and confirmed can't override (first-write-wins). New dates June 6-9 are P.
-      expect(days['2025-06-05']).toBe('p');
+      // June 5 was predicted (p); confirmed P is written unconditionally
+      // (backend F1: confirmed beats predicted). New dates June 6-9 are P.
+      expect(days['2025-06-05']).toBe('P');
       expect(days['2025-06-09']).toBe('P');
     });
   });
@@ -240,6 +263,48 @@ describe('Scenario 13: 4-phase calendar rollover', () => {
       // Since July 1-4 (period end = June 30 + 4 = July 4) are NEW keys, they get P
       expect(days['2025-06-30']).toBe('P');
       expect(days['2025-07-04']).toBe('P');
+    });
+  });
+
+  // ── Wrong log → correction: June 16 logged, corrected to June 20 ──
+
+  describe('wrong log June 16 corrected to June 20', () => {
+    it('cancels old predicted days, writes confirmed P, projects next p', () => {
+      const days: DaysMap = {};
+
+      // Original prediction was June 16 – 20 (predicted 'p')
+      const oldPredicted = calculateCyclePhases(date('2025-06-16'), 28, 5);
+      applyPhaseToDays(days, oldPredicted, 'p');
+
+      // onMutate: cancel old predicted period days near the correction date → c
+      const periodStart = date('2025-06-20');
+      for (const [key, code] of Object.entries(days)) {
+        if (code === 'p') {
+          const dayDate = new Date(key + 'T00:00:00');
+          const diffFromStart = Math.round((periodStart.getTime() - dayDate.getTime()) / 86400000);
+          if (diffFromStart >= -14 && diffFromStart <= 10) {
+            days[key] = 'c';
+          }
+        }
+      }
+
+      // Confirmed phases for the corrected cycle June 20 – 24 → P
+      const confirmed = calculateCyclePhases(periodStart, 28, 5);
+      applyPhaseToDays(days, confirmed, 'P');
+
+      // Next predicted cycle: June 20 + 28 = July 18 → p
+      const next = calculateCyclePhases(date('2025-07-18'), 28, 5);
+      applyPhaseToDays(days, next, 'p');
+
+      // Old predicted dates that did NOT overlap the confirmed period are cancelled
+      expect(days['2025-06-16']).toBe('c');
+      expect(days['2025-06-19']).toBe('c');
+      // June 20 was predicted (p); confirmed P is written unconditionally (F1)
+      expect(days['2025-06-20']).toBe('P');
+      expect(days['2025-06-24']).toBe('P');
+      // Next predicted cycle rolls over to July 18 – 22
+      expect(days['2025-07-18']).toBe('p');
+      expect(days['2025-07-22']).toBe('p');
     });
   });
 });

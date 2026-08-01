@@ -293,6 +293,22 @@ async def test_get_calendar_200(app_client: AsyncClient) -> None:
     assert isinstance(body["days"], dict)
 
 
+@pytest.mark.asyncio
+async def test_get_calendar_with_today_param(app_client: AsyncClient) -> None:
+    resp = await app_client.get("/api/v1/cycle/calendar", params={"today": "2026-07-01"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["days"].get("2026-07-01") == "T"
+
+
+@pytest.mark.asyncio
+async def test_get_calendar_with_invalid_today_param(app_client: AsyncClient) -> None:
+    resp = await app_client.get("/api/v1/cycle/calendar", params={"today": "not-a-date"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "days" in body
+
+
 # ---- Happy-path: corrections & snooze ----
 
 

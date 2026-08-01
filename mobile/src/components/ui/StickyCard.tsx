@@ -11,13 +11,14 @@ import { Button } from './Button';
 import { Card } from './Card';
 import { DatePickerField } from './DatePickerField';
 import { Text } from './Text';
+import { toLocalDateStr } from 'src/utils/date';
 
 const adjustSchema = z.object({
   adjustDate: z.string().min(1, 'Please select a date'),
 });
 
 function toDateStr(date: Date): string {
-  return date.toISOString().split('T')[0];
+  return toLocalDateStr(date);
 }
 
 export interface StickyCardProps {

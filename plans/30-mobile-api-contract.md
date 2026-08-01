@@ -460,7 +460,10 @@ Returns a list of past predictions that have been confirmed by a period correcti
 
 Returns a dictionary-encoded calendar grid with cycle day types, the next prediction, and check-in status.
 
-**Query params:** `?months_back=3&months_forward=3`
+**Query params:** `?months_back=3&months_forward=3&today=2026-08-01`
+
+- `months_back` / `months_forward`: horizontal window in months (default 3).
+- `today` (optional): client-local `YYYY-MM-DD`. The server anchors the `T` day marker and the `needs_checkin` window to it (falls back to server date when omitted). This keeps the calendar aligned with the phone's calendar day across timezones.
 
 **Response `200`:**
 
@@ -469,9 +472,11 @@ Returns a dictionary-encoded calendar grid with cycle day types, the next predic
   "days": {
     "2026-07-17": "P",
     "2026-07-18": "P",
-    "2026-07-29": "F",
+    "2026-07-23": "Fl",
+    "2026-07-28": "F",
     "2026-07-31": "O",
     "2026-08-01": "L",
+    "2026-08-10": "pw",
     "2026-08-14": "p"
   },
   "predictions": {
@@ -493,10 +498,10 @@ Returns a dictionary-encoded calendar grid with cycle day types, the next predic
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `days` | `Record<string, string>` | ISO date → day type code: `P`=period, `p`=predicted period, `u`=unconfirmed period day (pending end date), `F`=fertile, `f`=predicted fertile, `O`=ovulation, `o`=predicted ovulation, `L`=luteal, `l`=predicted luteal, `T`=today, `c`=cancelled (correction overrode this day) |
-| `predictions` | `PredictionDetail \| null` | The next active prediction |
+| `days` | `Record<string, string>` | ISO date → day type code: `P`=confirmed period, `p`=predicted period, `u`=unconfirmed period (open entry, no end date), `Fl`=confirmed follicular, `fl`=predicted follicular, `F`=confirmed fertile, `f`=predicted fertile, `O`=confirmed ovulation, `o`=predicted ovulation, `L`=confirmed luteal, `l`=predicted luteal, `c`=cancelled (correction overrode this day), `pw`=prediction-window band (irregular users only, ±`prediction_window_days` around the `p` block), `T`=today |
+| `predictions` | `PredictionDetail \| null` | The next active prediction. `prediction_window_days` is `int(std_dev)` when `cycle_length_std_dev > 3.5` (both model paths), else `null` |
 | `next_period_in_days` | `int \| null` | Days until next predicted period (clamped to ≥ 0) |
-| `needs_checkin` | `bool` | Whether the check-in card should show (`true` only when prediction is unconfirmed, today is within P-3 to P+6 of predicted date, and no recent period entry exists) |
+| `needs_checkin` | `bool` | Whether the check-in card should show. `true` only when the prediction is unconfirmed, no recent period entry exists, and today is within the check-in window: `[pred − max(3, window), pred + max(6, window + 1)]` when `window = prediction_window_days`, else `[pred − 3, pred + 6]` |
 
 **ETag:** Backend computes a SHA-256 ETag on the response body. Mobile sends `If-None-Match`; server returns `304 Not Modified` when unchanged.
 

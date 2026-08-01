@@ -10,7 +10,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
 from statistics import median
 from typing import Any
 
@@ -49,10 +49,14 @@ def confidence_label(score: float) -> str:
 def fallback_prediction(
     cycle_lengths: list[int],
     avg_error: float | None = None,
-) -> tuple[int, float, int]:
+    user_std: float | None = None,
+) -> tuple[int, float, int | None]:
     """Simple median-based fallback when global model is unavailable.
 
     Returns ``(predicted_length, confidence, window_days)``.
+
+    The prediction window is only emitted when the user is irregular
+    (``std_dev > 3.5``), mirroring the global-model path.
     """
     if len(cycle_lengths) >= 3:
         base = int(median(cycle_lengths))
@@ -66,8 +70,10 @@ def fallback_prediction(
         confidence = max(0.15, confidence - 0.05)
 
     base = max(20, min(45, base))
-    pred_std = float(np.std(cycle_lengths)) if len(cycle_lengths) >= 2 else 5.0
-    window = max(3, min(10, int(pred_std)))
+    pred_std = user_std
+    if pred_std is None:
+        pred_std = float(np.std(cycle_lengths)) if len(cycle_lengths) >= 2 else None
+    window = int(pred_std) if pred_std is not None and pred_std > 3.5 else None
 
     return base, round(confidence, 2), window
 

@@ -14,6 +14,7 @@ import { useCycleCalendar, useLogCorrection } from 'src/services/queries';
 import { useEndDateStore } from 'src/stores/endDateStore';
 import { useCatchUp } from 'src/hooks/useCatchUp';
 import { usePeriodCheckIn } from 'src/hooks/usePeriodCheckIn';
+import { toLocalDateStr } from 'src/utils/date';
 import { globalModelClient } from 'src/services/ml/globalModel';
 import type { CycleStackParamList } from 'src/navigation/types';
 
@@ -64,7 +65,7 @@ export function CycleDashboardScreen() {
 
   const overrideForm = useForm<OverrideForm>({
     resolver: zodResolver(overrideSchema),
-    defaultValues: { overrideDate: new Date().toISOString().split('T')[0] },
+    defaultValues: { overrideDate: toLocalDateStr(new Date()) },
   });
 
   useEffect(() => {
