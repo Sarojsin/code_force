@@ -85,9 +85,6 @@ export function HomeDashboardScreen() {
   const phaseEmoji = getPhaseEmoji(phaseName);
   const phaseDesc = getPhaseDescription(phaseName);
   const nextPeriodDays = calData?.next_period_in_days ?? 14;
-  const nextPeriodDate = calData?.next_period_in_days != null
-    ? new Date(Date.now() + calData.next_period_in_days * 86400000)
-    : null;
 
   const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -260,42 +257,7 @@ export function HomeDashboardScreen() {
               </LinearGradient>
             </AnimatedSection>
 
-            <View style={styles.quickStatsRow}>
-              <AnimatedSection delay={staggerItems[1]} style={{ flex: 1, marginRight: 6 }}>
-                <Pressable
-                  onPress={() => navigation.navigate('CyclePredictions')}
-                  style={[styles.statCard, { backgroundColor: theme.colors.accentMuted, borderRadius: 20 }]}
-                >
-                  <Text variant="caption" color="muted" style={{ fontSize: 10, letterSpacing: 0.8 }}>NEXT PERIOD</Text>
-                  <Text style={styles.statNumber}>{nextPeriodDays}</Text>
-                  <View style={[styles.progressBarSmall, { backgroundColor: 'rgba(0,0,0,0.08)', borderRadius: 100 }]}>
-                    <View style={[styles.progressFillSmall, { width: '50%', backgroundColor: '#A78BFA', borderRadius: 100 }]} />
-                  </View>
-                  <Text variant="caption" color="muted" style={{ fontSize: 10 }}>
-                    {nextPeriodDate ? nextPeriodDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} · Predicted
-                  </Text>
-                </Pressable>
-              </AnimatedSection>
-              <AnimatedSection delay={staggerItems[1]} style={{ flex: 1, marginLeft: 6 }}>
-                <Pressable
-                  onPress={() => navigation.navigate('MoodLog')}
-                  style={[styles.statCard, { backgroundColor: '#D1FAE5', borderRadius: 20 }]}
-                >
-                  <Text variant="caption" color="muted" style={{ fontSize: 10, letterSpacing: 0.8 }}>TODAY'S MOOD</Text>
-                  <Text style={{ fontSize: 36 }}>😊</Text>
-                  <View style={styles.moodLogRow}>
-                    <View style={[styles.greenDot, { backgroundColor: '#10B981' }]} />
-                    <Text variant="caption" style={{ color: '#059669', fontSize: 11 }}>Log feeling</Text>
-                  </View>
-                </Pressable>
-              </AnimatedSection>
-            </View>
-
-            <AnimatedSection delay={staggerItems[2]}>
-              <CheckInCard calData={calData} />
-            </AnimatedSection>
-
-            <AnimatedSection delay={staggerItems[3]}>
+            <AnimatedSection delay={staggerItems[1]}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.phaseTimeline}>
                 {['Menstrual', 'Follicular', 'Ovulation', 'Luteal'].map((p) => {
                   const active = p === phaseName;
@@ -321,43 +283,16 @@ export function HomeDashboardScreen() {
               </ScrollView>
             </AnimatedSection>
 
-            <AnimatedSection delay={staggerItems[4]}>
+            <AnimatedSection delay={staggerItems[2]}>
+              <CheckInCard calData={calData} />
+            </AnimatedSection>
+
+            <AnimatedSection delay={staggerItems[3]}>
               <CatchUpCard />
             </AnimatedSection>
 
-            <AnimatedSection delay={staggerItems[5]}>
-              <Pressable
-                onPress={() => navigation.navigate('CyclePredictions')}
-                style={[styles.aiCard, { borderRadius: 20 }]}
-              >
-                <LinearGradient colors={['#EDE9FE', '#FCE7F3']} style={[StyleSheet.absoluteFill, { borderRadius: 20 }]} />
-                <View style={styles.aiCardContent}>
-                  <View style={[styles.aiIconWrap, { borderRadius: 16, backgroundColor: theme.colors.accentMuted }]}>
-                    <LinearGradient colors={['#C4B5FD', '#F0ABFC']} style={[StyleSheet.absoluteFill, { borderRadius: 16 }]} />
-                    <Text style={{ fontSize: 22 }}>🤖</Text>
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text variant="h3">AI Prediction</Text>
-                    <Text variant="body" color="secondary" style={{ marginTop: 2 }}>
-                      Next period predicted <Text variant="body" style={{ fontWeight: '700' }}>
-                        {nextPeriodDate ? nextPeriodDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '--'}
-                      </Text>
-                    </Text>
-                    <View style={styles.confidenceRow}>
-                      <View style={[styles.confidenceBadge, { backgroundColor: '#10B981', borderRadius: 100 }]}>
-                        <Text style={styles.confidenceText}>● 94% CONFIDENCE</Text>
-                      </View>
-                      <View style={[styles.confidenceBadge, { backgroundColor: '#10B981', borderRadius: 100 }]}>
-                        <Text style={styles.confidenceText}>● ON TRACK</Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </Pressable>
-            </AnimatedSection>
-
             <View style={styles.bentoRow}>
-              <AnimatedSection delay={staggerItems[6]} style={{ flex: 1, marginRight: 6 }}>
+              <AnimatedSection delay={staggerItems[4]} style={{ flex: 1, marginRight: 6 }}>
                 <Pressable
                   onPress={() => navigation.navigate('JournalEntry', { id: 'new' })}
                   style={[styles.bentoCard, { backgroundColor: '#fff', borderRadius: 20 }]}
@@ -370,7 +305,7 @@ export function HomeDashboardScreen() {
                   <Text variant="caption" color="muted">Quick thoughts in seconds</Text>
                 </Pressable>
               </AnimatedSection>
-              <AnimatedSection delay={staggerItems[6]} style={{ flex: 1, marginLeft: 6 }}>
+              <AnimatedSection delay={staggerItems[4]} style={{ flex: 1, marginLeft: 6 }}>
                 <Pressable
                   onPress={() => {
                     if (diaryAssetStatus === 'ready') {
@@ -403,29 +338,7 @@ export function HomeDashboardScreen() {
               </AnimatedSection>
             </View>
 
-            <AnimatedSection delay={staggerItems[7]}>
-              <View style={[styles.analyticsCard, { backgroundColor: '#fff', borderRadius: 20 }]}>
-                <Text variant="h3" style={{ marginBottom: 12 }}>Cycle Analytics</Text>
-                <View style={styles.barChart}>
-                  {['May', 'Jun', 'Jul'].map((month, idx) => {
-                    const isCurrent = idx === 2;
-                    const height = [70, 55, 85][idx];
-                    return (
-                      <View key={month} style={styles.barCol}>
-                        <Text style={{ fontSize: 10, color: theme.colors.textMuted }}>{['😊', '😌', '😊'][idx]}</Text>
-                        <View style={[styles.bar, { height, borderRadius: 8, backgroundColor: isCurrent ? theme.colors.primary : '#FFD4DC' }]} />
-                        <Text style={{ fontSize: 10, color: theme.colors.textMuted, marginTop: 4 }}>{month}</Text>
-                      </View>
-                    );
-                  })}
-                </View>
-                <View style={[styles.regularityBadge, { backgroundColor: theme.colors.mint, borderRadius: 100 }]}>
-                  <Text style={{ color: '#059669', fontSize: 12, fontWeight: '600' }}>📈 Average cycle: 28 days · Regularity score: 92%</Text>
-                </View>
-              </View>
-            </AnimatedSection>
-
-            <AnimatedSection delay={staggerItems[8]}>
+            <AnimatedSection delay={staggerItems[5]}>
               <Text variant="h3" style={{ marginBottom: 12 }}>Wellness Videos</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {[
@@ -591,37 +504,6 @@ const styles = StyleSheet.create({
     width: 1,
     height: 24,
   },
-  quickStatsRow: {
-    flexDirection: 'row',
-    marginBottom: CARD_GAP,
-  },
-  statCard: {
-    padding: 16,
-    minHeight: 110,
-    justifyContent: 'space-between',
-  },
-  statNumber: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#1A1A2E',
-  },
-  progressBarSmall: {
-    height: 4,
-    marginVertical: 6,
-  },
-  progressFillSmall: {
-    height: '100%',
-  },
-  moodLogRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  greenDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 4,
-  },
   phaseTimeline: {
     marginBottom: CARD_GAP,
   },
@@ -637,38 +519,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginTop: 4,
-  },
-  aiCard: {
-    minHeight: 100,
-    marginBottom: CARD_GAP,
-    overflow: 'hidden',
-  },
-  aiCardContent: {
-    flexDirection: 'row',
-    padding: 16,
-    alignItems: 'center',
-  },
-  aiIconWrap: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  confidenceRow: {
-    flexDirection: 'row',
-    marginTop: 6,
-    gap: 6,
-  },
-  confidenceBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  confidenceText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.3,
   },
   bentoRow: {
     flexDirection: 'row',
@@ -691,30 +541,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
-  },
-  analyticsCard: {
-    padding: 16,
-    marginBottom: CARD_GAP,
-  },
-  barChart: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    height: 120,
-    paddingBottom: 4,
-  },
-  barCol: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  bar: {
-    width: 32,
-  },
-  regularityBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginTop: 12,
   },
   videoCard: {
     width: 140,
