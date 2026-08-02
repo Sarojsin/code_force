@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import { format } from 'date-fns';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from 'src/theme';
 
@@ -76,15 +77,21 @@ export function DayDetailSheet({
   const hasInput = mood != null || symptoms.length > 0 || noteText.trim().length > 0;
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={format(date, 'EEEE, MMMM d, yyyy')}>
+    <BottomSheet visible={visible} onClose={onClose}>
       <View style={styles.content}>
-        <View style={[styles.phaseRow, { backgroundColor: phase.color + '22', borderRadius: theme.radius.md }]}>
-          <Text style={styles.phaseEmoji}>{phase.emoji}</Text>
-          <View style={styles.phaseTextWrap}>
-            <Text variant="body" style={styles.phaseTitle}>{phase.label}</Text>
-            <Text variant="caption" color="muted">{phase.description}</Text>
+        <LinearGradient
+          colors={['#FF6B8A', '#D4507A']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.hero, theme.shadow.primary]}
+        >
+          <Text style={styles.heroDate}>{format(date, 'EEEE, MMMM d')}</Text>
+          <View style={styles.heroPhaseRow}>
+            <Text style={styles.heroPhaseEmoji}>{phase.emoji}</Text>
+            <Text style={styles.heroPhaseLabel}>{phase.label}</Text>
           </View>
-        </View>
+          <Text style={styles.heroPhaseDesc}>{phase.description}</Text>
+        </LinearGradient>
 
         <View style={styles.flagRow}>
           <Button
@@ -154,10 +161,27 @@ export function DayDetailSheet({
 
 const styles = StyleSheet.create({
   content: { gap: 16 },
-  phaseRow: { flexDirection: 'row', alignItems: 'center', padding: 12 },
-  phaseEmoji: { fontSize: 20 },
-  phaseTextWrap: { flex: 1, marginLeft: 10 },
-  phaseTitle: { fontWeight: '600' },
+  hero: {
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    borderRadius: 24,
+  },
+  heroDate: {
+    fontSize: 26,
+    fontWeight: '800',
+    lineHeight: 32,
+    fontFamily: 'Playfair Display',
+    color: '#FFFFFF',
+  },
+  heroPhaseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 8,
+  },
+  heroPhaseEmoji: { fontSize: 18 },
+  heroPhaseLabel: { fontSize: 15, fontWeight: '700', letterSpacing: 0.4, color: '#FFFFFF' },
+  heroPhaseDesc: { fontSize: 13, lineHeight: 18, marginTop: 6, color: 'rgba(255,255,255,0.92)' },
   flagRow: { flexDirection: 'row', gap: 10 },
   flagBtn: { flex: 1 },
   sectionCard: {

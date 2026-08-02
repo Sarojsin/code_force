@@ -7,6 +7,8 @@ import {
   MoodLog,
 } from 'src/services/api';
 import { useOfflineStore } from 'src/stores/offlineStore';
+import { useAuthStore } from 'src/stores/authStore';
+import { localDb } from 'src/services/localDb';
 import { isNetworkError } from 'src/services/sync';
 import { generateId } from 'src/utils';
 import { upsertJournalEntry, upsertMoodLog } from 'src/services/localDb/writeThroughHelpers';
@@ -19,10 +21,38 @@ export const wellnessKeys = {
   insights: ['wellness', 'insights'] as const,
 };
 
+function mergeJournalEntries(server: JournalEntry[], local: JournalEntry[]): JournalEntry[] {
+  const byId = new Map<string, JournalEntry>();
+  for (const l of local) byId.set(l.id, l);
+  for (const s of server) {
+    const existing = byId.get(s.id);
+    // Prefer local content (SQLite rows carry content + sentiment; API metadata omits content).
+    byId.set(s.id, existing ? { ...s, content: existing.content ?? s.content, sentiment_label: existing.sentiment_label ?? s.sentiment_label } : s);
+  }
+  return [...byId.values()].sort(
+    (a, b) => (b.entry_date || b.created_at).localeCompare(a.entry_date || a.created_at),
+  );
+}
+
 export function useJournalEntries(params?: { page?: number; per_page?: number }) {
+  const userId = useAuthStore((s) => s.user?.id);
   return useQuery({
-    queryKey: [...wellnessKeys.journal, params],
-    queryFn: () => wellnessService.getJournalEntries(params?.per_page, params?.page),
+    queryKey: [...wellnessKeys.journal, params, userId],
+    queryFn: async (): Promise<JournalEntry[]> => {
+      let server: JournalEntry[] = [];
+      try {
+        server = await wellnessService.getJournalEntries(params?.per_page, params?.page);
+      } catch {
+        server = [];
+      }
+      const local = userId
+        ? (await localDb.journal.getRecent(userId, params?.per_page ?? 50)) as unknown as JournalEntry[]
+        : [];
+      if (server.length > 0) {
+        localDb.journal.upsertMany(server as any);
+      }
+      return mergeJournalEntries(server, local);
+    },
     staleTime: 10 * 60 * 1000,
     retry: false,
   });

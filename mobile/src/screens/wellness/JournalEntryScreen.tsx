@@ -7,6 +7,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { Button, Text as Txt, KeyboardAvoidingWrapper, MoodPicker, Card } from 'src/components/ui';
 
@@ -28,6 +29,21 @@ const journalSchema = z.object({
 });
 type JournalForm = z.infer<typeof journalSchema>;
 
+function SectionCard({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+  const theme = useTheme();
+  return (
+    <Card variant="glass" style={styles.sectionCard}>
+      <View style={styles.sectionHeader}>
+        <View style={[styles.sectionIconWrap, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.md }]}>
+          <Txt style={styles.sectionIcon}>{icon}</Txt>
+        </View>
+        <Txt variant="body" style={styles.sectionTitle}>{title}</Txt>
+      </View>
+      {children}
+    </Card>
+  );
+}
+
 export function JournalEntryScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
@@ -35,7 +51,7 @@ export function JournalEntryScreen() {
   const queryClient = useQueryClient();
   const { id } = route.params;
   const isNew = id === 'new';
-  const [_draftInfo, setDraftInfo] = useState<string | null>(null);
+  const [draftInfo, setDraftInfo] = useState<string | null>(null);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
   const { control, handleSubmit, formState, watch, reset } = useForm<JournalForm>({
@@ -146,18 +162,34 @@ export function JournalEntryScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+      <LinearGradient
+        colors={[theme.colors.accentLight + '59', 'transparent']}
+        locations={[0, 0.6]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       <KeyboardAvoidingWrapper contentContainerStyle={styles.content}>
           <Txt style={[styles.dateLabel, { color: theme.colors.textSoft }]}>
             {format(new Date(), 'EEEE · MMMM d, yyyy').toUpperCase()}
           </Txt>
-          <Txt variant="h1" style={styles.title}>
-            {isNew ? "Today's Entry" : 'Edit Entry'}
-          </Txt>
+          <View style={styles.titleRow}>
+            <Txt variant="h1" style={styles.title}>
+              {isNew ? "Today's Entry" : 'Edit Entry'}
+            </Txt>
+            <LinearGradient
+              colors={['#FF6B8A', '#D4507A']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.titleAccent}
+            />
+          </View>
+          {draftInfo && (
+            <Txt variant="caption" color="muted" style={styles.draftInfo}>{draftInfo} · auto-saved</Txt>
+          )}
 
-          <Card variant="glass" style={styles.moodCard}>
-            <Txt variant="body" color="muted" style={styles.sectionLabel}>HOW ARE YOU FEELING?</Txt>
+          <SectionCard icon="💫" title="How are you feeling?">
             <MoodPicker selected={selectedMood} onSelect={setSelectedMood} />
-          </Card>
+          </SectionCard>
 
           <Txt variant="body" color="muted" style={styles.thoughtsLabel}>YOUR THOUGHTS</Txt>
           <View style={styles.textareaWrapper}>
@@ -168,38 +200,40 @@ export function JournalEntryScreen() {
                 </Txt>
               </View>
             )}
-            <Controller
-              control={control}
-              name="content"
-              render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
-                <View>
-                  <TextInput
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    multiline
-                    numberOfLines={8}
-                    placeholder="What's on your mind today?"
-                    placeholderTextColor={theme.colors.textSoft}
-                    accessibilityLabel="Journal content"
-                    style={[
-                      styles.textarea,
-                      styles.textareaInput,
-                      { color: theme.colors.textPrimary },
-                    ]}
-                  />
-                  <View style={styles.textareaFooter}>
-                    <Txt variant="caption" color="muted">{(value || '').length} chars</Txt>
+            <Card variant="flat" style={styles.noteCard}>
+              <Controller
+                control={control}
+                name="content"
+                render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
+                  <View>
+                    <TextInput
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      multiline
+                      numberOfLines={8}
+                      placeholder="What's on your mind today?"
+                      placeholderTextColor={theme.colors.textSoft}
+                      accessibilityLabel="Journal content"
+                      style={[
+                        styles.textarea,
+                        styles.textareaInput,
+                        { color: theme.colors.textPrimary },
+                      ]}
+                    />
+                    <View style={styles.textareaFooter}>
+                      <Txt variant="caption" color="muted">{(value || '').length} chars</Txt>
+                    </View>
+                    {error && <Txt variant="caption" style={[styles.errorText, { color: theme.colors.danger }]}>{error.message}</Txt>}
                   </View>
-                  {error && <Txt variant="caption" style={[styles.errorText, { color: theme.colors.danger }]}>{error.message}</Txt>}
-                </View>
-              )}
-            />
+                )}
+              />
+            </Card>
           </View>
 
           <View style={styles.spacer} />
           <Button
-            label="💾 Save Entry"
+            label="Save Entry"
             onPress={handleSubmit(onSubmit)}
             disabled={!formState.isValid || createMutation.isPending}
             fullWidth
@@ -230,19 +264,40 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
   },
-  title: {
+  titleRow: {
     marginTop: 4,
-    fontSize: 28,
     marginBottom: 20,
   },
-  moodCard: {
+  title: {
+    fontSize: 32,
+  },
+  titleAccent: {
+    width: 48,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 8,
+  },
+  draftInfo: {
+    marginTop: -12,
+    marginBottom: 16,
+  },
+  sectionCard: {
     padding: 16,
+    gap: 12,
   },
-  sectionLabel: {
-    fontSize: 12,
-    letterSpacing: 0.5,
-    marginBottom: 12,
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
+  sectionIconWrap: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionIcon: { fontSize: 16 },
+  sectionTitle: { fontWeight: '600' },
   thoughtsLabel: {
     fontSize: 12,
     letterSpacing: 0.5,
@@ -265,15 +320,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  noteCard: {
+    padding: 16,
+  },
   textarea: {
     fontSize: 15,
     textAlignVertical: 'top',
-    paddingTop: 16,
+    paddingTop: 4,
     paddingHorizontal: 0,
     lineHeight: 22,
   },
   textareaInput: {
-    minHeight: 180,
+    minHeight: 160,
   },
   textareaFooter: {
     flexDirection: 'row',
