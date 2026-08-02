@@ -1,4 +1,5 @@
 import { queryClient } from '../../app/providers';
+import { EncryptedStorage } from '../storage';
 import { localDb } from './index';
 import { logger } from '../../utils';
 
@@ -6,8 +7,7 @@ const BACKFILLED_KEY = 'shecare.sqlite.backfilled';
 
 export async function backfillSqliteIfNeeded(): Promise<void> {
   try {
-    const { getItemAsync, setItemAsync } = await import('expo-secure-store');
-    const alreadyBackfilled = await getItemAsync(BACKFILLED_KEY);
+    const alreadyBackfilled = await EncryptedStorage.getItem(BACKFILLED_KEY);
     if (alreadyBackfilled === 'true') return;
 
     const cacheKeys = [
@@ -44,7 +44,7 @@ export async function backfillSqliteIfNeeded(): Promise<void> {
       }
     }
 
-    await setItemAsync(BACKFILLED_KEY, 'true');
+    await EncryptedStorage.setItem(BACKFILLED_KEY, 'true');
     logger.info('SQLite backfill complete', { records: totalRecords });
   } catch (error) {
     logger.error('SQLite backfill failed', error);

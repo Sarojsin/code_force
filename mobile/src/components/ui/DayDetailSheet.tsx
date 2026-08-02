@@ -6,6 +6,7 @@ import { useTheme } from 'src/theme';
 
 import { BottomSheet } from './BottomSheet';
 import { Button } from './Button';
+import { Card } from './Card';
 import { MoodPicker } from './MoodPicker';
 import { SymptomGrid } from './SymptomGrid';
 import { Text } from './Text';
@@ -28,16 +29,29 @@ export interface DayDetailSheetProps {
   onFlagEnd: (date: Date) => void;
   symptoms: string[];
   onToggleSymptom: (symptom: string) => void;
-  onSaveSymptoms: () => void;
-  symptomsLoading?: boolean;
   mood: string | null;
   onSelectMood: (mood: string) => void;
-  onSaveMood: () => void;
-  moodLoading?: boolean;
   noteText: string;
   onChangeNote: (text: string) => void;
-  onSaveNote: () => void;
-  noteLoading?: boolean;
+  onDone: () => void;
+  doneLoading?: boolean;
+}
+
+const SYMPTOM_OPTIONS = ['Cramps', 'Bloating', 'Headache', 'Fatigue', 'Nausea', 'Backache', 'Breast tenderness', 'Acne'];
+
+function SectionCard({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+  const theme = useTheme();
+  return (
+    <Card variant="glass" style={styles.sectionCard}>
+      <View style={styles.sectionHeader}>
+        <View style={[styles.sectionIconWrap, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.md }]}>
+          <Text style={styles.sectionIcon}>{icon}</Text>
+        </View>
+        <Text variant="body" style={styles.sectionTitle}>{title}</Text>
+      </View>
+      {children}
+    </Card>
+  );
 }
 
 export function DayDetailSheet({
@@ -50,19 +64,16 @@ export function DayDetailSheet({
   onFlagEnd,
   symptoms,
   onToggleSymptom,
-  onSaveSymptoms,
-  symptomsLoading,
   mood,
   onSelectMood,
-  onSaveMood,
-  moodLoading,
   noteText,
   onChangeNote,
-  onSaveNote,
-  noteLoading,
+  onDone,
+  doneLoading,
 }: DayDetailSheetProps) {
   const theme = useTheme();
   const canLogSymptoms = coveringEntry != null;
+  const hasInput = mood != null || symptoms.length > 0 || noteText.trim().length > 0;
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title={format(date, 'EEEE, MMMM d, yyyy')}>
@@ -92,31 +103,22 @@ export function DayDetailSheet({
         </View>
 
         {canLogSymptoms ? (
-          <View style={styles.section}>
-            <Text variant="bodySmall" color="secondary" style={styles.sectionLabel}>
-              Symptoms
-            </Text>
-            <SymptomGrid selected={symptoms} onToggle={onToggleSymptom} symptoms={['Cramps', 'Bloating', 'Headache', 'Fatigue', 'Nausea', 'Backache', 'Breast tenderness', 'Acne']} />
-            <Button label="Save symptoms" onPress={onSaveSymptoms} loading={symptomsLoading} fullWidth size="md" style={{ marginTop: theme.spacing.sm }} />
-          </View>
+          <SectionCard icon="🤍" title="Symptoms">
+            <SymptomGrid selected={symptoms} onToggle={onToggleSymptom} symptoms={SYMPTOM_OPTIONS} />
+          </SectionCard>
         ) : (
-          <Text variant="caption" color="muted" style={styles.hint}>
-            Symptoms can only be logged on days within a logged period.
-          </Text>
+          <Card variant="glass" style={styles.sectionCard}>
+            <Text variant="caption" color="muted" style={styles.hint}>
+              Symptoms can only be logged on days within a logged period.
+            </Text>
+          </Card>
         )}
 
-        <View style={styles.section}>
-          <Text variant="bodySmall" color="secondary" style={styles.sectionLabel}>
-            How was your mood?
-          </Text>
+        <SectionCard icon="💫" title="How was your mood?">
           <MoodPicker selected={mood} onSelect={onSelectMood} />
-          <Button label="Save mood" onPress={onSaveMood} disabled={!mood} loading={moodLoading} fullWidth size="md" style={{ marginTop: theme.spacing.sm }} />
-        </View>
+        </SectionCard>
 
-        <View style={styles.section}>
-          <Text variant="bodySmall" color="secondary" style={styles.sectionLabel}>
-            Add a note
-          </Text>
+        <SectionCard icon="📝" title="Add a note">
           <TextInput
             value={noteText}
             onChangeText={onChangeNote}
@@ -134,8 +136,17 @@ export function DayDetailSheet({
               },
             ]}
           />
-          <Button label="Save note" onPress={onSaveNote} disabled={!noteText.trim()} loading={noteLoading} fullWidth size="md" style={{ marginTop: theme.spacing.sm }} />
-        </View>
+        </SectionCard>
+
+        <Button
+          label="Done"
+          onPress={onDone}
+          disabled={!hasInput}
+          loading={doneLoading}
+          fullWidth
+          size="lg"
+          style={styles.doneBtn}
+        />
       </View>
     </BottomSheet>
   );
@@ -149,8 +160,23 @@ const styles = StyleSheet.create({
   phaseTitle: { fontWeight: '600' },
   flagRow: { flexDirection: 'row', gap: 10 },
   flagBtn: { flex: 1 },
-  section: { gap: 4 },
-  sectionLabel: { marginBottom: 8 },
+  sectionCard: {
+    padding: 16,
+    gap: 12,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sectionIconWrap: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionIcon: { fontSize: 16 },
+  sectionTitle: { fontWeight: '600' },
   hint: { opacity: 0.8 },
   noteInput: {
     borderWidth: 1.5,
@@ -159,4 +185,5 @@ const styles = StyleSheet.create({
     minHeight: 100,
     textAlignVertical: 'top',
   },
+  doneBtn: { marginTop: 4 },
 });

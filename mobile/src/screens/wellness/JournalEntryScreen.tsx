@@ -7,9 +7,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import Animated, { useAnimatedStyle, withSpring, useSharedValue } from 'react-native-reanimated';
 
-import { Button, Text as Txt, KeyboardAvoidingWrapper } from 'src/components/ui';
+import { Button, Text as Txt, KeyboardAvoidingWrapper, MoodPicker, Card } from 'src/components/ui';
 
 import { useTheme } from 'src/theme';
 import { EncryptedStorage } from 'src/services/storage';
@@ -29,69 +28,6 @@ const journalSchema = z.object({
 });
 type JournalForm = z.infer<typeof journalSchema>;
 
-const MOODS = [
-  { emoji: '😊', label: 'Happy', color: '#FFD93D' },
-  { emoji: '😌', label: 'Calm', color: '#A8E6CF' },
-  { emoji: '😴', label: 'Tired', color: '#B8D4E3' },
-  { emoji: '😰', label: 'Anxious', color: '#FFB3BA' },
-  { emoji: '😢', label: 'Sad', color: '#B0BEC5' },
-  { emoji: '🌟', label: 'Radiant', color: '#FFD700' },
-];
-
-const ENERGY_LEVELS = [
-  { emoji: '🪫', label: 'Drained' },
-  { emoji: '😴', label: 'Low' },
-  { emoji: '😊', label: 'Medium' },
-  { emoji: '⚡', label: 'High' },
-  { emoji: '🚀', label: 'Max' },
-];
-
-const SYMPTOMS = ['Cramps', 'Bloating', 'Headache', 'Fatigue', 'Nausea', 'Backache'];
-
-function MoodButton({ emoji, label, color, selected, onPress }: { emoji: string; label: string; color: string; selected: boolean; onPress: () => void }) {
-  const theme = useTheme();
-  const scale = useSharedValue(1);
-  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  return (
-    <Animated.View style={animStyle}>
-      <Pressable
-        onPressIn={() => { scale.value = withSpring(0.9); }}
-        onPressOut={() => { scale.value = withSpring(1); }}
-        onPress={onPress}
-        accessibilityLabel={`${label} mood`}
-        accessibilityRole="button"
-        accessibilityHint={`Select ${label} mood`}
-        style={[
-          styles.moodBtn,
-          { borderRadius: 16, backgroundColor: selected ? color : 'rgba(0,0,0,0.04)' },
-          selected && { shadowColor: color, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-        ]}
-      >
-        <Txt style={{ fontSize: 28 }}>{emoji}</Txt>
-        <Txt variant="caption" style={{ color: selected ? theme.colors.textPrimary : theme.colors.textSoft, marginTop: 4 }}>{label}</Txt>
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-function EnergyButton({ emoji, label, selected, onPress }: { emoji: string; label: string; selected: boolean; onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.energyBtn,
-        { borderRadius: 16 },
-        selected && { backgroundColor: theme.colors.primary },
-        !selected && { backgroundColor: 'rgba(0,0,0,0.04)' },
-      ]}
-    >
-        <Txt style={{ fontSize: 24 }}>{emoji}</Txt>
-        <Txt variant="caption" style={{ color: selected ? '#fff' : theme.colors.textSoft, fontSize: 9 }}>{label}</Txt>
-    </Pressable>
-  );
-}
-
 export function JournalEntryScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
@@ -101,8 +37,6 @@ export function JournalEntryScreen() {
   const isNew = id === 'new';
   const [_draftInfo, setDraftInfo] = useState<string | null>(null);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const [energyLevel, setEnergyLevel] = useState<number | null>(null);
-  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
 
   const { control, handleSubmit, formState, watch, reset } = useForm<JournalForm>({
     resolver: zodResolver(journalSchema),
@@ -119,6 +53,7 @@ export function JournalEntryScreen() {
   useEffect(() => {
     if (existingEntry) {
       reset({ title: existingEntry.title ?? '', content: existingEntry.content });
+      setSelectedMood(existingEntry.mood ?? null);
     }
   }, [existingEntry, reset]);
 
@@ -172,7 +107,7 @@ export function JournalEntryScreen() {
   }, [navigation, id, watch, isNew]);
 
   const createMutation = useMutation({
-    mutationFn: (data: { title?: string; content: string }) =>
+    mutationFn: (data: { title?: string; content: string; mood?: string | null }) =>
       wellnessService.createJournalEntry(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wellness', 'journal'] });
@@ -189,13 +124,7 @@ export function JournalEntryScreen() {
     if (isNew) {
       await EncryptedStorage.removeItem(DRAFT_KEY(id));
     }
-    createMutation.mutate({ title: data.title, content: data.content });
-  };
-
-  const toggleSymptom = (s: string) => {
-    setSelectedSymptoms(prev =>
-      prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s],
-    );
+    createMutation.mutate({ title: data.title, content: data.content, mood: selectedMood });
   };
 
   const contentValue = watch('content');
@@ -209,7 +138,7 @@ export function JournalEntryScreen() {
 
   if (entryLoading) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+      <SafeAreaView style={[styles.safe, styles.loadingCenter, { backgroundColor: theme.colors.background }]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </SafeAreaView>
     );
@@ -217,74 +146,24 @@ export function JournalEntryScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingWrapper contentContainerStyle={{ padding: 24 }}>
-          <Txt style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSoft, letterSpacing: 1 }}>
+      <KeyboardAvoidingWrapper contentContainerStyle={styles.content}>
+          <Txt style={[styles.dateLabel, { color: theme.colors.textSoft }]}>
             {format(new Date(), 'EEEE · MMMM d, yyyy').toUpperCase()}
           </Txt>
-          <Txt variant="h1" style={{ marginTop: 4, fontSize: 28, marginBottom: 20 }}>
+          <Txt variant="h1" style={styles.title}>
             {isNew ? "Today's Entry" : 'Edit Entry'}
           </Txt>
 
-          <Txt variant="body" color="muted" style={{ fontSize: 12, letterSpacing: 0.5, marginBottom: 8 }}>HOW ARE YOU FEELING?</Txt>
-          <View style={styles.moodGrid}>
-            {MOODS.map((m) => (
-              <MoodButton
-                key={m.label}
-                emoji={m.emoji}
-                label={m.label}
-                color={m.color}
-                selected={selectedMood === m.label}
-                onPress={() => setSelectedMood(m.label)}
-              />
-            ))}
-          </View>
+          <Card variant="glass" style={styles.moodCard}>
+            <Txt variant="body" color="muted" style={styles.sectionLabel}>HOW ARE YOU FEELING?</Txt>
+            <MoodPicker selected={selectedMood} onSelect={setSelectedMood} />
+          </Card>
 
-          <Txt variant="body" color="muted" style={{ fontSize: 12, letterSpacing: 0.5, marginTop: 20, marginBottom: 8 }}>ENERGY LEVEL</Txt>
-          <View style={styles.energyRow}>
-            {ENERGY_LEVELS.map((e, i) => (
-              <EnergyButton
-                key={e.label}
-                emoji={e.emoji}
-                label={e.label}
-                selected={energyLevel === i}
-                onPress={() => setEnergyLevel(i)}
-              />
-            ))}
-          </View>
-
-          <Txt variant="body" color="muted" style={{ fontSize: 12, letterSpacing: 0.5, marginTop: 20, marginBottom: 8 }}>SYMPTOMS</Txt>
-          <View style={styles.symptomRow}>
-            {SYMPTOMS.map((s) => {
-              const active = selectedSymptoms.includes(s);
-              return (
-                <Pressable
-                  key={s}
-                  onPress={() => toggleSymptom(s)}
-                  style={[
-                    styles.symptomPill,
-                    { borderRadius: 100 },
-                    active ? { backgroundColor: theme.colors.primary } : { backgroundColor: theme.colors.surface + 'BF', borderColor: theme.colors.primary + '44', borderWidth: 1 },
-                    active && { shadowColor: theme.colors.primary, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-                  ]}
-                >
-                  <Txt variant="body" style={{ color: active ? '#fff' : theme.colors.textSoft, fontSize: 13 }}>
-                    {s}
-                  </Txt>
-                </Pressable>
-              );
-            })}
-          </View>
-          {selectedSymptoms.length > 0 && (
-            <Txt variant="caption" color="muted" style={{ marginTop: 6, marginLeft: 4 }}>
-              {selectedSymptoms.length} symptom{selectedSymptoms.length > 1 ? 's' : ''} logged
-            </Txt>
-          )}
-
-          <Txt variant="body" color="muted" style={{ fontSize: 12, letterSpacing: 0.5, marginTop: 20, marginBottom: 8 }}>YOUR THOUGHTS</Txt>
+          <Txt variant="body" color="muted" style={styles.thoughtsLabel}>YOUR THOUGHTS</Txt>
           <View style={styles.textareaWrapper}>
             {sentimentBadge && (
-              <View style={[styles.sentimentBadge, { backgroundColor: theme.colors.accentMuted, borderRadius: 100 }]}>
-                <Txt style={{ color: theme.colors.accent, fontSize: 11, fontWeight: '600' }}>
+              <View style={[styles.sentimentBadge, { backgroundColor: theme.colors.accentMuted }]}>
+                <Txt style={[styles.sentimentText, { color: theme.colors.accent }]}>
                   {sentimentBadge.emoji} {sentimentBadge.label}
                 </Txt>
               </View>
@@ -305,30 +184,20 @@ export function JournalEntryScreen() {
                     accessibilityLabel="Journal content"
                     style={[
                       styles.textarea,
-                      {
-                        color: theme.colors.textPrimary,
-                        minHeight: 180,
-                      },
+                      styles.textareaInput,
+                      { color: theme.colors.textPrimary },
                     ]}
                   />
                   <View style={styles.textareaFooter}>
                     <Txt variant="caption" color="muted">{(value || '').length} chars</Txt>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <Pressable style={[styles.attachBtn, { backgroundColor: theme.colors.border, borderRadius: 100 }]}>
-                        <Txt style={{ fontSize: 14 }}>📷</Txt>
-                      </Pressable>
-                      <Pressable style={[styles.attachBtn, { backgroundColor: theme.colors.border, borderRadius: 100 }]}>
-                        <Txt style={{ fontSize: 14 }}>🎤</Txt>
-                      </Pressable>
-                    </View>
                   </View>
-                  {error && <Txt variant="caption" color="danger" style={{ marginTop: 4 }}>{error.message}</Txt>}
+                  {error && <Txt variant="caption" style={[styles.errorText, { color: theme.colors.danger }]}>{error.message}</Txt>}
                 </View>
               )}
             />
           </View>
 
-          <View style={{ height: 20 }} />
+          <View style={styles.spacer} />
           <Button
             label="💾 Save Entry"
             onPress={handleSubmit(onSubmit)}
@@ -338,7 +207,7 @@ export function JournalEntryScreen() {
           />
           <Pressable
             onPress={() => navigation.navigate('JournalList')}
-            style={{ marginTop: 12, alignItems: 'center' }}
+            style={styles.viewPastBtn}
           >
             <Txt variant="body" color="muted">📖 View Past Entries</Txt>
           </Pressable>
@@ -349,34 +218,36 @@ export function JournalEntryScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  moodGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  moodBtn: {
-    width: '30%',
+  loadingCenter: {
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 12,
   },
-  energyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 6,
+  content: {
+    padding: 24,
   },
-  energyBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 10,
+  dateLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
-  symptomRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  title: {
+    marginTop: 4,
+    fontSize: 28,
+    marginBottom: 20,
   },
-  symptomPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  moodCard: {
+    padding: 16,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  thoughtsLabel: {
+    fontSize: 12,
+    letterSpacing: 0.5,
+    marginTop: 20,
+    marginBottom: 8,
   },
   textareaWrapper: {
     position: 'relative',
@@ -387,26 +258,36 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    borderRadius: 100,
     zIndex: 1,
+  },
+  sentimentText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   textarea: {
     fontSize: 15,
-    fontStyle: 'italic',
     textAlignVertical: 'top',
     paddingTop: 16,
     paddingHorizontal: 0,
     lineHeight: 22,
   },
+  textareaInput: {
+    minHeight: 180,
+  },
   textareaFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
     marginTop: 8,
   },
-  attachBtn: {
-    width: 32,
-    height: 32,
+  errorText: {
+    marginTop: 4,
+  },
+  spacer: {
+    height: 20,
+  },
+  viewPastBtn: {
+    marginTop: 12,
     alignItems: 'center',
-    justifyContent: 'center',
   },
 });

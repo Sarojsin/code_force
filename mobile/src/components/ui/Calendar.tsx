@@ -125,10 +125,10 @@ export const Calendar = React.memo(function Calendar({
             <AnimatingWrapper key={dayIdx} animating={animating}>
               <Pressable
                 onPress={() => inMonth && !disabled && onDateSelect(day)}
-                disabled={!inMonth || disabled || isStrikethrough}
+                disabled={!inMonth || disabled}
                 accessibilityLabel={`${format(day, 'MMMM d, yyyy')}${dayType !== 'none' ? `, ${dayType}` : ''}`}
                 accessibilityRole="button"
-                accessibilityState={{ selected: !!selected, disabled: !inMonth || disabled || isStrikethrough }}
+                accessibilityState={{ selected: !!selected, disabled: !inMonth || disabled }}
                 style={[
                   styles.dayCell,
                   { borderRadius: 14 },

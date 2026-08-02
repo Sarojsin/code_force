@@ -178,45 +178,53 @@ export function CalendarScreen() {
     setShowDaySheet(true);
   };
 
-  const handleSaveMood = () => {
-    if (!selectedMood) return;
-    createMoodLog.mutate(
-      { mood: selectedMood, intensity: moodIntensity },
-      {
-        onSuccess: () => {
-          setSelectedMood(null);
-          setMoodIntensity(5);
-          Toast.show({ type: 'success', text1: 'Mood logged' });
+  const handleDone = () => {
+    const hasMood = selectedMood != null;
+    const hasNote = noteText.trim().length > 0;
+    const hasSymptoms = coveringEntry != null && selectedSymptoms.length > 0;
+
+    if (hasMood) {
+      createMoodLog.mutate(
+        { mood: selectedMood!, intensity: moodIntensity },
+        {
+          onSuccess: () => {
+            setSelectedMood(null);
+            setMoodIntensity(5);
+            Toast.show({ type: 'success', text1: 'Mood logged' });
+          },
         },
-      },
-    );
+      );
+    }
+
+    if (hasNote) {
+      createJournal.mutate(
+        { content: noteText.trim(), entry_date: selectedStr },
+        {
+          onSuccess: () => {
+            setNoteText('');
+            Toast.show({ type: 'success', text1: 'Note saved' });
+          },
+        },
+      );
+    }
+
+    if (hasSymptoms && coveringEntry) {
+      updateCycleEntry.mutate(
+        { id: coveringEntry.id, data: { symptoms: selectedSymptoms } },
+        {
+          onSuccess: () => {
+            Toast.show({ type: 'success', text1: 'Symptoms updated' });
+          },
+        },
+      );
+    }
+
+    setShowDaySheet(false);
+    setSelectedDate(null);
   };
 
-  const handleSaveNote = () => {
-    const content = noteText.trim();
-    if (!content) return;
-    createJournal.mutate(
-      { content, entry_date: selectedStr },
-      {
-        onSuccess: () => {
-          setNoteText('');
-          Toast.show({ type: 'success', text1: 'Note saved' });
-        },
-      },
-    );
-  };
-
-  const handleSaveSymptoms = () => {
-    if (!coveringEntry) return;
-    updateCycleEntry.mutate(
-      { id: coveringEntry.id, data: { symptoms: selectedSymptoms } },
-      {
-        onSuccess: () => {
-          Toast.show({ type: 'success', text1: 'Symptoms updated' });
-        },
-      },
-    );
-  };
+  const doneLoading =
+    createMoodLog.isPending || createJournal.isPending || updateCycleEntry.isPending;
 
   const handleFlagStart = (date: Date) => {
     const dateStr = toDateStr(date);
@@ -435,16 +443,12 @@ export function CalendarScreen() {
               setSelectedSymptoms((prev) =>
                 prev.includes(s) ? prev.filter((i) => i !== s) : [...prev, s],
               )}
-            onSaveSymptoms={handleSaveSymptoms}
-            symptomsLoading={updateCycleEntry.isPending}
             mood={selectedMood}
             onSelectMood={setSelectedMood}
-            onSaveMood={handleSaveMood}
-            moodLoading={createMoodLog.isPending}
             noteText={noteText}
             onChangeNote={setNoteText}
-            onSaveNote={handleSaveNote}
-            noteLoading={createJournal.isPending}
+            onDone={handleDone}
+            doneLoading={doneLoading}
           />
         )}
       </ScrollView>
