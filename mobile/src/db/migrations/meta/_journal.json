@@ -57,6 +57,13 @@
       "when": 1791100000000,
       "tag": "0007_add_diary_fts",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "9",
+      "when": 1792000000000,
+      "tag": "0008_add_day_observations",
+      "breakpoints": true
     }
   ]
 }

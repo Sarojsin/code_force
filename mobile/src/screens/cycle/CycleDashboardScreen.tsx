@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
-import { BackfillCard, Button, Calendar, Card, DatePickerField, BottomSheet, EndDatePromptCard, MarkEndDateModal, StickyCard, Text, Skeleton } from 'src/components/ui';
+import { BackfillCard, Button, Calendar, Card, DatePickerField, BottomSheet, EndDatePromptCard, MarkEndDateModal, StickyCard, DelayedBanner, Text, Skeleton } from 'src/components/ui';
 import { PredictionDetailCard } from 'src/components/ui/PredictionDetailCard';
 import { useTheme, shadow } from 'src/theme';
 import { useCycleCalendar, useLogCorrection } from 'src/services/queries';
@@ -157,10 +157,16 @@ export function CycleDashboardScreen() {
             predictionId={checkIn.predictionId}
             visible={checkIn.visible}
             loading={checkIn.loading}
+            checkinPhase={checkIn.checkinPhase}
+            daysOffset={checkIn.daysOffset}
             onConfirm={checkIn.onConfirm}
             onAdjust={checkIn.onAdjust}
             onSnooze={checkIn.onSnooze}
           />
+        )}
+
+        {checkIn.isExpired && (
+          <DelayedBanner predictionId={checkIn.predictionId} />
         )}
 
         {endDate && (

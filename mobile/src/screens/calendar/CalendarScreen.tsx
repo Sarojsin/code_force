@@ -15,18 +15,14 @@ import {
   useCycleCalendar,
   useCycleEntries,
   useLogCorrection,
-  useCreateMoodLog,
-  useCreateJournalEntry,
-  useUpdateCycleEntry,
-  useMoodLogs,
+  useCycleDays,
 } from 'src/services/queries';
 import { computeCycleDay, computePhaseRanges, PHASE_META, toLocalDateStr, derivePhaseForDate, getPhaseMeta } from 'src/utils';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEndDateStore } from 'src/stores/endDateStore';
-import { cancelEndDateNotification } from 'src/services/endDateNotifications';
 import { PhaseDetailSheet } from 'src/components/calendar/PhaseDetailSheet';
 import { PHASE_CONTENT } from 'src/constants/phaseContent';
 import type { PhaseRange } from 'src/utils/cyclePhases';
+import type { DailyDay } from 'src/services/api';
 
 const overrideSchema = z.object({
   overrideDate: z.string().min(1, 'Please select a date'),
@@ -102,12 +98,6 @@ export function CalendarScreen() {
   const [activePhaseFilter, setActivePhaseFilter] = useState<string | null>(null);
 
   const [showDaySheet, setShowDaySheet] = useState(false);
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const [moodIntensity, setMoodIntensity] = useState(5);
-
-  const [noteText, setNoteText] = useState('');
-
-  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [selectedPhaseDetail, setSelectedPhaseDetail] = useState<PhaseRange['key'] | null>(null);
   const [preFillSymptoms, setPreFillSymptoms] = useState<string[]>([]);
 
@@ -118,14 +108,8 @@ export function CalendarScreen() {
 
   const { data: calData, isLoading } = useCycleCalendar(3, 3);
   const { data: cycleEntries = [] } = useCycleEntries({ months_back: 6 });
-  const { data: moodLogs } = useMoodLogs({ per_page: 50 });
   const logCorrection = useLogCorrection();
-  const createMoodLog = useCreateMoodLog();
-  const createJournal = useCreateJournalEntry();
-  const updateCycleEntry = useUpdateCycleEntry();
   const encodedDays = useMemo(() => calData?.days ?? {}, [calData]);
-  const prediction = calData?.predictions ?? null;
-  const endDateStore = useEndDateStore();
 
   const today = useMemo(() => new Date(), []);
   const cycleDay = computeCycleDay(calData?.days, today);
@@ -134,6 +118,16 @@ export function CalendarScreen() {
 
   const selectedStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
   const selectedPhase = getPhaseForDate(encodedDays, selectedStr);
+
+  const { data: selectedDayData } = useCycleDays(
+    selectedDate
+      ? { start: toLocalDateStr(selectedDate), end: toLocalDateStr(selectedDate) }
+      : undefined,
+  );
+  const dayDataForSheet: DailyDay | null = useMemo(() => {
+    if (!selectedDate || !selectedDayData) return null;
+    return selectedDayData.find((d) => d.log_date === toLocalDateStr(selectedDate)) ?? null;
+  }, [selectedDate, selectedDayData]);
 
   const coveringEntry = useMemo(() => {
     if (!selectedDate) return null;
@@ -161,21 +155,11 @@ export function CalendarScreen() {
   const predictedCycleLength = calData?.predictions?.predicted_cycle_length ?? 28;
   const cycleStats = useMemo(() => computeCycleLengthStats(cycleEntries), [cycleEntries]);
 
-  const todayMood = useMemo(() => {
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const todayLog = moodLogs?.find((l) => l.logged_at?.startsWith(todayStr));
-    if (!todayLog) return null;
-    return { mood: todayLog.mood, intensity: todayLog.intensity };
-  }, [moodLogs]);
-
   const openDaySheetFromPhase = useCallback(() => {
     setSelectedPhaseDetail(null);
     setTimeout(() => {
       setSelectedDate(today);
-      setSelectedMood(null);
-      setMoodIntensity(5);
-      setNoteText('');
-      setSelectedSymptoms(preFillSymptoms);
+      setPreFillSymptoms([]);
       setShowDaySheet(true);
     }, 300);
   }, [today, preFillSymptoms]);
@@ -198,112 +182,14 @@ export function CalendarScreen() {
   });
 
   const openDaySheet = () => {
-    setSelectedMood(null);
-    setMoodIntensity(5);
-    setNoteText('');
-    setSelectedSymptoms(coveringEntry?.symptoms ?? []);
+    setPreFillSymptoms([]);
     setShowDaySheet(true);
   };
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
-    setSelectedMood(null);
-    setMoodIntensity(5);
-    setNoteText('');
-    setSelectedSymptoms([]); // reset; repopulated on open via coveringEntry
+    setPreFillSymptoms([]);
     setShowDaySheet(true);
-  };
-
-  const handleDone = () => {
-    const hasMood = selectedMood != null;
-    const hasNote = noteText.trim().length > 0;
-    const hasSymptoms = coveringEntry != null && selectedSymptoms.length > 0;
-
-    if (hasMood) {
-      createMoodLog.mutate(
-        { mood: selectedMood!, intensity: moodIntensity },
-        {
-          onSuccess: () => {
-            setSelectedMood(null);
-            setMoodIntensity(5);
-            Toast.show({ type: 'success', text1: 'Mood logged' });
-          },
-        },
-      );
-    }
-
-    if (hasNote) {
-      createJournal.mutate(
-        { content: noteText.trim(), entry_date: selectedStr },
-        {
-          onSuccess: () => {
-            setNoteText('');
-            Toast.show({ type: 'success', text1: 'Note saved' });
-          },
-        },
-      );
-    }
-
-    if (hasSymptoms && coveringEntry) {
-      updateCycleEntry.mutate(
-        { id: coveringEntry.id, data: { symptoms: selectedSymptoms } },
-        {
-          onSuccess: () => {
-            Toast.show({ type: 'success', text1: 'Symptoms updated' });
-          },
-        },
-      );
-    }
-
-    setShowDaySheet(false);
-    setSelectedDate(null);
-  };
-
-  const doneLoading =
-    createMoodLog.isPending || createJournal.isPending || updateCycleEntry.isPending;
-
-  const handleFlagStart = (date: Date) => {
-    const dateStr = toDateStr(date);
-    if (encodedDays[dateStr] === 'P') {
-      Toast.show({ type: 'info', text1: 'Period already logged for this date' });
-      return;
-    }
-    logCorrection.mutate(
-      { period_start_date: dateStr, corrected_prediction_id: prediction?.id ?? null },
-      {
-        onSuccess: () => {
-          setShowDaySheet(false);
-          setSelectedDate(null);
-        },
-      },
-    );
-  };
-
-  const handleFlagEnd = (date: Date) => {
-    const openEntry = cycleEntries.find((e) => !e.period_end_date);
-    if (!openEntry) {
-      Toast.show({ type: 'info', text1: 'No active period to end' });
-      return;
-    }
-    const endStr = toDateStr(date);
-    if (endStr <= openEntry.period_start_date) {
-      Toast.show({ type: 'error', text1: 'End date must be after start date' });
-      return;
-    }
-    updateCycleEntry.mutate(
-      { id: openEntry.id, data: { period_end_date: endStr } },
-      {
-        onSuccess: () => {
-          if (endDateStore.notificationId) {
-            cancelEndDateNotification(endDateStore.notificationId);
-          }
-          endDateStore.clearPending();
-          setShowDaySheet(false);
-          setSelectedDate(null);
-          Toast.show({ type: 'success', text1: 'Period end saved' });
-        },
-      },
-    );
   };
 
   return (
@@ -483,21 +369,18 @@ export function CalendarScreen() {
             visible={showDaySheet}
             date={selectedDate}
             phase={selectedPhase}
+            encodedDays={encodedDays}
             coveringEntry={coveringEntry}
-            onClose={() => setShowDaySheet(false)}
-            onFlagStart={handleFlagStart}
-            onFlagEnd={handleFlagEnd}
-            symptoms={selectedSymptoms}
-            onToggleSymptom={(s) =>
-              setSelectedSymptoms((prev) =>
-                prev.includes(s) ? prev.filter((i) => i !== s) : [...prev, s],
-              )}
-            mood={selectedMood}
-            onSelectMood={setSelectedMood}
-            noteText={noteText}
-            onChangeNote={setNoteText}
-            onDone={handleDone}
-            doneLoading={doneLoading}
+            initialDayData={dayDataForSheet}
+            onClose={() => {
+              setShowDaySheet(false);
+              setSelectedDate(null);
+            }}
+            onDone={() => {
+              setShowDaySheet(false);
+              setSelectedDate(null);
+              Toast.show({ type: 'success', text1: 'Day logged' });
+            }}
           />
         )}
 
@@ -514,7 +397,7 @@ export function CalendarScreen() {
               phaseEndDay={phaseRanges.find((r) => r.key === selectedPhaseDetail)?.endDay ?? null}
               predictedCycleLength={predictedCycleLength}
               cycleDay={cycleDay}
-              todayMood={todayMood}
+              todayMood={null}
               cycleStats={cycleStats}
               onLogToday={openDaySheetFromPhase}
               onPreFill={(symptoms) => setPreFillSymptoms(symptoms)}
