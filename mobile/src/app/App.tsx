@@ -42,6 +42,7 @@ import { pruneLocalDb } from 'src/services/localDb/pruneLocalDb';
 import { backfillSqliteIfNeeded } from 'src/services/localDb/backfillSqlite';
 import { migrateStoreDataToSqlite } from 'src/services/localDb/migrateStoreDataToSqlite';
 import { cleanupObsoleteKeys } from 'src/services/localDb/cleanupObsoleteKeys';
+import { seedDayMastersIfNeeded } from 'src/services/localDb/seedDayMasters';
 
 const LAST_LOCATION_KEY = 'shecare.last_known_location';
 
@@ -103,6 +104,7 @@ function MigrationGate({ children }: { children: React.ReactNode }) {
           cleanupObsoleteKeys();
         });
         backfillSqliteIfNeeded();
+        seedDayMastersIfNeeded();
       });
     }
   }, [status]);

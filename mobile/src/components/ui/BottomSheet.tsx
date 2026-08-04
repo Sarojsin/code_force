@@ -9,6 +9,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { BlurView } from 'expo-blur';
 
 import { useTheme } from 'src/theme';
 import { Text } from './Text';
@@ -21,16 +22,18 @@ export interface BottomSheetProps {
   onClose: () => void;
   title?: string;
   children: ReactNode;
+  footer?: ReactNode;
   snapPoints?: number[];
 }
 
-const DEFAULT_SNAP_POINTS = [0.3, 0.65, 0.9];
+const DEFAULT_SNAP_POINTS = [0.9];
 
 export function BottomSheet({
   visible,
   onClose,
   title,
   children,
+  footer,
   snapPoints: snapPointsProp,
 }: BottomSheetProps) {
   const theme = useTheme();
@@ -103,6 +106,7 @@ export function BottomSheet({
     <RNModal visible transparent animationType="none" onRequestClose={onClose}>
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Animated.View style={[styles.backdrop, backdropStyle]}>
+        <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
         <Pressable
           onPress={onClose}
           style={styles.backdropPressable}
@@ -117,8 +121,8 @@ export function BottomSheet({
             styles.sheet,
             {
               backgroundColor: theme.colors.surface,
-              borderTopLeftRadius: theme.radius.xl,
-              borderTopRightRadius: theme.radius.xl,
+              borderTopLeftRadius: theme.radius.sheet,
+              borderTopRightRadius: theme.radius.sheet,
               paddingHorizontal: theme.spacing.lg,
               paddingBottom: bottomPadding,
             },
@@ -141,6 +145,11 @@ export function BottomSheet({
           >
             {children}
           </ScrollView>
+          {footer && (
+            <View style={[styles.footer, { borderTopColor: theme.colors.border }]}>
+              {footer}
+            </View>
+          )}
         </Animated.View>
       </GestureDetector>
       </View>
@@ -153,4 +162,5 @@ const styles = StyleSheet.create({
   backdropPressable: { flex: 1 },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '90%', paddingTop: 12 },
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
+  footer: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12, paddingBottom: 4 },
 });

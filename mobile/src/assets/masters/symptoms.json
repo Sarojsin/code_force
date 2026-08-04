@@ -1,0 +1,22 @@
+[
+  { "id": "cramps", "name": "Cramps", "category": "pain", "icon": "🔥", "display_order": 1 },
+  { "id": "headache", "name": "Headache", "category": "pain", "icon": "🤕", "display_order": 2 },
+  { "id": "backache", "name": "Backache", "category": "pain", "icon": "🦴", "display_order": 3 },
+  { "id": "muscle-aches", "name": "Muscle aches", "category": "pain", "icon": "💪", "display_order": 4 },
+  { "id": "bloating", "name": "Bloating", "category": "body", "icon": "🎈", "display_order": 1 },
+  { "id": "nausea", "name": "Nausea", "category": "body", "icon": "🤢", "display_order": 2 },
+  { "id": "breast-tenderness", "name": "Breast tenderness", "category": "body", "icon": "💗", "display_order": 3 },
+  { "id": "acne", "name": "Acne", "category": "body", "icon": "🔴", "display_order": 4 },
+  { "id": "swelling", "name": "Swelling", "category": "body", "icon": "🧊", "display_order": 5 },
+  { "id": "hot-flashes", "name": "Hot flashes", "category": "body", "icon": "🌡️", "display_order": 6 },
+  { "id": "dizziness", "name": "Dizziness", "category": "body", "icon": "🌀", "display_order": 7 },
+  { "id": "diarrhea", "name": "Diarrhea", "category": "body", "icon": "💩", "display_order": 8 },
+  { "id": "constipation", "name": "Constipation", "category": "body", "icon": "🚫", "display_order": 9 },
+  { "id": "mood-swings", "name": "Mood swings", "category": "mood", "icon": "🎭", "display_order": 1 },
+  { "id": "anxiety", "name": "Anxiety", "category": "mood", "icon": "😟", "display_order": 2 },
+  { "id": "cravings", "name": "Cravings", "category": "mood", "icon": "🍫", "display_order": 3 },
+  { "id": "brain-fog", "name": "Brain fog", "category": "mood", "icon": "☁️", "display_order": 4 },
+  { "id": "fatigue", "name": "Fatigue", "category": "energy", "icon": "😴", "display_order": 1 },
+  { "id": "insomnia", "name": "Insomnia", "category": "energy", "icon": "🌙", "display_order": 2 },
+  { "id": "spotting", "name": "Spotting", "category": "reproductive", "icon": "🩸", "display_order": 1 }
+]

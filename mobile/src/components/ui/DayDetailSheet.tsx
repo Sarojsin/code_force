@@ -1,57 +1,97 @@
-import React from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
-import { format } from 'date-fns';
-import { LinearGradient } from 'expo-linear-gradient';
-
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useTheme } from 'src/theme';
 
 import { BottomSheet } from './BottomSheet';
 import { Button } from './Button';
-import { Card } from './Card';
 import { MoodPicker } from './MoodPicker';
-import { SymptomGrid } from './SymptomGrid';
 import { Text } from './Text';
-import type { CycleEntry } from 'src/services/api';
+import { DayHero } from './dayDetail/DayHero';
+import { SelectedSymptomChips } from './dayDetail/SelectedSymptomChips';
+import { SymptomAccordion } from './dayDetail/SymptomAccordion';
+import { FlowSelector } from './dayDetail/FlowSelector';
+import { PainSlider } from './dayDetail/PainSlider';
+import { EnergySegmented } from './dayDetail/EnergySegmented';
+import { MetricStepper } from './dayDetail/MetricStepper';
+import { MedicationSection } from './dayDetail/MedicationSection';
+import { NotesSection } from './dayDetail/NotesSection';
+import { AIInsightCard } from './dayDetail/AIInsightCard';
 
-export interface DayPhase {
-  emoji: string;
-  label: string;
-  color: string;
-  description: string;
-}
+import { useSymptoms, useMedications, useUpsertDay } from 'src/services/queries/cycle';
+import { toLocalDateStr } from 'src/utils/date';
+import { computeCycleDay, derivePhaseForDate } from 'src/utils/cyclePhases';
+import { getInsightForDay } from 'src/utils/dayInsights';
+import type { DayPhase } from 'src/utils/cyclePhases';
+import type { DailyDay } from 'src/services/api';
 
 export interface DayDetailSheetProps {
   visible: boolean;
   date: Date;
   phase: DayPhase;
-  coveringEntry: CycleEntry | null;
+  encodedDays: Record<string, string>;
+  coveringEntry: { period_start_date: string; period_end_date?: string | null } | null;
+  initialDayData?: DailyDay | null;
   onClose: () => void;
-  onFlagStart: (date: Date) => void;
-  onFlagEnd: (date: Date) => void;
-  symptoms: string[];
-  onToggleSymptom: (symptom: string) => void;
-  mood: string | null;
-  onSelectMood: (mood: string) => void;
-  noteText: string;
-  onChangeNote: (text: string) => void;
   onDone: () => void;
-  doneLoading?: boolean;
 }
 
-const SYMPTOM_OPTIONS = ['Cramps', 'Bloating', 'Headache', 'Fatigue', 'Nausea', 'Backache', 'Breast tenderness', 'Acne'];
+export interface DayObservation {
+  mood: string | null;
+  moodIntensity: number;
+  painLevel: number;
+  energyLevel: number | null;
+  sleepMinutes: number;
+  waterGlasses: number;
+  flowLevel: string | null;
+  symptoms: string[];
+  medications: string[];
+  medicationDoses: Record<string, string>;
+  notes: string;
+}
 
-function SectionCard({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
-  const theme = useTheme();
+const INITIAL: DayObservation = {
+  mood: null,
+  moodIntensity: 3,
+  painLevel: 0,
+  energyLevel: null,
+  sleepMinutes: 0,
+  waterGlasses: 0,
+  flowLevel: null,
+  symptoms: [],
+  medications: [],
+  medicationDoses: {},
+  notes: '',
+};
+
+function buildInitialObs(data: DailyDay | null | undefined, coveringSymptoms: string[] | undefined): DayObservation {
+  if (!data) {
+    return { ...INITIAL, symptoms: coveringSymptoms ?? [] };
+  }
+  return {
+    mood: data.mood ?? null,
+    moodIntensity: data.mood_intensity ?? 3,
+    painLevel: data.pain_level ?? 0,
+    energyLevel: data.energy_level ?? null,
+    sleepMinutes: data.sleep_minutes ?? 0,
+    waterGlasses: data.water_glasses ?? 0,
+    flowLevel: data.flow_level ?? null,
+    symptoms: data.symptoms?.map((s) => s.name) ?? coveringSymptoms ?? [],
+    medications: data.medications?.map((m) => m.name) ?? [],
+    medicationDoses: Object.fromEntries(
+      data.medications?.filter((m) => m.dose).map((m) => [m.name, m.dose!]) ?? [],
+    ),
+    notes: data.notes ?? '',
+  };
+}
+
+function SectionHeader({ icon, title, theme }: { icon: string; title: string; theme: ReturnType<typeof useTheme> }) {
   return (
-    <Card variant="glass" style={styles.sectionCard}>
-      <View style={styles.sectionHeader}>
-        <View style={[styles.sectionIconWrap, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.md }]}>
-          <Text style={styles.sectionIcon}>{icon}</Text>
-        </View>
-        <Text variant="body" style={styles.sectionTitle}>{title}</Text>
+    <View style={styles.sectionRow}>
+      <View style={[styles.sectionIconWrap, { backgroundColor: theme.colors.primaryDeep + '18', borderRadius: theme.radius.md }]}>
+        <Text style={{ fontSize: 16 }}>{icon}</Text>
       </View>
-      {children}
-    </Card>
+      <Text variant="body" style={{ fontWeight: '600' }}>{title}</Text>
+    </View>
   );
 }
 
@@ -59,97 +99,212 @@ export function DayDetailSheet({
   visible,
   date,
   phase,
+  encodedDays,
   coveringEntry,
+  initialDayData,
   onClose,
-  onFlagStart,
-  onFlagEnd,
-  symptoms,
-  onToggleSymptom,
-  mood,
-  onSelectMood,
-  noteText,
-  onChangeNote,
   onDone,
-  doneLoading,
 }: DayDetailSheetProps) {
   const theme = useTheme();
-  const canLogSymptoms = coveringEntry != null;
-  const hasInput = mood != null || symptoms.length > 0 || noteText.trim().length > 0;
+  const logDateStr = toLocalDateStr(date);
+
+  const phaseKey = useMemo(() => derivePhaseForDate(encodedDays, logDateStr), [encodedDays, logDateStr]);
+  const cycleDay = useMemo(() => computeCycleDay(encodedDays, date), [encodedDays, date]);
+  const isPeriodDay = phaseKey === 'menstrual';
+
+  const { data: masterSymptoms = [] } = useSymptoms();
+  const { data: masterMedications = [] } = useMedications();
+  const upsertDay = useUpsertDay();
+
+  const [obs, setObs] = useState<DayObservation>(() =>
+    buildInitialObs(initialDayData, coveringEntry && 'symptoms' in coveringEntry ? (coveringEntry as any).symptoms : undefined),
+  );
+  const [hasInput, setHasInput] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setObs(buildInitialObs(initialDayData, coveringEntry && 'symptoms' in coveringEntry ? (coveringEntry as any).symptoms : undefined));
+      setHasInput(false);
+    }
+  }, [visible, initialDayData]);
+
+  const update = useCallback((patch: Partial<DayObservation>) => {
+    setObs((prev) => {
+      const next = { ...prev, ...patch };
+      setHasInput(true);
+      return next;
+    });
+  }, []);
+
+  const toggleSymptom = useCallback((name: string) => {
+    setObs((prev) => {
+      const next = prev.symptoms.includes(name)
+        ? prev.symptoms.filter((s) => s !== name)
+        : [...prev.symptoms, name];
+      setHasInput(true);
+      return { ...prev, symptoms: next };
+    });
+  }, []);
+
+  const removeSymptom = useCallback((name: string) => {
+    setObs((prev) => ({ ...prev, symptoms: prev.symptoms.filter((s) => s !== name) }));
+  }, []);
+
+  const toggleMedication = useCallback((name: string) => {
+    setObs((prev) => {
+      const next = prev.medications.includes(name)
+        ? prev.medications.filter((m) => m !== name)
+        : [...prev.medications, name];
+      setHasInput(true);
+      return { ...prev, medications: next };
+    });
+  }, []);
+
+  const handleDoseChange = useCallback((name: string, dose: string) => {
+    setObs((prev) => ({ ...prev, medicationDoses: { ...prev.medicationDoses, [name]: dose } }));
+  }, []);
+
+  const handleDone = useCallback(() => {
+    upsertDay.mutate(
+      {
+        logDate: logDateStr,
+        data: {
+          mood: obs.mood ?? undefined,
+          mood_intensity: obs.moodIntensity,
+          pain_level: obs.painLevel,
+          energy_level: obs.energyLevel ?? undefined,
+          sleep_minutes: obs.sleepMinutes,
+          water_glasses: obs.waterGlasses,
+          flow_level: obs.flowLevel ?? undefined,
+          notes: obs.notes,
+          symptoms: obs.symptoms.map((name) => ({ symptom: name, severity: 3 })),
+          medications: obs.medications.map((name) => ({
+            name,
+            dose: obs.medicationDoses[name] || undefined,
+          })),
+        },
+      },
+      { onSuccess: () => onDone() },
+    );
+  }, [obs, logDateStr, upsertDay, onDone]);
+
+  const insight = getInsightForDay(obs);
 
   return (
     <BottomSheet visible={visible} onClose={onClose}>
       <View style={styles.content}>
-        <LinearGradient
-          colors={['#FF6B8A', '#D4507A']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.hero, theme.shadow.primary]}
-        >
-          <Text style={styles.heroDate}>{format(date, 'EEEE, MMMM d')}</Text>
-          <View style={styles.heroPhaseRow}>
-            <Text variant="emoji" style={styles.heroPhaseEmoji}>{phase.emoji}</Text>
-            <Text style={styles.heroPhaseLabel}>{phase.label}</Text>
-          </View>
-          <Text style={styles.heroPhaseDesc}>{phase.description}</Text>
-        </LinearGradient>
+        <DayHero
+          date={date}
+          phase={phase}
+          cycleDay={cycleDay > 0 ? cycleDay : undefined}
+        />
 
-        <View style={styles.flagRow}>
-          <Button
-            label={`🩸  Start Period`}
-            size="lg"
-            onPress={() => onFlagStart(date)}
-            style={styles.flagBtn}
-          />
-          <Button
-            label={`✅  End Period`}
-            size="lg"
-            variant="outline"
-            onPress={() => onFlagEnd(date)}
-            style={styles.flagBtn}
+        {isPeriodDay && (
+          <View style={styles.section}>
+            <SectionHeader icon="🩸" title="Flow" theme={theme} />
+            <FlowSelector
+              selected={obs.flowLevel}
+              onSelect={(level) => update({ flowLevel: level })}
+            />
+          </View>
+        )}
+
+        <View style={styles.section}>
+          <SectionHeader icon="💫" title="How are you feeling?" theme={theme} />
+          <MoodPicker
+            selected={obs.mood}
+            onSelect={(m) => update({ mood: m })}
+            variant="circular"
           />
         </View>
 
-        {canLogSymptoms ? (
-          <SectionCard icon="🤍" title="Symptoms">
-            <SymptomGrid selected={symptoms} onToggle={onToggleSymptom} symptoms={SYMPTOM_OPTIONS} />
-          </SectionCard>
-        ) : (
-          <Card variant="glass" style={styles.sectionCard}>
-            <Text variant="caption" color="muted" style={styles.hint}>
-              Symptoms can only be logged on days within a logged period.
-            </Text>
-          </Card>
+        <View style={styles.section}>
+          <SectionHeader icon="🌡️" title="Pain" theme={theme} />
+          <PainSlider
+            value={obs.painLevel}
+            onChange={(v) => update({ painLevel: v })}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader icon="⚡" title="Energy" theme={theme} />
+          <EnergySegmented
+            value={obs.energyLevel}
+            onChange={(v) => update({ energyLevel: v })}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader icon="🌙" title="Sleep" theme={theme} />
+          <MetricStepper
+            label="Hours of sleep"
+            icon="🌙"
+            value={obs.sleepMinutes}
+            onChange={(v) => update({ sleepMinutes: v })}
+            min={0}
+            max={720}
+            step={15}
+            formatValue={(v) => `${Math.floor(v / 60)}h ${v % 60}m`}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader icon="💧" title="Water" theme={theme} />
+          <MetricStepper
+            label="Glasses of water"
+            icon="💧"
+            value={obs.waterGlasses}
+            onChange={(v) => update({ waterGlasses: v })}
+            min={0}
+            max={30}
+            step={1}
+            formatValue={(v) => `${v} glasses`}
+          />
+        </View>
+
+        {obs.symptoms.length > 0 && (
+          <SelectedSymptomChips
+            symptoms={obs.symptoms}
+            onRemove={removeSymptom}
+            onClearAll={() => update({ symptoms: [] })}
+          />
         )}
 
-        <SectionCard icon="💫" title="How was your mood?">
-          <MoodPicker selected={mood} onSelect={onSelectMood} />
-        </SectionCard>
-
-        <SectionCard icon="📝" title="Add a note">
-          <TextInput
-            value={noteText}
-            onChangeText={onChangeNote}
-            placeholder="Write a note for this day..."
-            placeholderTextColor={theme.colors.textMuted}
-            multiline
-            accessibilityLabel="Note for this day"
-            style={[
-              styles.noteInput,
-              {
-                backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.border,
-                color: theme.colors.textPrimary,
-                borderRadius: theme.radius.lg,
-              },
-            ]}
+        <View style={styles.section}>
+          <SectionHeader icon="🤍" title="Symptoms" theme={theme} />
+          <SymptomAccordion
+            masterSymptoms={masterSymptoms}
+            selected={obs.symptoms}
+            onToggle={toggleSymptom}
           />
-        </SectionCard>
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader icon="💊" title="Medications" theme={theme} />
+          <MedicationSection
+            masterMedications={masterMedications}
+            selected={obs.medications}
+            onToggle={toggleMedication}
+            doses={obs.medicationDoses}
+            onDoseChange={handleDoseChange}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader icon="📝" title="Notes" theme={theme} />
+          <NotesSection
+            value={obs.notes}
+            onChange={(text) => update({ notes: text })}
+          />
+        </View>
+
+        <AIInsightCard insight={insight} />
 
         <Button
           label="Done"
-          onPress={onDone}
-          disabled={!hasInput}
-          loading={doneLoading}
+          onPress={handleDone}
+          disabled={!hasInput || upsertDay.isPending}
+          loading={upsertDay.isPending}
           fullWidth
           size="lg"
           style={styles.doneBtn}
@@ -161,53 +316,8 @@ export function DayDetailSheet({
 
 const styles = StyleSheet.create({
   content: { gap: 16 },
-  hero: {
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    borderRadius: 24,
-  },
-  heroDate: {
-    fontSize: 26,
-    fontWeight: '800',
-    lineHeight: 32,
-    fontFamily: 'Playfair Display',
-    color: '#FFFFFF',
-  },
-  heroPhaseRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-    gap: 8,
-  },
-  heroPhaseEmoji: { fontSize: 18 },
-  heroPhaseLabel: { fontSize: 15, fontWeight: '700', letterSpacing: 0.4, color: '#FFFFFF' },
-  heroPhaseDesc: { fontSize: 13, lineHeight: 18, marginTop: 6, color: 'rgba(255,255,255,0.92)' },
-  flagRow: { flexDirection: 'row', gap: 10 },
-  flagBtn: { flex: 1 },
-  sectionCard: {
-    padding: 16,
-    gap: 12,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  sectionIconWrap: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionIcon: { fontSize: 16 },
-  sectionTitle: { fontWeight: '600' },
-  hint: { opacity: 0.8 },
-  noteInput: {
-    borderWidth: 1.5,
-    padding: 14,
-    fontSize: 16,
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
+  section: { gap: 10 },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sectionIconWrap: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   doneBtn: { marginTop: 4 },
 });

@@ -29,6 +29,7 @@ export interface MoodPickerProps {
   selected?: string | null;
   onSelect: (id: string) => void;
   moods?: MoodOption[];
+  variant?: 'grid' | 'circular';
 }
 
 function MoodItem({
@@ -91,7 +92,67 @@ function MoodItem({
   );
 }
 
-export function MoodPicker({ selected, onSelect, moods = MOOD_OPTIONS }: MoodPickerProps) {
+function MoodItemCircular({
+  mood,
+  isSelected,
+  onPress,
+}: {
+  mood: MoodOption;
+  isSelected: boolean;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View style={[animatedStyle, styles.circularWrap]}>
+      <Pressable
+        onPressIn={() => { scale.value = withSpring(0.92, { damping: 12 }); }}
+        onPressOut={() => { scale.value = withSpring(isSelected ? 1.1 : 1, { damping: 12 }); }}
+        onPress={onPress}
+        accessibilityLabel={mood.label}
+        accessibilityRole="button"
+        accessibilityState={{ selected: isSelected }}
+        style={[
+          styles.circularBtn,
+          {
+            borderColor: isSelected ? theme.colors.primary : theme.colors.borderSubtle,
+            backgroundColor: isSelected ? theme.colors.primaryMuted : 'transparent',
+          },
+          isSelected && theme.shadow.chip,
+        ]}
+      >
+        <Text style={{ fontSize: 28 }}>{mood.emoji}</Text>
+      </Pressable>
+      <Text
+        variant="caption"
+        style={{ color: isSelected ? theme.colors.primary : theme.colors.textSoft, marginTop: 4, fontWeight: isSelected ? '700' : '400' }}
+      >
+        {mood.label}
+      </Text>
+    </Animated.View>
+  );
+}
+
+export function MoodPicker({ selected, onSelect, moods = MOOD_OPTIONS, variant = 'grid' }: MoodPickerProps) {
+  if (variant === 'circular') {
+    return (
+      <View style={styles.circularGrid} accessibilityLabel="Mood picker" accessibilityRole="radiogroup">
+        {moods.map((mood) => (
+          <MoodItemCircular
+            key={mood.id}
+            mood={mood}
+            isSelected={selected === mood.id}
+            onPress={() => onSelect(mood.id)}
+          />
+        ))}
+      </View>
+    );
+  }
   return (
     <View style={styles.grid} accessibilityLabel="Mood picker" accessibilityRole="radiogroup">
       {moods.map((mood) => (
@@ -133,5 +194,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     lineHeight: 14,
+  },
+  circularGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  circularWrap: {
+    alignItems: 'center',
+    width: '30%',
+  },
+  circularBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
   },
 });

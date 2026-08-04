@@ -1,0 +1,9 @@
+[
+  { "id": "ibuprofen", "name": "Ibuprofen", "category": "painkiller", "display_order": 1 },
+  { "id": "paracetamol", "name": "Paracetamol", "category": "painkiller", "display_order": 2 },
+  { "id": "naproxen", "name": "Naproxen", "category": "painkiller", "display_order": 3 },
+  { "id": "birth-control-pill", "name": "Birth Control Pill", "category": "hormone", "display_order": 4 },
+  { "id": "iron-supplement", "name": "Iron Supplement", "category": "supplement", "display_order": 5 },
+  { "id": "magnesium", "name": "Magnesium", "category": "supplement", "display_order": 6 },
+  { "id": "vitamin-d", "name": "Vitamin D", "category": "supplement", "display_order": 7 }
+]

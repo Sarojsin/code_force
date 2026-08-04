@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -17,8 +17,10 @@ const adjustSchema = z.object({
   adjustDate: z.string().min(1, 'Please select a date'),
 });
 
-function toDateStr(date: Date): string {
-  return toLocalDateStr(date);
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
 }
 
 export interface StickyCardProps {
@@ -26,6 +28,8 @@ export interface StickyCardProps {
   predictionId: string;
   visible: boolean;
   loading?: boolean;
+  checkinPhase: 'expectation' | 'day_of' | 'delay';
+  daysOffset: number;
   onConfirm: (predictionId: string, confirmedDate: string) => void;
   onAdjust: (predictionId: string, newDate: string) => void;
   onSnooze: (predictionId: string, dayOffset: number) => void;
@@ -36,23 +40,53 @@ export function StickyCard({
   predictionId,
   visible,
   loading,
+  checkinPhase,
+  daysOffset: _daysOffset,
   onConfirm,
   onAdjust,
   onSnooze,
 }: StickyCardProps) {
   const theme = useTheme();
   const [showPicker, setShowPicker] = useState(false);
+  const today = new Date();
+  const todayStr = toLocalDateStr(today);
+
   const { control, handleSubmit } = useForm({
     resolver: zodResolver(adjustSchema),
-    defaultValues: { adjustDate: toDateStr(new Date()) },
+    defaultValues: { adjustDate: todayStr },
+  });
+
+  // Quick-select date options for delay phase
+  const quickDateOptions = [0, 1, 2, 3].map((offset) => {
+    const date = addDays(today, -offset);
+    const label = offset === 0 ? 'Today' : offset === 1 ? 'Yesterday' : `${offset} days ago`;
+    return { label, dateStr: toLocalDateStr(date) };
+  });
+
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+
+  const selectedDateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+
+  const predictedLabel = new Date(predictedDate + 'T12:00:00').toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
   });
 
   if (!visible) return null;
 
-  const predictedLabel = new Date(predictedDate).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
+  const getMessage = (): string => {
+    switch (checkinPhase) {
+      case 'expectation':
+        return `We expect your period around ${predictedLabel}.`;
+      case 'day_of':
+        return 'We predicted your period for today.';
+      case 'delay':
+        return 'Your period is a bit late. Did it start today?';
+    }
+  };
 
   return (
     <>
@@ -74,14 +108,49 @@ export function StickyCard({
         </View>
 
         <Text variant="bodySmall" color="secondary" style={styles.message}>
-          We expected your period around {predictedLabel}. Did it arrive?
+          {getMessage()}
         </Text>
+
+        {/* Delay phase: quick-select chips */}
+        {checkinPhase === 'delay' && (
+          <View style={styles.chipRow}>
+            {quickDateOptions.map((opt) => (
+              <Pressable
+                key={opt.label}
+                onPress={() => setSelectedDate(opt.dateStr)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor:
+                      selectedDate === opt.dateStr
+                        ? theme.colors.primary
+                        : theme.colors.surface,
+                    borderColor:
+                      selectedDate === opt.dateStr
+                        ? theme.colors.primary
+                        : theme.colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  variant="caption"
+                  style={{
+                    color: selectedDate === opt.dateStr ? '#fff' : theme.colors.textSecondary,
+                    fontWeight: selectedDate === opt.dateStr ? '600' : '400',
+                  }}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
         <View style={styles.actions}>
           <Button
-            label={`Yes, on ${predictedLabel}`}
+            label={`Yes, on ${selectedDateLabel}`}
             size="sm"
-            onPress={() => onConfirm(predictionId, predictedDate)}
+            onPress={() => onConfirm(predictionId, selectedDate)}
             loading={loading}
             style={styles.actionBtn}
           />
@@ -131,6 +200,17 @@ const styles = StyleSheet.create({
   card: { marginBottom: 12 },
   header: { marginBottom: 4 },
   message: { marginBottom: 12 },
+  chipRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
   actions: { gap: 8 },
   actionBtn: { minHeight: 44 },
 });

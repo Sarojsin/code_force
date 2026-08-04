@@ -3,7 +3,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 
-import { Card, StickyCard, Text, Button } from 'src/components/ui';
+import { Card, StickyCard, DelayedBanner, Text, Button } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useCreateMoodLog, useMoodLogs } from 'src/services/queries';
 import { usePeriodCheckIn } from 'src/hooks/usePeriodCheckIn';
@@ -62,10 +62,16 @@ export function CheckInCard({ calData }: CheckInCardProps) {
           predictionId={checkIn.predictionId}
           visible
           loading={checkIn.loading}
+          checkinPhase={checkIn.checkinPhase}
+          daysOffset={checkIn.daysOffset}
           onConfirm={checkIn.onConfirm}
           onAdjust={checkIn.onAdjust}
           onSnooze={checkIn.onSnooze}
         />
+      )}
+
+      {checkIn.isExpired && (
+        <DelayedBanner predictionId={checkIn.predictionId} />
       )}
 
       <Card variant="feature" elevated style={styles.card}>
