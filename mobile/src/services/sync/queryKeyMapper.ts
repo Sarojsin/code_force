@@ -9,6 +9,7 @@ const TYPE_TO_QUERY_KEY: Record<string, string[]> = {
   'cycle/update': ['cycle', 'entries'],
   'cycle/correction': ['cycle', 'calendar'],
   'cycle/snooze': ['cycle', 'calendar'],
+  'cycle/day': ['cycle', 'days'],
   'safety/contact/create': ['safety', 'contacts'],
   'safety/contact/update': ['safety', 'contacts'],
   'safety/contact/delete': ['safety', 'contacts'],

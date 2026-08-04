@@ -90,6 +90,18 @@ export function upsertSnoozeEvent(serverData: Record<string, unknown>): void {
   });
 }
 
+export function upsertCycleDay(serverData: Record<string, unknown>): void {
+  enqueueWrite(async () => {
+    const id = serverData.id as string | undefined;
+    const existing = id ? await localDb.cycleDay.getById(id) : null;
+    await localDb.cycleDay.upsertDayFromServer(withUserId({
+      ...(existing ?? {}),
+      ...serverData,
+      synced_at: new Date().toISOString(),
+    }));
+  });
+}
+
 export function upsertPregnancyProfile(serverData: Record<string, unknown>): void {
   enqueueWrite(async () => {
     const id = serverData.id as string | undefined;

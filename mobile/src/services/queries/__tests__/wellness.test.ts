@@ -12,6 +12,7 @@ jest.mock('src/services/api', () => ({
     createJournalEntry: jest.fn(),
     createMoodLog: jest.fn(),
     completeBreathingSession: jest.fn(),
+    getMoodLogs: jest.fn(),
   },
 }));
 jest.mock('@react-native-async-storage/async-storage', () => ({ setItem: jest.fn(), getItem: jest.fn(), removeItem: jest.fn(), clear: jest.fn() }));
@@ -22,8 +23,20 @@ jest.mock('src/utils', () => ({
   generateId: jest.fn(() => 'test-uuid'),
   logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
+jest.mock('src/stores/authStore', () => ({
+  useAuthStore: Object.assign(
+    (selector: any) => selector({ user: { id: 'test-user-id' } }),
+    { getState: () => ({ user: { id: 'test-user-id' } }) },
+  ),
+}));
+jest.mock('src/services/localDb', () => ({
+  localDb: {
+    journal: { getRecent: jest.fn().mockResolvedValue([]), upsertMany: jest.fn() },
+    mood: { getByDateRange: jest.fn().mockResolvedValue([]), upsertMany: jest.fn() },
+  },
+}));
 
-import { useCreateJournalEntry, useCreateMoodLog, useCompleteBreathingSession } from '../wellness';
+import { useCreateJournalEntry, useCreateMoodLog, useCompleteBreathingSession, useMoodLogs } from '../wellness';
 import { wellnessService } from 'src/services/api';
 import { useOfflineStore } from 'src/stores/offlineStore';
 
@@ -114,5 +127,32 @@ describe('useCompleteBreathingSession', () => {
     const pending = useOfflineStore.getState().operations;
     expect(pending).toHaveLength(1);
     expect(pending[0].type).toBe('breathing/complete');
+  });
+});
+
+describe('useMoodLogs', () => {
+  it('merges server and local data', async () => {
+    const serverMood = { id: 's1', mood: 'happy', intensity: 3, logged_at: '2026-08-04T10:00:00Z' };
+    const localMood = { id: 'l1', mood: 'calm', intensity: 2, logged_at: '2026-08-03T10:00:00Z' };
+    (wellnessService.getMoodLogs as jest.Mock).mockResolvedValue([serverMood]);
+    const { localDb } = require('src/services/localDb');
+    localDb.mood.getByDateRange.mockResolvedValue([localMood]);
+
+    const { result } = renderHook(() => useMoodLogs(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toHaveLength(2);
+    expect(result.current.data![0].id).toBe('s1');
+    expect(result.current.data![1].id).toBe('l1');
+  });
+
+  it('returns only local data when server fails', async () => {
+    (wellnessService.getMoodLogs as jest.Mock).mockRejectedValue(new Error('network'));
+    const { localDb } = require('src/services/localDb');
+    localDb.mood.getByDateRange.mockResolvedValue([{ id: 'l1', mood: 'calm', intensity: 2, logged_at: '2026-08-03T10:00:00Z' }]);
+
+    const { result } = renderHook(() => useMoodLogs(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toHaveLength(1);
+    expect(result.current.data![0].id).toBe('l1');
   });
 });

@@ -146,6 +146,13 @@ export interface PhaseRange {
   endDay: number | null;
 }
 
+export interface DayPhase {
+  emoji: string;
+  label: string;
+  color: string;
+  description: string;
+}
+
 const PHASE_LETTERS: Record<PhaseRange['key'], [string, string]> = {
   menstrual: ['P', 'p'],
   follicular: ['Fl', 'fl'],

@@ -7,6 +7,8 @@ export * from './Card';
 export * from './CelebrationAnimation';
 export * from './DatePickerField';
 export * from './DayDetailSheet';
+export * from './dayDetail';
+export * from './DelayedBanner';
 export * from './EmptyState';
 export * from './EndDatePromptCard';
 export * from './FormField';

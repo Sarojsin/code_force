@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { CalendarResponse } from 'src/services/api';
 import { useLogCorrection, useLogSnooze } from 'src/services/queries';
-import { toLocalDateStr } from 'src/utils/date';
+import { toLocalDateStr, parseISODateLocal } from 'src/utils/date';
 
 const SNOOZE_KEY = 'shecare.sticky_snooze';
 
@@ -18,6 +18,9 @@ export interface PeriodCheckIn {
   predictedDate: string;
   predictionId: string;
   loading: boolean;
+  checkinPhase: 'expectation' | 'day_of' | 'delay';
+  daysOffset: number;
+  isExpired: boolean;
   onConfirm: (predictionId: string, confirmedDate: string) => void;
   onAdjust: (predictionId: string, newDate: string) => void;
   onSnooze: (predictionId: string, dayOffset: number) => void;
@@ -59,6 +62,22 @@ export function usePeriodCheckIn(calData?: CalendarResponse | null): PeriodCheck
 
   const prediction = calData?.predictions ?? null;
   const today = useMemo(() => new Date(), []);
+
+  const daysOffset = useMemo(() => {
+    if (!prediction?.predicted_next_period_start) return 0;
+    const predictedDateObj = parseISODateLocal(prediction.predicted_next_period_start);
+    return Math.round((today.getTime() - predictedDateObj.getTime()) / 86400000);
+  }, [prediction, today]);
+
+  const checkinPhase = useMemo(() => {
+    if (daysOffset <= -1) return 'expectation';
+    if (daysOffset === 0) return 'day_of';
+    return 'delay';
+  }, [daysOffset]);
+
+  const isExpired = useMemo(() => {
+    return daysOffset >= 6 && prediction != null;
+  }, [daysOffset, prediction]);
 
   const visible = (() => {
     if (!prediction) return false;
@@ -112,6 +131,9 @@ export function usePeriodCheckIn(calData?: CalendarResponse | null): PeriodCheck
     predictedDate: prediction?.predicted_next_period_start ?? '',
     predictionId: prediction?.id ?? '',
     loading: logCorrection.isPending || logSnooze.isPending,
+    checkinPhase,
+    daysOffset,
+    isExpired,
     onConfirm,
     onAdjust,
     onSnooze,

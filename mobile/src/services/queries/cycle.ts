@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
-import { cycleService, CycleEntry } from 'src/services/api';
+import {
+  cycleService,
+  CycleEntry,
+  DailyDay,
+  DayUpsertPayload,
+  MedicationMaster,
+  SymptomMaster,
+} from 'src/services/api';
 import { useAuthStore } from 'src/stores/authStore';
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { useEndDateStore } from 'src/stores/endDateStore';
@@ -9,8 +16,11 @@ import { isNetworkError } from 'src/services/sync';
 import { scheduleEndDateNotification } from 'src/services/endDateNotifications';
 import { calculateCyclePhases, applyPhaseToDays, toLocalDateStr, parseISODateLocal, extendPeriodBlock } from 'src/utils';
 import { generateId } from 'src/utils';
+import { localDb } from 'src/services/localDb';
+import type { CycleDay } from 'src/db/schema';
 
-import { upsertCycleEntry, upsertSnoozeEvent } from 'src/services/localDb/writeThroughHelpers';
+import { upsertCycleEntry, upsertSnoozeEvent, upsertCycleDay } from 'src/services/localDb/writeThroughHelpers';
+import { getWellnessKeys } from './wellness';
 
 /**
  * Scoped React Query keys. CYCLE CACHE IS STRICTLY PER-USER (§3 rule 1 +
@@ -25,6 +35,9 @@ export interface CycleKeys {
   predictionHistory: readonly string[];
   calendar: readonly string[];
   analytics: readonly string[];
+  days: readonly string[];
+  symptoms: readonly string[];
+  medications: readonly string[];
 }
 
 export function getCycleKeys(userId?: string | null): CycleKeys {
@@ -36,6 +49,9 @@ export function getCycleKeys(userId?: string | null): CycleKeys {
     predictionHistory: ['cycle', id, 'predictions', 'history'],
     calendar: ['cycle', id, 'calendar'],
     analytics: ['cycle', id, 'analytics'],
+    days: ['cycle', id, 'days'],
+    symptoms: ['cycle', id, 'symptoms'],
+    medications: ['cycle', id, 'medications'],
   };
 }
 
@@ -396,4 +412,180 @@ export function useLogSnooze() {
       }
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Day observations (cycle_days) — DayDetailSheet (PR2)
+// ---------------------------------------------------------------------------
+
+function mergeCycleDaysByDate(local: CycleDay[] | DailyDay[], server: DailyDay[]): DailyDay[] {
+  const byDate = new Map<string, DailyDay>();
+  for (const d of local) {
+    if (d.log_date) byDate.set(d.log_date, d as unknown as DailyDay);
+  }
+  for (const s of server) {
+    if (s.log_date) byDate.set(s.log_date, s);
+  }
+  return [...byDate.values()].sort((a, b) => a.log_date.localeCompare(b.log_date));
+}
+
+/**
+ * Per-user day observations for a date range. Server is the source of truth
+ * when online; local SQLite rows cover offline reopen. Query key is
+ * user-scoped via the `days` factory (never a static prefix).
+ */
+export function useCycleDays(range?: { start?: string; end?: string }) {
+  const keys = useCycleKeys();
+  const userId = useAuthStore((s) => s.user?.id);
+  return useQuery({
+    queryKey: [...keys.days, range],
+    queryFn: async (): Promise<DailyDay[]> => {
+      let server: DailyDay[] = [];
+      if (range?.start && range?.end) {
+        try {
+          server = await cycleService.getDays(range.start, range.end);
+        } catch {
+          server = [];
+        }
+      }
+      if (server.length > 0) {
+        localDb.cycleDay.upsertMany(server as unknown as CycleDay[]);
+      }
+      const local = userId
+        ? (await localDb.cycleDay.getByRange(userId, range?.start, range?.end)) as unknown as CycleDay[]
+        : [];
+      return mergeCycleDaysByDate(local, server);
+    },
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  });
+}
+
+export function useUpsertDay() {
+  const qc = useQueryClient();
+  const keys = useCycleKeys();
+  const userId = useAuthStore((s) => s.user?.id);
+  return useMutation({
+    mutationFn: ({ logDate, data }: { logDate: string; data: DayUpsertPayload }) =>
+      cycleService.upsertDay(logDate, data),
+    onSuccess: (result) => {
+      upsertCycleDay(result as unknown as Record<string, unknown>);
+      qc.invalidateQueries({ queryKey: keys.days });
+
+      // BRIDGE: The backend wrote to mood_logs via day_logged event.
+      // Invalidate ALL wellness caches so the entire tab refreshes holistically.
+      qc.invalidateQueries({ queryKey: getWellnessKeys(userId).all });
+    },
+    onError: (error, variables) => {
+      if (isNetworkError(error)) {
+        const optimistic = {
+          id: `optimistic_${variables.logDate}`,
+          user_id: '',
+          log_date: variables.logDate,
+          mood: variables.data.mood ?? null,
+          mood_intensity: variables.data.mood_intensity ?? null,
+          pain_level: variables.data.pain_level ?? null,
+          energy_level: variables.data.energy_level ?? null,
+          sleep_minutes: variables.data.sleep_minutes ?? null,
+          water_glasses: variables.data.water_glasses ?? null,
+          flow_level: variables.data.flow_level ?? null,
+          notes: variables.data.notes ?? null,
+          symptoms: (variables.data.symptoms ?? []).map((s) => ({
+            id: '',
+            name: s.symptom,
+            category: '',
+            severity: s.severity,
+          })),
+          medications: (variables.data.medications ?? []).map((m) => ({
+            id: '',
+            name: m.name,
+            category: '',
+            dose: m.dose ?? null,
+            taken_at: m.taken_at ?? null,
+          })),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          _optimistic: true,
+        } as DailyDay;
+        useOfflineStore.getState().enqueue({
+          type: 'cycle/day',
+          endpoint: `/api/v1/cycle/days/${variables.logDate}`,
+          data: { log_date: variables.logDate, ...variables.data },
+          idempotencyKey: generateId(),
+          clientUpdatedAt: new Date().toISOString(),
+          priority: 'normal',
+        });
+        Toast.show({ type: 'info', text1: 'Saved offline — will sync when online' });
+        qc.setQueryData(keys.days, (old: any) => {
+          if (!Array.isArray(old)) return old;
+          const rest = old.filter((d: DailyDay) => d.log_date !== variables.logDate);
+          return [optimistic, ...rest];
+        });
+      } else {
+        Toast.show({ type: 'error', text1: error instanceof Error ? error.message : 'Failed to save' });
+      }
+    },
+  });
+}
+
+/** Symptoms master — read from local SQLite (offline-first), re-synced in background. */
+export function useSymptoms() {
+  const keys = useCycleKeys();
+  return useQuery({
+    queryKey: keys.symptoms,
+    queryFn: async (): Promise<SymptomMaster[]> => {
+      const local = await localDb.dayMaster.listSymptoms();
+      if (local.length === 0) {
+        await localDb.dayMaster.ensureSeeded();
+        return localDb.dayMaster.listSymptoms();
+      }
+      return local;
+    },
+    staleTime: 24 * 60 * 60 * 1000,
+    retry: false,
+  });
+}
+
+/** Medications master — read from local SQLite (offline-first), re-synced in background. */
+export function useMedications() {
+  const keys = useCycleKeys();
+  return useQuery({
+    queryKey: keys.medications,
+    queryFn: async (): Promise<MedicationMaster[]> => {
+      const local = await localDb.dayMaster.listMedications();
+      if (local.length === 0) {
+        await localDb.dayMaster.ensureSeeded();
+        return localDb.dayMaster.listMedications();
+      }
+      return local;
+    },
+    staleTime: 24 * 60 * 60 * 1000,
+    retry: false,
+  });
+}
+
+export async function refreshDayMastersFromServer(): Promise<void> {
+  try {
+    const [serverSymptoms, serverMedications] = await Promise.all([
+      cycleService.getSymptoms(),
+      cycleService.getMedications(),
+    ]);
+    await localDb.dayMaster.replaceAll(
+      serverSymptoms.map((s) => ({
+        id: s.id,
+        name: s.name,
+        category: s.category,
+        icon: s.icon ?? null,
+        display_order: s.display_order,
+      })),
+      serverMedications.map((m) => ({
+        id: m.id,
+        name: m.name,
+        category: m.category,
+        display_order: m.display_order,
+      })),
+    );
+  } catch {
+    // Offline — bundled seed stays authoritative.
+  }
 }

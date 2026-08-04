@@ -13,13 +13,16 @@ import { isNetworkError } from 'src/services/sync';
 import { generateId } from 'src/utils';
 import { upsertJournalEntry, upsertMoodLog } from 'src/services/localDb/writeThroughHelpers';
 
-export const wellnessKeys = {
-  all: ['wellness'] as const,
-  journal: ['wellness', 'journal'] as const,
-  moodLogs: ['wellness', 'moodLogs'] as const,
-  breathing: ['wellness', 'breathing'] as const,
-  insights: ['wellness', 'insights'] as const,
-};
+export function getWellnessKeys(userId?: string) {
+  const id = userId ?? 'anonymous';
+  return {
+    all: ['wellness', id] as const,
+    journal: ['wellness', id, 'journal'] as const,
+    moodLogs: ['wellness', id, 'moodLogs'] as const,
+    breathing: ['wellness', id, 'breathing'] as const,
+    insights: ['wellness', id, 'insights'] as const,
+  };
+}
 
 function mergeJournalEntries(server: JournalEntry[], local: JournalEntry[]): JournalEntry[] {
   const byId = new Map<string, JournalEntry>();
@@ -34,10 +37,20 @@ function mergeJournalEntries(server: JournalEntry[], local: JournalEntry[]): Jou
   );
 }
 
+function mergeMoodLogs(server: MoodLog[], local: MoodLog[]): MoodLog[] {
+  const byId = new Map<string, MoodLog>();
+  for (const l of local) byId.set(l.id, l);
+  for (const s of server) byId.set(s.id, s);
+  return [...byId.values()].sort(
+    (a, b) => b.logged_at.localeCompare(a.logged_at),
+  );
+}
+
 export function useJournalEntries(params?: { page?: number; per_page?: number }) {
   const userId = useAuthStore((s) => s.user?.id);
+  const keys = getWellnessKeys(userId);
   return useQuery({
-    queryKey: [...wellnessKeys.journal, params, userId],
+    queryKey: [...keys.journal, params],
     queryFn: async (): Promise<JournalEntry[]> => {
       let server: JournalEntry[] = [];
       try {
@@ -60,11 +73,13 @@ export function useJournalEntries(params?: { page?: number; per_page?: number })
 
 export function useCreateJournalEntry() {
   const qc = useQueryClient();
+  const userId = useAuthStore((s) => s.user?.id);
+  const keys = getWellnessKeys(userId);
   return useMutation({
     mutationFn: (data: Partial<JournalEntry>) => wellnessService.createJournalEntry(data as any),
     onSuccess: (result) => {
       upsertJournalEntry(result as unknown as Record<string, unknown>);
-      qc.invalidateQueries({ queryKey: wellnessKeys.journal });
+      qc.invalidateQueries({ queryKey: keys.journal });
     },
     onError: (error, data) => {
       if (isNetworkError(error)) {
@@ -79,7 +94,7 @@ export function useCreateJournalEntry() {
           priority: 'normal',
         });
         Toast.show({ type: 'info', text1: 'Saved offline — will sync when online' });
-        qc.setQueryData(wellnessKeys.journal, (old: any) => {
+        qc.setQueryData(keys.journal, (old: any) => {
           if (!old) return [{ ...data, id: tempId, _optimistic: true }];
           if (Array.isArray(old)) return [{ ...data, id: tempId, _optimistic: true }, ...old];
           return old;
@@ -92,9 +107,29 @@ export function useCreateJournalEntry() {
 }
 
 export function useMoodLogs(params?: { page?: number; per_page?: number }) {
+  const userId = useAuthStore((s) => s.user?.id);
+  const keys = getWellnessKeys(userId);
   return useQuery({
-    queryKey: [...wellnessKeys.moodLogs, params],
-    queryFn: () => wellnessService.getMoodLogs(params?.per_page),
+    queryKey: [...keys.moodLogs, params],
+    queryFn: async (): Promise<MoodLog[]> => {
+      let server: MoodLog[] = [];
+      try {
+        server = await wellnessService.getMoodLogs(params?.per_page);
+      } catch {
+        server = [];
+      }
+      const local = userId
+        ? (await localDb.mood.getByDateRange(
+            userId,
+            new Date(Date.now() - 30 * 86400000).toISOString(),
+            new Date().toISOString(),
+          )) as unknown as MoodLog[]
+        : [];
+      if (server.length > 0) {
+        localDb.mood.upsertMany(server as any);
+      }
+      return mergeMoodLogs(server, local);
+    },
     staleTime: 10 * 60 * 1000,
     retry: false,
   });
@@ -102,11 +137,13 @@ export function useMoodLogs(params?: { page?: number; per_page?: number }) {
 
 export function useCreateMoodLog() {
   const qc = useQueryClient();
+  const userId = useAuthStore((s) => s.user?.id);
+  const keys = getWellnessKeys(userId);
   return useMutation({
     mutationFn: (data: Partial<MoodLog>) => wellnessService.createMoodLog(data as any),
     onSuccess: (result) => {
       upsertMoodLog(result as unknown as Record<string, unknown>);
-      qc.invalidateQueries({ queryKey: wellnessKeys.moodLogs });
+      qc.invalidateQueries({ queryKey: keys.moodLogs });
     },
     onError: (error, data) => {
       if (isNetworkError(error)) {
@@ -121,7 +158,7 @@ export function useCreateMoodLog() {
           priority: 'normal',
         });
         Toast.show({ type: 'info', text1: 'Saved offline — will sync when online' });
-        qc.setQueryData(wellnessKeys.moodLogs, (old: any) => {
+        qc.setQueryData(keys.moodLogs, (old: any) => {
           if (!old) return [{ ...data, id: tempId, _optimistic: true }];
           if (Array.isArray(old)) return [{ ...data, id: tempId, _optimistic: true }, ...old];
           return old;
@@ -134,18 +171,22 @@ export function useCreateMoodLog() {
 }
 
 export function useBreathingExercises() {
+  const userId = useAuthStore((s) => s.user?.id);
+  const keys = getWellnessKeys(userId);
   return useQuery({
-    queryKey: wellnessKeys.breathing,
+    queryKey: keys.breathing,
     queryFn: () => wellnessService.getBreathingExercises(),
   });
 }
 
 export function useCompleteBreathingSession() {
   const qc = useQueryClient();
+  const userId = useAuthStore((s) => s.user?.id);
+  const keys = getWellnessKeys(userId);
   return useMutation({
     mutationFn: (exerciseId: string) => wellnessService.completeBreathingSession(exerciseId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: wellnessKeys.breathing });
+      qc.invalidateQueries({ queryKey: keys.breathing });
     },
     onError: (error, exerciseId) => {
       if (isNetworkError(error)) {
@@ -158,7 +199,7 @@ export function useCompleteBreathingSession() {
           priority: 'normal',
         });
         Toast.show({ type: 'info', text1: 'Saved offline — will sync when online' });
-        qc.setQueryData(wellnessKeys.breathing, (old: any) => {
+        qc.setQueryData(keys.breathing, (old: any) => {
           if (!Array.isArray(old)) return old;
           return old.map((item: any) => item.id === exerciseId ? { ...item, completed: true, _optimistic: true } : item);
         });
@@ -170,8 +211,10 @@ export function useCompleteBreathingSession() {
 }
 
 export function useInsights() {
+  const userId = useAuthStore((s) => s.user?.id);
+  const keys = getWellnessKeys(userId);
   return useQuery({
-    queryKey: wellnessKeys.insights,
+    queryKey: keys.insights,
     queryFn: () => wellnessService.getInsights(),
     staleTime: 30 * 60 * 1000,
     retry: false,

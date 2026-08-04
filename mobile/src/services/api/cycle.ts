@@ -78,6 +78,90 @@ export interface GlobalModel {
   scaler: Record<string, any>;
 }
 
+// ---------------------------------------------------------------------------
+// Day observations (cycle_days) — DayDetailSheet
+// Mirrors backend DayUpsert / DayResponse / SymptomResponse / MedicationResponse.
+// ---------------------------------------------------------------------------
+
+/** Payload entry for one symptom selection (name from the master table). */
+export interface DaySymptomIn {
+  symptom: string;
+  severity: number;
+}
+
+/** Payload entry for one medication selection (name from the master table). */
+export interface DayMedicationIn {
+  name: string;
+  dose?: string | null;
+  taken_at?: string | null;
+}
+
+/** Resolved symptom on a day row (from GET /cycle/days). */
+export interface DaySymptomLog {
+  id: string;
+  name: string;
+  category: string;
+  icon?: string | null;
+  severity: number;
+}
+
+/** Resolved medication on a day row (from GET /cycle/days). */
+export interface DayMedicationLog {
+  id: string;
+  name: string;
+  category: string;
+  dose?: string | null;
+  taken_at?: string | null;
+}
+
+export interface DailyDay {
+  id: string;
+  user_id: string;
+  log_date: string;
+  mood?: string | null;
+  mood_intensity?: number | null;
+  pain_level?: number | null;
+  energy_level?: number | null;
+  sleep_minutes?: number | null;
+  water_glasses?: number | null;
+  flow_level?: string | null;
+  notes?: string | null;
+  symptoms: DaySymptomLog[];
+  medications: DayMedicationLog[];
+  created_at: string;
+  updated_at: string;
+  client_updated_at?: string | null;
+}
+
+/** Upsert payload for PUT /cycle/days/{log_date} (all fields optional). */
+export interface DayUpsertPayload {
+  mood?: string | null;
+  mood_intensity?: number | null;
+  pain_level?: number | null;
+  energy_level?: number | null;
+  sleep_minutes?: number | null;
+  water_glasses?: number | null;
+  flow_level?: string | null;
+  notes?: string | null;
+  symptoms?: DaySymptomIn[];
+  medications?: DayMedicationIn[];
+}
+
+export interface SymptomMaster {
+  id: string;
+  name: string;
+  category: string;
+  icon?: string | null;
+  display_order: number;
+}
+
+export interface MedicationMaster {
+  id: string;
+  name: string;
+  category: string;
+  display_order: number;
+}
+
 function unwrap<T>(payload: ApiSuccess<T> | T): T {
   if (payload && typeof payload === 'object' && 'data' in payload) {
     return (payload as ApiSuccess<T>).data;
@@ -156,6 +240,26 @@ export const cycleService = {
       predicted_cycle_id: predictedCycleId,
       day_offset: dayOffset,
     });
+    return unwrap(res.data);
+  },
+
+  async getDays(start: string, end: string): Promise<DailyDay[]> {
+    const res = await api.get('/cycle/days', { params: { start, end } });
+    return unwrap(res.data);
+  },
+
+  async upsertDay(logDate: string, data: DayUpsertPayload): Promise<DailyDay> {
+    const res = await api.put(`/cycle/days/${logDate}`, data);
+    return unwrap(res.data);
+  },
+
+  async getSymptoms(): Promise<SymptomMaster[]> {
+    const res = await api.get('/cycle/symptoms');
+    return unwrap(res.data);
+  },
+
+  async getMedications(): Promise<MedicationMaster[]> {
+    const res = await api.get('/cycle/medications');
     return unwrap(res.data);
   },
 };

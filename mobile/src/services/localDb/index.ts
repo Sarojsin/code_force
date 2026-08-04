@@ -1,4 +1,6 @@
 import { CycleLocalService } from './CycleLocalService';
+import { DayLocalService } from './DayLocalService';
+import { DayMasterLocalService } from './DayMasterLocalService';
 import { JournalLocalService } from './JournalLocalService';
 import { MoodLocalService } from './MoodLocalService';
 import { EmergencyContactLocalService } from './EmergencyContactLocalService';
@@ -37,6 +39,8 @@ export const diaryLocal = {
 
 export const localDb = {
   cycle: new CycleLocalService(),
+  cycleDay: new DayLocalService(),
+  dayMaster: new DayMasterLocalService(),
   journal: new JournalLocalService(),
   mood: new MoodLocalService(),
   emergencyContact: new EmergencyContactLocalService(),

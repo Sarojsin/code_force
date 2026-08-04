@@ -75,6 +75,17 @@ export const colors = {
   textMid: '#5A3A47',     // secondary body — design's `mid`
   textSoft: '#7C4E5A',    // captions / muted — design's `soft`
   textLighter: '#96677A', // inactive / subtle dividers — design's `lighter`
+  // DayDetailSheet additive tokens (DayDetailShee_plan.md §5)
+  primaryDeep: '#FF4D8D',
+  lightPink: '#FFE6EF',
+  sheetBg: '#FFF8FA',
+  card: palette.white,
+  borderSubtle: '#EFEFEF',
+  textStrong: '#1C1C1E',
+  accentGreen: '#53C46A',
+  accentPurple: '#8A5CF6',
+  accentBlue: '#4DA8FF',
+  accentOrange: '#FFA640',
 } as const;
 
 export const darkColors = {
@@ -103,6 +114,17 @@ export const darkColors = {
   textMid: palette.gray100,
   textSoft: palette.gray300,
   textLighter: palette.gray500,
+  // DayDetailSheet additive tokens (dark)
+  primaryDeep: '#FF6B9A',
+  lightPink: '#4A2030',
+  sheetBg: '#2A2D38',
+  card: '#2A2D38',
+  borderSubtle: '#3A3D48',
+  textStrong: palette.white,
+  accentGreen: '#6DD87A',
+  accentPurple: '#A87AFF',
+  accentBlue: '#6BB8FF',
+  accentOrange: '#FFB866',
 } as const;
 
 // 4-px grid (rule §3.2)
@@ -121,6 +143,9 @@ export const radius = {
   md: 12,   // buttons, chips
   lg: 16,   // standard cards
   xl: 24,   // feature cards, modals, bottom sheets (UI_UX spec: 20-28px)
+  sheet: 28, // DayDetailSheet radius
+  cardLg: 20, // large cards
+  chip: 14, // symptom/medication chips
   pill: 999, // avatars, badges, toggle handles
 } as const;
 
@@ -159,6 +184,10 @@ export const typography = {
    // "Sunday, 27 July" date line
    // Emoji-only text — uses system font to avoid custom font stretching on Android
    emoji: { fontSize: 28, fontFamily: 'System' },
+  // DayDetailSheet typography (DayDetailShee_plan.md §5)
+  dayTitle: { fontSize: 32, fontWeight: '800' as const, lineHeight: 38, fontFamily: fonts.body },
+  sectionTitle: { fontSize: 19, fontWeight: '600' as const, lineHeight: 24, fontFamily: fonts.body },
+  helper: { fontSize: 12, fontWeight: '400' as const, lineHeight: 16, fontFamily: fonts.body },
 } as const;
 
 export const shadow = {

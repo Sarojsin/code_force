@@ -11,6 +11,7 @@ const TYPE_TO_DB_METHOD: Record<string, keyof typeof localDb> = {
   'cycle/update': 'cycle',
   'cycle/correction': 'cycle',
   'cycle/snooze': 'cycle',
+  'cycle/day': 'cycleDay',
   'journal/create': 'journal',
   'journal/update': 'journal',
   'mood/create': 'mood',
@@ -41,8 +42,12 @@ export async function hydrateFromServerData(
   try {
     const service = localDb[serviceKey];
     if (typeof (service as any).upsert === 'function') {
+      const hydrate =
+        typeof (service as any).upsertDayFromServer === 'function'
+          ? (service as any).upsertDayFromServer.bind(service)
+          : (service as any).upsert.bind(service);
       const start = performance.now();
-      await (service as any).upsert(serverData);
+      await hydrate(serverData);
       useSyncMetricsStore.getState().recordSqliteWrite(performance.now() - start);
     }
   } catch (error) {
@@ -56,6 +61,7 @@ export async function hydrateChangeItem(change: SyncChangeItem): Promise<void> {
 
   let service: any = null;
   if (entityType === 'cycle') service = localDb.cycle;
+  else if (entityType === 'cycle_day') service = localDb.cycleDay;
   else if (entityType === 'journal') service = localDb.journal;
   else if (entityType === 'mood') service = localDb.mood;
   else if (entityType === 'emergency_contact') service = localDb.emergencyContact;
@@ -75,8 +81,12 @@ export async function hydrateChangeItem(change: SyncChangeItem): Promise<void> {
       useSyncMetricsStore.getState().recordSqliteWrite(performance.now() - start);
     } else if (change.action === 'created' || change.action === 'updated') {
       if (typeof service.upsert === 'function') {
+        const hydrate =
+          typeof (service as any).upsertDayFromServer === 'function'
+            ? (service as any).upsertDayFromServer.bind(service)
+            : (service as any).upsert.bind(service);
         const start = performance.now();
-        await service.upsert(change.data);
+        await hydrate(change.data);
         useSyncMetricsStore.getState().recordSqliteWrite(performance.now() - start);
       }
     }

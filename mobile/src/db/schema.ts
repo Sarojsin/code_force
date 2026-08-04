@@ -577,3 +577,113 @@ export type DiaryMedia = typeof diaryMedia.$inferSelect;
 export type NewDiaryMedia = typeof diaryMedia.$inferInsert;
 export type DiaryAsset = typeof diaryAssets.$inferSelect;
 export type NewDiaryAsset = typeof diaryAssets.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// 23. Day observations — canonical per-user-per-day record (DayDetailSheet)
+// ---------------------------------------------------------------------------
+
+/**
+ * Denormalized resolved symptoms stored on the cycle_days row for simple
+ * offline read (matches how cycle_entries.symptoms is a JSON column). The
+ * `symptoms` master + joined `day_symptoms` tables below mirror the backend
+ * schema; mobile reads the row's JSON view for the UI.
+ */
+export type CycleDaySymptomRow = Array<{ name: string; severity: number }>;
+export type CycleDayMedicationRow = Array<{
+  name: string;
+  dose?: string | null;
+  taken_at?: string | null;
+}>;
+
+export const cycleDays = sqliteTable(
+  'cycle_days',
+  {
+    id: text('id').primaryKey(),
+    user_id: text('user_id').notNull(),
+    log_date: isoDate('log_date'),
+    mood: text('mood'),
+    mood_intensity: integer('mood_intensity'),
+    pain_level: integer('pain_level'),
+    energy_level: integer('energy_level'),
+    sleep_minutes: integer('sleep_minutes'),
+    water_glasses: integer('water_glasses'),
+    flow_level: text('flow_level', {
+      enum: ['none', 'spotting', 'light', 'medium', 'heavy'],
+    }),
+    notes: text('notes'),
+    symptoms: jsonCol<CycleDaySymptomRow>('symptoms').notNull().default(sql`'[]'`),
+    medications: jsonCol<CycleDayMedicationRow>('medications').notNull().default(sql`'[]'`),
+    created_at: isoDatetime('created_at'),
+    updated_at: isoDatetime('updated_at'),
+    is_active: booleanCol('is_active').notNull().default(true),
+    deleted_at: isoDatetimeOptional('deleted_at'),
+    synced_at: isoDatetime('synced_at'),
+  },
+  (table) => ({
+    userIdIdx: index('idx_cycle_days_user_id').on(table.user_id),
+    logDateIdx: index('idx_cycle_days_log_date').on(table.log_date),
+  }),
+);
+
+export type CycleDay = typeof cycleDays.$inferSelect;
+export type NewCycleDay = typeof cycleDays.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// 24. Masters — symptoms / medications global catalogs (bundled JSON + synced)
+// ---------------------------------------------------------------------------
+
+export const symptoms = sqliteTable('symptoms', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  category: text('category').notNull(),
+  icon: text('icon'),
+  display_order: integer('display_order').notNull().default(0),
+  synced_at: isoDatetime('synced_at'),
+});
+
+export type Symptom = typeof symptoms.$inferSelect;
+export type NewSymptom = typeof symptoms.$inferInsert;
+
+export const medications = sqliteTable('medications', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  category: text('category').notNull(),
+  display_order: integer('display_order').notNull().default(0),
+  synced_at: isoDatetime('synced_at'),
+});
+
+export type Medication = typeof medications.$inferSelect;
+export type NewMedication = typeof medications.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// 25. Day joins (schema parity with backend — severity / dose / taken_at)
+// ---------------------------------------------------------------------------
+
+export const daySymptoms = sqliteTable(
+  'day_symptoms',
+  {
+    id: text('id').primaryKey(),
+    day_id: text('day_id').notNull(),
+    symptom_id: text('symptom_id').notNull(),
+    severity: integer('severity').notNull().default(3),
+  },
+  (table) => ({
+    dayIdx: index('idx_day_symptoms_day_id').on(table.day_id),
+    symptomIdx: index('idx_day_symptoms_symptom_id').on(table.symptom_id),
+  }),
+);
+
+export const dayMedications = sqliteTable(
+  'day_medications',
+  {
+    id: text('id').primaryKey(),
+    day_id: text('day_id').notNull(),
+    medication_id: text('medication_id').notNull(),
+    dose: text('dose'),
+    taken_at: text('taken_at'),
+  },
+  (table) => ({
+    dayIdx: index('idx_day_medications_day_id').on(table.day_id),
+    medIdx: index('idx_day_medications_medication_id').on(table.medication_id),
+  }),
+);
