@@ -9,6 +9,7 @@ import { logger } from 'src/utils';
 import { useNavigation } from '@react-navigation/native';
 import { useCompanionStore } from '../../stores/companionStore';
 import { useAuthStore } from '../../stores/authStore';
+import { resetAppForLogout } from '../../services/sessionReset';
 import { usePregnancyModeStore } from '../../stores/pregnancyModeStore';
 import { uninstallLuna } from '../../services/assetDownloader';
 import { useDiaryAssetStore } from '../../stores/diaryAssetStore';
@@ -169,7 +170,14 @@ export function SettingsScreen() {
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => logger.info('SettingsScreen.logout') },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          logger.info('SettingsScreen.logout');
+          await resetAppForLogout();
+        },
+      },
     ]);
   };
 

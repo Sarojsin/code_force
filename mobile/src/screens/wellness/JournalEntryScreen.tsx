@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, TextInput, ActivityIndicator, Pressable } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -10,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Button, Text as Txt, KeyboardAvoidingWrapper, MoodPicker, Card } from 'src/components/ui';
+import { ScreenContainer } from 'src/components/core';
 
 import { useTheme } from 'src/theme';
 import { EncryptedStorage } from 'src/services/storage';
@@ -154,14 +154,16 @@ export function JournalEntryScreen() {
 
   if (entryLoading) {
     return (
-      <SafeAreaView style={[styles.safe, styles.loadingCenter, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </SafeAreaView>
+      <ScreenContainer style={{ backgroundColor: theme.colors.background }}>
+        <View style={[styles.loadingCenter]}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </ScreenContainer>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+    <ScreenContainer style={{ backgroundColor: theme.colors.background }}>
       <LinearGradient
         colors={[theme.colors.accentLight + '59', 'transparent']}
         locations={[0, 0.6]}
@@ -169,84 +171,84 @@ export function JournalEntryScreen() {
         pointerEvents="none"
       />
       <KeyboardAvoidingWrapper contentContainerStyle={styles.content}>
-          <Txt style={[styles.dateLabel, { color: theme.colors.textSoft }]}>
-            {format(new Date(), 'EEEE · MMMM d, yyyy').toUpperCase()}
+        <Txt style={[styles.dateLabel, { color: theme.colors.textSoft }]}>
+          {format(new Date(), 'EEEE · MMMM d, yyyy').toUpperCase()}
+        </Txt>
+        <View style={styles.titleRow}>
+          <Txt variant="h1" style={styles.title}>
+            {isNew ? "Today's Entry" : 'Edit Entry'}
           </Txt>
-          <View style={styles.titleRow}>
-            <Txt variant="h1" style={styles.title}>
-              {isNew ? "Today's Entry" : 'Edit Entry'}
-            </Txt>
-            <LinearGradient
-              colors={['#FF6B8A', '#D4507A']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.titleAccent}
-            />
-          </View>
-          {draftInfo && (
-            <Txt variant="caption" color="muted" style={styles.draftInfo}>{draftInfo} · auto-saved</Txt>
-          )}
-
-          <SectionCard icon="💫" title="How are you feeling?">
-            <MoodPicker selected={selectedMood} onSelect={setSelectedMood} />
-          </SectionCard>
-
-          <Txt variant="body" color="muted" style={styles.thoughtsLabel}>YOUR THOUGHTS</Txt>
-          <View style={styles.textareaWrapper}>
-            {sentimentBadge && (
-              <View style={[styles.sentimentBadge, { backgroundColor: theme.colors.accentMuted }]}>
-                <Txt style={[styles.sentimentText, { color: theme.colors.accent }]}>
-                  {sentimentBadge.emoji} {sentimentBadge.label}
-                </Txt>
-              </View>
-            )}
-            <Card variant="flat" style={styles.noteCard}>
-              <Controller
-                control={control}
-                name="content"
-                render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
-                  <View>
-                    <TextInput
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      multiline
-                      numberOfLines={8}
-                      placeholder="What's on your mind today?"
-                      placeholderTextColor={theme.colors.textSoft}
-                      accessibilityLabel="Journal content"
-                      style={[
-                        styles.textarea,
-                        styles.textareaInput,
-                        { color: theme.colors.textPrimary },
-                      ]}
-                    />
-                    <View style={styles.textareaFooter}>
-                      <Txt variant="caption" color="muted">{(value || '').length} chars</Txt>
-                    </View>
-                    {error && <Txt variant="caption" style={[styles.errorText, { color: theme.colors.danger }]}>{error.message}</Txt>}
-                  </View>
-                )}
-              />
-            </Card>
-          </View>
-
-          <View style={styles.spacer} />
-          <Button
-            label="Save Entry"
-            onPress={handleSubmit(onSubmit)}
-            disabled={!formState.isValid || createMutation.isPending}
-            fullWidth
-            size="lg"
+          <LinearGradient
+            colors={['#FF6B8A', '#D4507A']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.titleAccent}
           />
-          <Pressable
-            onPress={() => navigation.navigate('JournalList')}
-            style={styles.viewPastBtn}
-          >
-            <Txt variant="body" color="muted">📖 View Past Entries</Txt>
-          </Pressable>
+        </View>
+        {draftInfo && (
+          <Txt variant="caption" color="muted" style={styles.draftInfo}>{draftInfo} · auto-saved</Txt>
+        )}
+
+        <SectionCard icon="💫" title="How are you feeling?">
+          <MoodPicker selected={selectedMood} onSelect={setSelectedMood} />
+        </SectionCard>
+
+        <Txt variant="body" color="muted" style={styles.thoughtsLabel}>YOUR THOUGHTS</Txt>
+        <View style={styles.textareaWrapper}>
+          {sentimentBadge && (
+            <View style={[styles.sentimentBadge, { backgroundColor: theme.colors.accentMuted }]}>
+                <Txt variant="emoji" style={[styles.sentimentText, { color: theme.colors.accent }]}>
+                {sentimentBadge.emoji} {sentimentBadge.label}
+              </Txt>
+            </View>
+          )}
+          <Card variant="flat" style={styles.noteCard}>
+            <Controller
+              control={control}
+              name="content"
+              render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
+                <View>
+                  <TextInput
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    multiline
+                    numberOfLines={8}
+                    placeholder="What's on your mind today?"
+                    placeholderTextColor={theme.colors.textSoft}
+                    accessibilityLabel="Journal content"
+                    style={[
+                      styles.textarea,
+                      styles.textareaInput,
+                      { color: theme.colors.textPrimary },
+                    ]}
+                  />
+                  <View style={styles.textareaFooter}>
+                    <Txt variant="caption" color="muted">{(value || '').length} chars</Txt>
+                  </View>
+                  {error && <Txt variant="caption" style={[styles.errorText, { color: theme.colors.danger }]}>{error.message}</Txt>}
+                </View>
+              )}
+            />
+          </Card>
+        </View>
+
+        <View style={styles.spacer} />
+        <Button
+          label="Save Entry"
+          onPress={handleSubmit(onSubmit)}
+          disabled={!formState.isValid || createMutation.isPending}
+          fullWidth
+          size="lg"
+        />
+        <Pressable
+          onPress={() => navigation.navigate('JournalList')}
+          style={styles.viewPastBtn}
+        >
+          <Txt variant="body" color="muted">📖 View Past Entries</Txt>
+        </Pressable>
       </KeyboardAvoidingWrapper>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
@@ -317,7 +319,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   sentimentText: {
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: '600',
   },
   noteCard: {

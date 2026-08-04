@@ -145,12 +145,24 @@ export function JournalListScreen() {
             </View>
           }
           ListEmptyComponent={
-            <Card variant="glass" style={styles.emptyCard}>
-              <Txt style={styles.emptyEmoji}>{isError ? '🌤️' : isConnected ? '📝' : '📶'}</Txt>
+            <View style={styles.emptyWrap}>
+              <View style={[styles.emptyArt, { backgroundColor: theme.colors.primaryMuted }]}>
+                <Txt style={styles.emptyArtEmoji}>📓</Txt>
+              </View>
+              <Txt variant="h3" align="center" style={styles.emptyTitle}>
+                {isError ? 'Couldn\u2019t load entries' : isConnected ? 'Your journal awaits' : 'You\u2019re offline'}
+              </Txt>
               <Txt variant="body" color="secondary" align="center">
                 {emptyMessage}
               </Txt>
-            </Card>
+              {!isError && isConnected && (
+                <Button
+                  label="Write your first entry"
+                  onPress={() => setShowNewEntrySheet(true)}
+                  style={styles.emptyCta}
+                />
+              )}
+            </View>
           }
         />
         <View style={styles.fab}>
@@ -271,6 +283,30 @@ const styles = StyleSheet.create({
   emptyEmoji: {
     fontSize: 32,
     textAlign: 'center',
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 12,
+    gap: 12,
+  },
+  emptyArt: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyArtEmoji: {
+    fontSize: 34,
+  },
+  emptyTitle: {
+    marginTop: 4,
+  },
+  emptyCta: {
+    marginTop: 8,
+    minWidth: 220,
   },
   fab: { padding: 16 },
   sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.3)' },

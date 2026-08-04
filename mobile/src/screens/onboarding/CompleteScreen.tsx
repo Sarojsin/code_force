@@ -73,7 +73,7 @@ export function CompleteScreen() {
               end={{ x: 1, y: 1 }}
               style={[StyleSheet.absoluteFill, { borderRadius: 55 }]}
             />
-            <Text style={{ fontSize: 40 }}>✨</Text>
+            <Text variant="emoji">✨</Text>
           </Animated.View>
           <Text variant="h1" color="inverse" align="center" style={styles.title}>
             You're all set!

@@ -8,6 +8,7 @@ import { Text as Txt, Button } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useAuthStore } from 'src/stores';
 import { authService } from 'src/services/api';
+import { resetAppForLogout } from 'src/services/sessionReset';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
 import type { ProfileStackParamList } from 'src/navigation/types';
@@ -16,6 +17,7 @@ type Nav = StackNavigationProp<ProfileStackParamList, 'ProfileHome'>;
 
 const MENU_ITEMS = [
   { label: 'Edit Profile', route: 'EditProfile' as const, icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+  { label: 'Health Info', route: 'EditHealth' as const, icon: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z' },
   { label: 'Settings', route: 'Settings' as const, icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z' },
   { label: 'Linked Family', route: 'LinkedFamily' as const, icon: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z' },
   { label: 'Change Password', route: 'ChangePassword' as const, icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z' },
@@ -25,7 +27,6 @@ const MENU_ITEMS = [
 export function ProfileHomeScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
-  const reset = useAuthStore((s) => s.reset);
   const user = useAuthStore((s) => s.user);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -35,7 +36,8 @@ export function ProfileHomeScreen() {
       await authService.logout();
     } catch {
     }
-    await reset();
+    // Full per-user isolation: stores, encrypted/async storage, SQLite, query cache.
+    await resetAppForLogout();
   };
 
   const handleLogout = () => {

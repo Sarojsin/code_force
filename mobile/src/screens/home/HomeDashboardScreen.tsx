@@ -6,7 +6,8 @@ import Svg, { Circle as SvgCircle } from 'react-native-svg';
 
 import { Text, Skeleton, AnimatedSection } from 'src/components/ui';
 import { useTheme } from 'src/theme';
-import { useCycleCalendar } from 'src/services/queries';
+import { useCurrentCycleState } from 'src/hooks/useCurrentCycleState';
+import { getPhaseMeta } from 'src/utils';
 import { useAuthStore } from 'src/stores/authStore';
 import { useDiaryAssetStore } from 'src/stores/diaryAssetStore';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -34,58 +35,16 @@ function getTimeGreeting(): string {
   return 'Good night';
 }
 
-function getPhaseName(days: number): string {
-  if (days >= 1 && days <= 5) return 'Menstrual';
-  if (days >= 6 && days <= 13) return 'Follicular';
-  if (days === 14 || days === 15) return 'Ovulation';
-  return 'Luteal';
-}
-
-function getPhaseColor(phase: string): string {
-  switch (phase) {
-    case 'Menstrual': return '#F48FB1';
-    case 'Follicular': return '#CE93D8';
-    case 'Ovulation': return '#81C784';
-    case 'Luteal': return '#90CAF9';
-    default: return '#F48FB1';
-  }
-}
-
-function getPhaseEmoji(phase: string): string {
-  switch (phase) {
-    case 'Menstrual': return '🩸';
-    case 'Follicular': return '🌱';
-    case 'Ovulation': return '🌟';
-    case 'Luteal': return '🌙';
-    default: return '🌸';
-  }
-}
-
-function getPhaseDescription(phase: string): string {
-  switch (phase) {
-    case 'Menstrual': return 'Rest and recharge';
-    case 'Follicular': return 'Energy rising';
-    case 'Ovulation': return 'Peak vitality. Magnetic energy.';
-    case 'Luteal': return 'Slow down, stay cosy';
-    default: return '';
-  }
-}
-
 export function HomeDashboardScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
-  const { data: calData, isLoading: loading, error, refetch } = useCycleCalendar(3, 3);
+  const { cycleDay, hasCycleData, phaseKey, phaseLabel, phaseEmoji, phaseAccent, phaseDesc, nextPeriodDays, predictedCycleLength, calData, isLoading: loading, error, refetch } = useCurrentCycleState(3, 3);
   const user = useAuthStore((s) => s.user);
   const displayName = user?.display_name ?? '';
   const firstName = displayName.split(' ')[0] || '';
 
-  const cycleDay = calData?.days ? Object.keys(calData.days).length % 28 + 1 : 1;
-  const phaseName = getPhaseName(cycleDay);
-  const phaseColor = getPhaseColor(phaseName);
-  const phaseEmoji = getPhaseEmoji(phaseName);
-  const phaseDesc = getPhaseDescription(phaseName);
-  const nextPeriodDays = calData?.next_period_in_days ?? 14;
-
+  const phaseName = phaseLabel;
+  const phaseColor = phaseAccent;
   const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const isFocused = useIsFocused();
@@ -194,89 +153,114 @@ export function HomeDashboardScreen() {
           </View>
         ) : (
           <View style={styles.grid}>
-            <AnimatedSection delay={staggerItems[0]}>
-              <LinearGradient
-                colors={[phaseColor + 'CC', phaseColor]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.heroCard, { borderRadius: 26 }]}
-              >
-                <View style={StyleSheet.absoluteFill}>
-                  <View style={[styles.decoCircle, { width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.07)', top: -40, right: -40 }]} />
-                  <View style={[styles.decoCircle, { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.07)', bottom: -20, right: -10 }]} />
-                </View>
-                <View style={styles.heroContent}>
-                  <View style={styles.heroTop}>
-                    <View style={[styles.phasePill, { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 100 }]}>
-                      <View style={[styles.dot, { backgroundColor: '#81C784' }]} />
-                      <Text style={styles.phasePillText}>CYCLE DAY {cycleDay} · {phaseName.toUpperCase()}</Text>
-                    </View>
+            {!hasCycleData ? (
+              <AnimatedSection delay={staggerItems[0]}>
+                <LinearGradient
+                  colors={[theme.colors.primary + '22', theme.colors.surface]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.emptyCard, { borderRadius: 26, borderColor: theme.colors.primary + '30' }]}
+                >
+                  <Text style={styles.emptyEmoji}>🌱</Text>
+                  <Text variant="h2" style={styles.emptyTitle}>Start tracking your first cycle</Text>
+                  <Text variant="body" color="muted" style={styles.emptySubtitle}>
+                    Log your first period to unlock personalized cycle predictions and phase insights.
+                  </Text>
+                  <Pressable
+                    onPress={() => navigation.navigate('Main', { screen: 'Calendar', params: { screen: 'LogPeriod' } })}
+                    accessibilityLabel="Log your first period"
+                    accessibilityRole="button"
+                    style={[styles.ctaButton, { backgroundColor: theme.colors.primary, borderRadius: theme.radius.lg }]}
+                  >
+                    <Text style={styles.ctaButtonText}>Log Period</Text>
+                  </Pressable>
+                </LinearGradient>
+              </AnimatedSection>
+            ) : (
+              <AnimatedSection delay={staggerItems[0]}>
+                <LinearGradient
+                  colors={[phaseColor + 'CC', phaseColor]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.heroCard, { borderRadius: 26 }]}
+                >
+                  <View style={StyleSheet.absoluteFill}>
+                    <View style={[styles.decoCircle, { width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.07)', top: -40, right: -40 }]} />
+                    <View style={[styles.decoCircle, { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.07)', bottom: -20, right: -10 }]} />
                   </View>
-                  <Text style={styles.heroTitle}>{phaseEmoji} {phaseName} Phase</Text>
-                  <Text style={styles.heroSubtitle}>{phaseDesc}</Text>
-                  <View style={styles.heroRingSection}>
-                    <View style={{ alignItems: 'center' }}>
-                      <Svg width={78} height={78} viewBox="0 0 78 78">
-                        <SvgCircle cx="39" cy="39" r="34" stroke="rgba(255,255,255,0.2)" strokeWidth="5" fill="none" />
-                        <SvgCircle
-                          cx="39"
-                          cy="39"
-                          r="34"
-                          stroke="#fff"
-                          strokeWidth="5"
-                          fill="none"
-                          strokeDasharray={2 * Math.PI * 34}
-                          strokeLinecap="round"
-                          strokeDashoffset={2 * Math.PI * 34 * (1 - cycleDay / 28)}
-                        />
-                      </Svg>
-                      <View style={styles.ringLabel}>
-                        <Text style={styles.ringDay}>{cycleDay}</Text>
-                        <Text style={styles.ringTotal}>/ 28</Text>
+                  <View style={styles.heroContent}>
+                    <View style={styles.heroTop}>
+                      <View style={[styles.phasePill, { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 100 }]}>
+                        <View style={[styles.dot, { backgroundColor: '#81C784' }]} />
+                        <Text style={styles.phasePillText}>CYCLE DAY {cycleDay} · {phaseName.toUpperCase()}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.heroTitle}>{phaseEmoji} {phaseName} Phase</Text>
+                    <Text style={styles.heroSubtitle}>{phaseDesc}</Text>
+                    <View style={styles.heroRingSection}>
+                      <View style={{ alignItems: 'center' }}>
+                        <Svg width={78} height={78} viewBox="0 0 78 78">
+                          <SvgCircle cx="39" cy="39" r="34" stroke="rgba(255,255,255,0.2)" strokeWidth="5" fill="none" />
+                          <SvgCircle
+                            cx="39"
+                            cy="39"
+                            r="34"
+                            stroke="#fff"
+                            strokeWidth="5"
+                            fill="none"
+                            strokeDasharray={2 * Math.PI * 34}
+                            strokeLinecap="round"
+                            strokeDashoffset={2 * Math.PI * 34 * (1 - (cycleDay ?? 1) / (predictedCycleLength ?? 1))}
+                          />
+                        </Svg>
+                        <View style={styles.ringLabel}>
+                          <Text style={styles.ringDay}>{cycleDay}</Text>
+                          <Text style={styles.ringTotal}>/ {predictedCycleLength}</Text>
+                        </View>
+                      </View>
+                    </View>
+                    <View style={[styles.heroDivider, { backgroundColor: 'rgba(255,255,255,0.22)' }]} />
+                    <View style={styles.heroStats}>
+                      <View style={styles.heroStatItem}>
+                        <Text style={styles.heroStatValue}>{nextPeriodDays ?? '—'}</Text>
+                        <Text style={styles.heroStatLabel}>Next period</Text>
+                      </View>
+                      <View style={[styles.heroStatDivider, { backgroundColor: 'rgba(255,255,255,0.22)' }]} />
+                      <View style={styles.heroStatItem}>
+                        <Text style={styles.heroStatValue}>{predictedCycleLength ?? '—'}</Text>
+                        <Text style={styles.heroStatLabel}>Cycle avg</Text>
+                      </View>
+                      <View style={[styles.heroStatDivider, { backgroundColor: 'rgba(255,255,255,0.22)' }]} />
+                      <View style={styles.heroStatItem}>
+                        <Text style={styles.heroStatValue}>3</Text>
+                        <Text style={styles.heroStatLabel}>Streak</Text>
                       </View>
                     </View>
                   </View>
-                  <View style={[styles.heroDivider, { backgroundColor: 'rgba(255,255,255,0.22)' }]} />
-                  <View style={styles.heroStats}>
-                    <View style={styles.heroStatItem}>
-                      <Text style={styles.heroStatValue}>{nextPeriodDays}</Text>
-                      <Text style={styles.heroStatLabel}>Next period</Text>
-                    </View>
-                    <View style={[styles.heroStatDivider, { backgroundColor: 'rgba(255,255,255,0.22)' }]} />
-                    <View style={styles.heroStatItem}>
-                      <Text style={styles.heroStatValue}>28</Text>
-                      <Text style={styles.heroStatLabel}>Cycle avg</Text>
-                    </View>
-                    <View style={[styles.heroStatDivider, { backgroundColor: 'rgba(255,255,255,0.22)' }]} />
-                    <View style={styles.heroStatItem}>
-                      <Text style={styles.heroStatValue}>3</Text>
-                      <Text style={styles.heroStatLabel}>Streak</Text>
-                    </View>
-                  </View>
-                </View>
-              </LinearGradient>
-            </AnimatedSection>
+                </LinearGradient>
+              </AnimatedSection>
+            )}
 
             <AnimatedSection delay={staggerItems[1]}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.phaseTimeline}>
-                {['Menstrual', 'Follicular', 'Ovulation', 'Luteal'].map((p) => {
-                  const active = p === phaseName;
-                  const pc = getPhaseColor(p);
+                {(['menstrual', 'follicular', 'ovulation', 'luteal'] as const).map((key) => {
+                  const meta = getPhaseMeta(key);
+                  const active = key === phaseKey;
                   return (
                     <Pressable
-                      key={p}
+                      key={key}
                       style={[
                         styles.phaseCard,
                         {
-                          backgroundColor: active ? pc : 'rgba(255,255,255,0.75)',
-                          borderColor: active ? pc : 'rgba(0,0,0,0.06)',
+                          backgroundColor: active ? meta.accent : 'rgba(255,255,255,0.75)',
+                          borderColor: active ? meta.accent : 'rgba(0,0,0,0.06)',
                           borderRadius: 16,
                         },
-                        active && { shadowColor: pc, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
+                        active && { shadowColor: meta.accent, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
                       ]}
                     >
-                      <Text style={{ fontSize: 24 }}>{getPhaseEmoji(p)}</Text>
-                      <Text style={[styles.phaseName, { color: active ? '#fff' : '#4A5568' }]}>{p}</Text>
+                       <Text variant="emoji">{meta.emoji}</Text>
+                      <Text style={[styles.phaseName, { color: active ? '#fff' : '#4A5568' }]}>{meta.label}</Text>
                     </Pressable>
                   );
                 })}
@@ -298,7 +282,7 @@ export function HomeDashboardScreen() {
                   style={[styles.bentoCard, { backgroundColor: '#fff', borderRadius: 20 }]}
                 >
                   <View style={[styles.bentoIcon, { borderRadius: 12 }]}>
-                    <LinearGradient colors={['#A7F3D0', '#6EE7B7']} style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} />
+                    <LinearGradient colors={['#FFB3C6', '#FF6B8A']} style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} />
                     <Text style={{ fontSize: 20 }}>📒</Text>
                   </View>
                   <Text variant="h3" style={{ marginTop: 8 }}>Simple Journal</Text>
@@ -352,7 +336,7 @@ export function HomeDashboardScreen() {
                     style={[styles.videoCard, { backgroundColor: '#fff', borderRadius: 16, marginRight: i < 3 ? 12 : 0 }]}
                   >
                     <View style={[styles.videoIcon, { borderRadius: 12 }]}>
-                      <Text style={{ fontSize: 28 }}>{v.emoji}</Text>
+                       <Text variant="emoji">{v.emoji}</Text>
                     </View>
                     <Text variant="body" style={{ fontWeight: '600', marginTop: 8 }}>{v.title}</Text>
                     <Text variant="caption" color="muted">⏱ {v.duration}</Text>
@@ -364,11 +348,9 @@ export function HomeDashboardScreen() {
               </ScrollView>
             </AnimatedSection>
 
-            <View style={{ height: 24 }} />
           </View>
         )}
 
-        <View style={{ height: 24 }} />
       </ScrollView>
       {isFocused && lunaEnabled && (
         <LunaOverlay
@@ -385,7 +367,7 @@ export function HomeDashboardScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 },
+  scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24 },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -418,6 +400,36 @@ const styles = StyleSheet.create({
     minHeight: 240,
     overflow: 'hidden',
     marginBottom: CARD_GAP,
+  },
+  emptyCard: {
+    minHeight: 240,
+    padding: 24,
+    borderWidth: 1,
+    marginBottom: CARD_GAP,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyEmoji: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  ctaButton: {
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+  },
+  ctaButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
   decoCircle: {
     position: 'absolute',

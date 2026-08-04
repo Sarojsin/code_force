@@ -31,7 +31,7 @@ export function WellnessHomeScreen() {
   function RecommendationRow({ emoji, description, badge }: { emoji: string; description: string; badge: string }) {
     return (
       <View style={[styles.recRow, { borderBottomColor: theme.colors.border }]}>
-        <Text style={{ fontSize: 24, width: 40 }}>{emoji}</Text>
+        <Text variant="emoji" style={{ width: 40 }}>{emoji}</Text>
         <Txt variant="body" style={{ flex: 1, marginLeft: 8 }}>{description}</Txt>
         <View style={[styles.recBadge, { backgroundColor: theme.colors.primary + '22', borderRadius: 100 }]}>
           <Txt style={{ color: theme.colors.primary, fontSize: 10, fontWeight: '600' }}>{badge}</Txt>
@@ -52,7 +52,7 @@ export function WellnessHomeScreen() {
           style={[styles.breathingCard, { backgroundColor: theme.colors.surface, borderRadius: 16 }]}
         >
           <View style={[styles.breathingIcon, { backgroundColor: theme.colors.accentMuted, borderRadius: 28 }]}>
-            <Text style={{ fontSize: 28 }}>{emoji}</Text>
+            <Text variant="emoji">{emoji}</Text>
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Txt variant="body" style={{ fontWeight: '600' }}>{name}</Txt>
@@ -103,16 +103,27 @@ export function WellnessHomeScreen() {
       case '🌸 Mood':
         return (
           <View>
+            <View style={styles.moodHeader}>
+              <Txt variant="h3">Last 7 days</Txt>
+              <Txt variant="caption" color="secondary">Daily mood · intensity 1–5</Txt>
+            </View>
             <View style={styles.moodChart}>
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
                 const moods = ['😊', '😌', '😰', '😊', '😴', '🌟', '😊'];
+                const intensities = [3, 2, 1, 3, 2, 5, 3];
                 const heights = [60, 45, 35, 70, 50, 80, 65];
                 const isToday = i === 6;
                 return (
-                  <View key={day} style={styles.moodBarCol}>
+                  <View key={day} style={styles.moodBarCol} accessibilityLabel={`${day}: ${moods[i]}, intensity ${intensities[i]}`}>
                     <Text style={{ fontSize: 16 }}>{moods[i]}</Text>
+                    <Text style={[
+                      styles.moodValue,
+                      { color: isToday ? theme.colors.primary : theme.colors.textMuted },
+                    ]}>{intensities[i]}</Text>
                     <View style={[styles.moodBar, { height: heights[i], borderRadius: 8, backgroundColor: isToday ? theme.colors.primary : '#FFD4DC' }]} />
-                    <Txt variant="caption" color="muted" style={{ marginTop: 4, fontSize: 9 }}>{day}</Txt>
+                    <Txt variant="caption" color="secondary" style={styles.moodDayLabel}>
+                      {isToday ? 'Today' : day}
+                    </Txt>
                   </View>
                 );
               })}
@@ -243,11 +254,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
+  moodHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   moodChart: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'flex-end',
-    height: 140,
+    height: 150,
     paddingVertical: 8,
     backgroundColor: '#fff',
     borderRadius: 20,
@@ -257,9 +274,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
+  moodValue: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+  },
   moodBar: {
     width: 24,
     marginTop: 4,
+  },
+  moodDayLabel: {
+    marginTop: 4,
+    fontSize: 10,
   },
   moodInsightCard: {
     padding: 20,
