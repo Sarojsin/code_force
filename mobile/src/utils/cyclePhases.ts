@@ -264,3 +264,30 @@ export const PHASE_META: Record<string, PhaseMeta> = {
 export function getPhaseMeta(phase: string): PhaseMeta {
   return PHASE_META[phase] ?? PHASE_META.luteal;
 }
+
+/**
+ * Derive the canonical phase key for a given calendar date from the encoded
+ * day map. Uses the day code when it matches a known letter; otherwise
+ * falls back to computing the cycle day from the period anchor so every
+ * screen shows the same phase regardless of code variants (P/p/pw/c/u/etc.).
+ */
+export function derivePhaseForDate(
+  days: Record<string, string>,
+  dateStr: string,
+): PhaseRange['key'] {
+  const code = days[dateStr];
+  if (code === 'P' || code === 'p' || code === 'pw' || code === 'u') return 'menstrual';
+  if (code === 'Fl' || code === 'fl') return 'follicular';
+  if (code === 'F' || code === 'f') return 'fertile';
+  if (code === 'O' || code === 'o') return 'ovulation';
+  if (code === 'L' || code === 'l') return 'luteal';
+  // Fallback: compute from anchor for unrecognized codes (e.g. 'c', missing)
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d, 12, 0, 0);
+  const cd = computeCycleDay(days, date);
+  if (cd >= 1 && cd <= 5) return 'menstrual';
+  if (cd >= 6 && cd <= 13) return 'follicular';
+  if (cd === 14 || cd === 15) return 'ovulation';
+  if (cd >= 16 && cd <= 28) return 'luteal';
+  return 'menstrual';
+}

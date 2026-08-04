@@ -1,6 +1,7 @@
 import {
   computeCycleDay,
   computePhaseRanges,
+  derivePhaseForDate,
   extendPeriodBlock,
   getCurrentCycleAnchor,
 } from 'src/utils/cyclePhases';
@@ -123,5 +124,80 @@ describe('extendPeriodBlock', () => {
     const result = extendPeriodBlock(days, start, new Date(2026, 6, 2), 28);
     // End earlier than existing run: P days still present (fill-only semantics)
     expect(result['2026-07-03']).toBe('P');
+  });
+});
+
+describe('derivePhaseForDate', () => {
+  const days = {
+    '2026-07-01': 'P', '2026-07-02': 'P', '2026-07-03': 'P', '2026-07-04': 'P', '2026-07-05': 'P',
+    '2026-07-06': 'Fl', '2026-07-07': 'Fl', '2026-07-08': 'Fl', '2026-07-09': 'Fl',
+    '2026-07-10': 'F', '2026-07-11': 'F', '2026-07-12': 'F', '2026-07-13': 'F', '2026-07-14': 'F',
+    '2026-07-15': 'O',
+    '2026-07-16': 'L', '2026-07-17': 'L', '2026-07-18': 'L',
+  };
+
+  it('returns correct phase for known codes', () => {
+    expect(derivePhaseForDate(days, '2026-07-01')).toBe('menstrual');
+    expect(derivePhaseForDate(days, '2026-07-06')).toBe('follicular');
+    expect(derivePhaseForDate(days, '2026-07-10')).toBe('fertile');
+    expect(derivePhaseForDate(days, '2026-07-15')).toBe('ovulation');
+    expect(derivePhaseForDate(days, '2026-07-16')).toBe('luteal');
+  });
+
+  it('derives phase from anchor for unrecognized codes', () => {
+    const daysWithUnrecognized = { ...days, '2026-07-02': 'pw', '2026-07-03': 'c' };
+    expect(derivePhaseForDate(daysWithUnrecognized, '2026-07-02')).toBe('menstrual');
+    expect(derivePhaseForDate(daysWithUnrecognized, '2026-07-03')).toBe('menstrual');
+  });
+
+  it('handles missing date gracefully via fallback', () => {
+    expect(derivePhaseForDate({}, '2026-07-01')).toBe('menstrual');
+  });
+});
+
+describe('cycleDay-phaseRange invariant', () => {
+  const days = {
+    '2026-07-01': 'P', '2026-07-02': 'P', '2026-07-03': 'P', '2026-07-04': 'P', '2026-07-05': 'P',
+    '2026-07-06': 'Fl', '2026-07-07': 'Fl', '2026-07-08': 'Fl', '2026-07-09': 'Fl',
+    '2026-07-10': 'F', '2026-07-11': 'F', '2026-07-12': 'F', '2026-07-13': 'F', '2026-07-14': 'F',
+    '2026-07-15': 'O',
+    '2026-07-16': 'L', '2026-07-17': 'L', '2026-07-18': 'L',
+  };
+
+  it('derivePhaseForDate never returns an unknown/transition phase', () => {
+    const allDates = [
+      ...Object.keys(days),
+      '2026-07-19', '2026-07-20', '2026-07-21', '2026-07-22', // days without codes
+    ];
+    const validPhases = new Set(['menstrual', 'follicular', 'fertile', 'ovulation', 'luteal']);
+
+    for (const dateStr of allDates) {
+      const phase = derivePhaseForDate(days, dateStr);
+      expect(validPhases.has(phase)).toBe(true);
+    }
+  });
+
+  it('computeCycleDay falls within the active phase range when codes are complete', () => {
+    // Use a complete days map with all phases populated through the full cycle
+    const completeDays = {
+      '2026-07-01': 'P', '2026-07-02': 'P', '2026-07-03': 'P', '2026-07-04': 'P', '2026-07-05': 'P',
+      '2026-07-06': 'Fl', '2026-07-07': 'Fl', '2026-07-08': 'Fl', '2026-07-09': 'Fl',
+      '2026-07-10': 'F', '2026-07-11': 'F', '2026-07-12': 'F', '2026-07-13': 'F', '2026-07-14': 'F',
+      '2026-07-15': 'O',
+      '2026-07-16': 'L', '2026-07-17': 'L', '2026-07-18': 'L', '2026-07-19': 'L',
+      '2026-07-20': 'L', '2026-07-21': 'L', '2026-07-22': 'L',
+    };
+    const testToday = new Date(2026, 6, 22, 12, 0, 0);
+
+    const cd = computeCycleDay(completeDays, testToday);
+    const phaseRanges = computePhaseRanges(completeDays, testToday);
+
+    const matchingRanges = phaseRanges.filter(
+      (r) => r.startDay !== null && r.endDay !== null && cd >= r.startDay! && cd <= r.endDay!,
+    );
+
+    // With complete data, cycle day must belong to exactly one phase
+    expect(matchingRanges.length).toBe(1);
+    expect(matchingRanges[0].key).toBe('luteal');
   });
 });

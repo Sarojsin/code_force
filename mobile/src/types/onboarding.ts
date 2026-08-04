@@ -1,6 +1,5 @@
 export interface PastCycle {
   cycle_start: string;
-  cycle_length: number;
   period_length: number;
   symptoms: string[];
 }
@@ -14,7 +13,6 @@ export interface OnboardingData {
   sleep_hours: number;
   diet: 'balanced' | 'normal' | 'junk';
   current_cycle_start: string;
-  current_cycle_length: number;
   current_period_length: number;
   current_symptoms: string[];
   past_cycles: PastCycle[];
@@ -33,6 +31,16 @@ export interface OnboardingStatusResponse {
   completed: boolean;
 }
 
+export interface LifestyleUpdate {
+  age?: number;
+  height_cm?: number;
+  weight_kg?: number;
+  stress_level?: 'low' | 'moderate' | 'high';
+  exercise_frequency?: 'low' | 'moderate' | 'high';
+  sleep_hours?: number;
+  diet?: 'balanced' | 'normal' | 'junk';
+}
+
 /* Zustand store shape */
 export interface OnboardingState {
   age: number | null;
@@ -43,12 +51,13 @@ export interface OnboardingState {
   sleepHours: number | null;
   diet: 'balanced' | 'normal' | 'junk' | null;
   currentCycleStart: string | null;
-  currentCycleLength: number | null;
   currentPeriodLength: number | null;
   currentSymptoms: string[];
   pastCycles: PastCycle[];
   isSubmitting: boolean;
   isCompleted: boolean;
+  userId: string | null;
+  isHydrated: boolean;
 }
 
 export interface OnboardingActions {
@@ -61,7 +70,6 @@ export interface OnboardingActions {
   }) => void;
   setCurrentCycle: (data: {
     currentCycleStart: string;
-    currentCycleLength: number;
     currentPeriodLength: number;
     currentSymptoms: string[];
   }) => void;
@@ -69,4 +77,5 @@ export interface OnboardingActions {
   reset: () => void;
   setSubmitting: (v: boolean) => void;
   setCompleted: (v: boolean) => void;
+  setHydrated: (v: boolean) => void;
 }

@@ -17,7 +17,6 @@ export type LifestyleForm = z.infer<typeof lifestyleSchema>;
 
 export const currentCycleSchema = z.object({
   cycleStartDate: z.string().min(1, 'Required'),
-  cycleLength: z.coerce.number({ invalid_type_error: 'Required' }).int().min(20, 'Min 20 days').max(45, 'Max 45 days'),
   periodLength: z.coerce.number({ invalid_type_error: 'Required' }).int().min(2, 'Min 2 days').max(10, 'Max 10 days'),
   symptoms: z.array(z.string()),
 });
@@ -25,7 +24,6 @@ export type CurrentCycleForm = z.infer<typeof currentCycleSchema>;
 
 export const pastCycleSchema = z.object({
   cycleStart: z.string().min(1, 'Required'),
-  cycleLength: z.coerce.number({ invalid_type_error: 'Required' }).int().min(20).max(45),
   periodLength: z.coerce.number({ invalid_type_error: 'Required' }).int().min(2).max(10),
   symptoms: z.array(z.string()),
 });

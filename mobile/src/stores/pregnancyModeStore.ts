@@ -12,6 +12,7 @@ interface PregnancyModeState {
   setWeek: (week: number) => void;
   setDueDate: (date: string) => void;
   hydrate: () => Promise<void>;
+  reset: () => Promise<void>;
 }
 
 export const usePregnancyModeStore = create<PregnancyModeState>((set, get) => ({
@@ -52,6 +53,15 @@ export const usePregnancyModeStore = create<PregnancyModeState>((set, get) => ({
       }
     } catch {
       // Silently fail — defaults are fine
+    }
+  },
+
+  reset: async () => {
+    set({ isActive: false, currentWeek: 14, dueDate: null });
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Ignore
     }
   },
 }));

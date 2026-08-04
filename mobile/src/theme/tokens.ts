@@ -70,11 +70,11 @@ export const colors = {
   danger: palette.danger500,        // #EF4444 — design's `red`
   dangerDark: palette.danger700,    // #DC2626 — design's `redD`
   info: palette.info500,
-  // Design-specific text colors (warmer tone)
+  // Design-specific text colors (warmer tone) — darkened for WCAG AA (≥4.5:1) on cream #FFF8F0
   textDark: '#2D1B26',    // headings — design's `dark`
-  textMid: '#6B4D5A',     // secondary body — design's `mid`
-  textSoft: '#A07888',    // captions / muted — design's `soft`
-  textLighter: '#C9A8B8', // inactive nav / subtle dividers — design's `lighter`
+  textMid: '#5A3A47',     // secondary body — design's `mid`
+  textSoft: '#7C4E5A',    // captions / muted — design's `soft`
+  textLighter: '#96677A', // inactive / subtle dividers — design's `lighter`
 } as const;
 
 export const darkColors = {
@@ -152,11 +152,13 @@ export const typography = {
   heroValue: { fontSize: 36, fontWeight: '800' as const, lineHeight: 40, fontFamily: fonts.heading },
   // large countdown numbers like "14" in "14 days"
   countdown: { fontSize: 54, fontWeight: '900' as const, lineHeight: 58, fontFamily: fonts.heading },
-  // SOS countdown number
-  chip: { fontSize: 12, fontWeight: '600' as const, lineHeight: 16, fontFamily: fonts.body },
-  // symptom chips, phase pills
-  greeting: { fontSize: 15, fontWeight: '500' as const, lineHeight: 20, fontFamily: fonts.body },
-  // "Sunday, 27 July" date line
+   // SOS countdown number
+   chip: { fontSize: 12, fontWeight: '600' as const, lineHeight: 16, fontFamily: fonts.body },
+   // symptom chips, phase pills
+   greeting: { fontSize: 15, fontWeight: '500' as const, lineHeight: 20, fontFamily: fonts.body },
+   // "Sunday, 27 July" date line
+   // Emoji-only text — uses system font to avoid custom font stretching on Android
+   emoji: { fontSize: 28, fontFamily: 'System' },
 } as const;
 
 export const shadow = {
