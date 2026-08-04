@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from typing import TYPE_CHECKING, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.functional_validators import model_validator
-from typing_extensions import Self
+
+if TYPE_CHECKING:
+    from app.modules.cycle.models import CycleDay, DayMedication, DaySymptom
 
 
 class CycleEntryCreate(BaseModel):
@@ -56,6 +59,7 @@ class CycleEntryResponse(BaseModel):
     notes: str | None
     is_correction: bool
     corrected_prediction_id: uuid.UUID | None
+    correction_delta: int | None = None
     cycle_type: str
     created_at: datetime
 
@@ -89,6 +93,7 @@ class CorrectionResponse(BaseModel):
     symptoms: list[str]
     is_correction: bool
     corrected_prediction_id: uuid.UUID | None
+    correction_delta: int | None = None
     cycle_type: str
     created_at: datetime
     avg_period_length: int = 5
@@ -165,3 +170,142 @@ class PredictionHistoryResponse(BaseModel):
 class ModelStatusResponse(BaseModel):
     current_version: int
     download_url: str
+
+
+# ---- Day observations (DayDetailSheet / cycle_days) ----
+
+
+class DaySymptomIn(BaseModel):
+    """A single symptom selection for a day (name from the master table)."""
+
+    symptom: str
+    severity: int = Field(3, ge=1, le=5)
+
+
+class DayMedicationIn(BaseModel):
+    """A single medication selection for a day (name from the master table)."""
+
+    name: str
+    dose: str | None = None
+    taken_at: datetime | None = None
+
+
+class DayUpsert(BaseModel):
+    """Upsert payload for one day's observations. All fields optional (partial patch).
+
+    ``flow_level`` values: none | spotting | light | medium | heavy.
+    ``energy_level``: 1=low, 2=medium, 3=high.
+    """
+
+    mood: str | None = None
+    mood_intensity: int | None = Field(None, ge=1, le=10)
+    pain_level: int | None = Field(None, ge=0, le=10)
+    energy_level: int | None = Field(None, ge=1, le=3)
+    sleep_minutes: int | None = Field(None, ge=0, le=1440)
+    water_glasses: int | None = Field(None, ge=0, le=32)
+    flow_level: str | None = Field(None, max_length=10)
+    notes: str | None = None
+    symptoms: list[DaySymptomIn] = Field(default_factory=list)
+    medications: list[DayMedicationIn] = Field(default_factory=list)
+
+
+class DaySymptomResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    category: str
+    icon: str | None = None
+    severity: int
+
+
+class DayMedicationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    category: str
+    dose: str | None = None
+    taken_at: datetime | None = None
+
+
+class DayResponse(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    log_date: date
+    mood: str | None
+    mood_intensity: int | None
+    pain_level: int | None
+    energy_level: int | None
+    sleep_minutes: int | None
+    water_glasses: int | None
+    flow_level: str | None
+    notes: str | None
+    symptoms: list[DaySymptomResponse] = Field(default_factory=list)
+    medications: list[DayMedicationResponse] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+    client_updated_at: datetime | None = None
+
+    @classmethod
+    def from_day(
+        cls,
+        day: CycleDay,
+        symptoms: list[DaySymptom],
+        medications: list[DayMedication],
+    ) -> DayResponse:
+        return cls(
+            id=day.id,
+            user_id=day.user_id,
+            log_date=day.log_date,
+            mood=day.mood,
+            mood_intensity=day.mood_intensity,
+            pain_level=day.pain_level,
+            energy_level=day.energy_level,
+            sleep_minutes=day.sleep_minutes,
+            water_glasses=day.water_glasses,
+            flow_level=day.flow_level,
+            notes=day.notes,
+            symptoms=[
+                DaySymptomResponse(
+                    id=ds.symptom_id,
+                    name=ds.symptom.name,
+                    category=ds.symptom.category,
+                    icon=ds.symptom.icon,
+                    severity=ds.severity,
+                )
+                for ds in symptoms
+            ],
+            medications=[
+                DayMedicationResponse(
+                    id=dm.medication_id,
+                    name=dm.medication.name,
+                    category=dm.medication.category,
+                    dose=dm.dose,
+                    taken_at=dm.taken_at,
+                )
+                for dm in medications
+            ],
+            created_at=day.created_at,
+            updated_at=day.updated_at,
+            client_updated_at=day.client_updated_at,
+        )
+
+
+class SymptomResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    category: str
+    icon: str | None = None
+    display_order: int = 0
+
+
+class MedicationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    category: str
+    display_order: int = 0

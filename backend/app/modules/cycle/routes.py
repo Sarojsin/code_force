@@ -28,17 +28,23 @@ from app.modules.cycle.schemas import (
     CycleEntryCreate,
     CycleEntryResponse,
     CycleEntryUpdate,
+    DayResponse,
+    DayUpsert,
+    MedicationResponse,
     ModelStatusResponse,
     NextPredictionResponse,
     PredictionDetail,
     PredictionHistoryResponse,
     SnoozeCreate,
     SnoozeResponse,
+    SymptomResponse,
 )
 
 router = APIRouter(prefix="/cycle", tags=["cycle"])
 
-STORAGE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "scripts", "..", "storage", "models")
+STORAGE_DIR = os.path.join(
+    os.path.dirname(__file__), "..", "..", "..", "scripts", "..", "storage", "models"
+)
 PROD_DIR = os.path.join(STORAGE_DIR, "prod")
 
 
@@ -69,7 +75,9 @@ async def list_entries(
     offset: int = Query(0, ge=0),
     months_back: int = Query(6, ge=1, le=36),
 ) -> list[CycleEntryResponse]:
-    entries = await svc.list_entries(current_user.id, limit=limit, offset=offset, months_back=months_back)
+    entries = await svc.list_entries(
+        current_user.id, limit=limit, offset=offset, months_back=months_back
+    )
     return [CycleEntryResponse.model_validate(e) for e in entries]
 
 
@@ -150,14 +158,16 @@ async def get_predictions(
         detail = PredictionDetail(
             id=prediction.id,
             predicted_next_period_start=prediction.predicted_next_period_start,
-            predicted_period_end=prediction.predicted_next_period_start + __import__("datetime").timedelta(days=5),
+            predicted_period_end=prediction.predicted_next_period_start
+            + __import__("datetime").timedelta(days=5),
             predicted_fertile_window_start=prediction.predicted_fertile_window_start,
             predicted_fertile_window_end=prediction.predicted_fertile_window_end,
             model_type=prediction.model_type or prediction.model_version or "unknown",
             confidence_score=prediction.confidence_score,
             confidence_label=(
                 _confidence_label(prediction.confidence_score)
-                if prediction.confidence_score is not None else None
+                if prediction.confidence_score is not None
+                else None
             ),
             training_data_points=prediction.training_data_points or 0,
             prediction_window_days=prediction.prediction_window_days,
@@ -215,7 +225,12 @@ async def get_analytics(
     response_model=CorrectionResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Log a correction (period start) that may link to a prediction",
-    responses={409: {"model": CorrectionResponse, "description": "Conflict — data modified since client last synced"}},
+    responses={
+        409: {
+            "model": CorrectionResponse,
+            "description": "Conflict — data modified since client last synced",
+        }
+    },
 )
 async def create_correction(
     payload: CorrectionCreate,
@@ -225,7 +240,10 @@ async def create_correction(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> CorrectionResponse:
     import uuid as _uuid
-    corrected_id = _uuid.UUID(payload.corrected_prediction_id) if payload.corrected_prediction_id else None
+
+    corrected_id = (
+        _uuid.UUID(payload.corrected_prediction_id) if payload.corrected_prediction_id else None
+    )
 
     # Idempotency check (project invariant §5)
     if idempotency_key:
@@ -267,6 +285,7 @@ async def create_snooze(
     svc: CycleServiceDep,
 ) -> SnoozeResponse:
     import uuid as _uuid
+
     snooze = await svc.log_snooze(
         user_id=current_user.id,
         predicted_cycle_id=_uuid.UUID(payload.predicted_cycle_id),
@@ -276,6 +295,7 @@ async def create_snooze(
 
 
 # ---- Phase 2: Calendar ----
+
 
 @router.get(
     "/calendar",
@@ -287,7 +307,10 @@ async def get_calendar(
     svc: CycleServiceDep,
     months_back: int = Query(3, ge=1, le=12),
     months_forward: int = Query(3, ge=1, le=12),
-    today: str | None = Query(None, description="Client-local date (YYYY-MM-DD) anchoring the today marker and check-in window"),
+    today: str | None = Query(
+        None,
+        description="Client-local date (YYYY-MM-DD) anchoring the today marker and check-in window",
+    ),
     if_none_match: str | None = Header(None, alias="If-None-Match"),
 ) -> Response:
     today_ref: date | None = None
@@ -315,6 +338,7 @@ async def get_calendar(
 
 
 # ---- Phase 2: Model status & download ----
+
 
 @router.get(
     "/models/status",
@@ -359,10 +383,87 @@ async def download_model(
     return FileResponse(filepath, media_type="application/json", filename=filename)
 
 
+# ---- Day observations (cycle_days) ----
+
+
+@router.put(
+    "/days/{log_date}",
+    response_model=DayResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Upsert a day's observations (mood, symptoms, pain, sleep, water, meds)",
+)
+async def upsert_day(
+    log_date: date,
+    payload: DayUpsert,
+    current_user: CurrentUser,
+    svc: CycleServiceDep,
+) -> DayResponse:
+    day = await svc.upsert_day(
+        current_user.id,
+        log_date,
+        payload,
+        current_user.encryption_key_salt,
+    )
+    return DayResponse.from_day(day, list(day.day_symptoms), list(day.day_medications))
+
+
+@router.get(
+    "/days",
+    response_model=list[DayResponse],
+    summary="List day observations within a date range",
+)
+async def list_days(
+    current_user: CurrentUser,
+    svc: CycleServiceDep,
+    start: date = Query(...),
+    end: date = Query(...),
+) -> list[DayResponse]:
+    days = await svc.list_days(current_user.id, start, end, current_user.encryption_key_salt)
+    return [
+        DayResponse.from_day(day, list(day.day_symptoms), list(day.day_medications)) for day in days
+    ]
+
+
+@router.get(
+    "/symptoms",
+    response_model=list[SymptomResponse],
+    summary="List active symptom master rows",
+)
+async def list_symptoms(svc: CycleServiceDep) -> list[SymptomResponse]:
+    symptoms = await svc.list_symptoms()
+    return [SymptomResponse.model_validate(s) for s in symptoms]
+
+
+@router.get(
+    "/medications",
+    response_model=list[MedicationResponse],
+    summary="List active medication master rows",
+)
+async def list_medications(svc: CycleServiceDep) -> list[MedicationResponse]:
+    medications = await svc.list_medications()
+    return [MedicationResponse.model_validate(m) for m in medications]
+
+
 # ---- Module initialisation ----
+
 
 def init_module(app, event_bus) -> None:
     app.include_router(router, prefix="/api/v1")
+
+    @app.on_event("startup")
+    async def _seed_day_masters_on_startup() -> None:
+        import logging
+
+        from app.core.database import AsyncSessionLocal
+        from app.modules.cycle.seed import seed_day_masters
+
+        try:
+            async with AsyncSessionLocal() as session:
+                await seed_day_masters(session)
+        except Exception:
+            logging.getLogger("app.modules.cycle").warning(
+                "cycle.day_masters_seed_failed",
+            )
 
     async def _on_onboarding_completed(user_id: str) -> None:
         import uuid
@@ -376,6 +477,7 @@ def init_module(app, event_bus) -> None:
                 await svc.compute_initial_prediction(uuid.UUID(user_id))
             except Exception:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "cycle.initial_prediction_failed",
                     extra={"user_id": user_id},
