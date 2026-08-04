@@ -13,6 +13,7 @@ interface HealthMetricsState {
   completion: { logged: MetricType[]; total: number };
   isLoading: boolean;
 
+  reset: () => void;
   hydrate: (userId: string) => Promise<void>;
   refreshToday: (userId: string) => Promise<void>;
   refreshStreaks: (userId: string) => Promise<void>;
@@ -46,6 +47,25 @@ export const useHealthMetricsStore = create<HealthMetricsState>(
     },
     completion: { logged: [], total: 5 },
     isLoading: false,
+
+    reset: () => set({
+      todayLogs: {
+        sleep: [],
+        water: [],
+        food: [],
+        exercise: [],
+        medication: [],
+      },
+      streaks: {
+        sleep: 0,
+        water: 0,
+        food: 0,
+        exercise: 0,
+        medication: 0,
+      },
+      completion: { logged: [], total: 5 },
+      isLoading: false,
+    }),
 
     hydrate: async (userId: string) => {
       set({ isLoading: true });

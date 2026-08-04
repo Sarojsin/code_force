@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { onboardingService } from 'src/services/api/onboarding';
+import { useAuthStore } from 'src/stores/authStore';
 import type {
   OnboardingActions,
   OnboardingState,
@@ -18,12 +19,13 @@ const initialState: OnboardingState = {
   sleepHours: null,
   diet: null,
   currentCycleStart: null,
-  currentCycleLength: null,
   currentPeriodLength: null,
   currentSymptoms: [],
   pastCycles: [],
   isSubmitting: false,
   isCompleted: false,
+  userId: null,
+  isHydrated: false,
 };
 
 type Store = OnboardingState & OnboardingActions;
@@ -38,8 +40,8 @@ export const useOnboardingStore = create<Store>()(
       setLifestyle: ({ stressLevel, exerciseFrequency, sleepHours, diet }) =>
         set({ stressLevel, exerciseFrequency, sleepHours, diet }),
 
-      setCurrentCycle: ({ currentCycleStart, currentCycleLength, currentPeriodLength, currentSymptoms }) =>
-        set({ currentCycleStart, currentCycleLength, currentPeriodLength, currentSymptoms }),
+      setCurrentCycle: ({ currentCycleStart, currentPeriodLength, currentSymptoms }) =>
+        set({ currentCycleStart, currentPeriodLength, currentSymptoms }),
 
       addPastCycle: (data: PastCycle) => {
         const { pastCycles } = get();
@@ -49,14 +51,22 @@ export const useOnboardingStore = create<Store>()(
 
       setSubmitting: (v) => set({ isSubmitting: v }),
 
-      setCompleted: (v) => set({ isCompleted: v }),
+      setCompleted: (v) => {
+        const userId = v ? (useAuthStore.getState().user?.id ?? null) : null;
+        set({ isCompleted: v, userId });
+      },
 
-      reset: () => set({ ...initialState, isCompleted: get().isCompleted }),
+      setHydrated: (v) => set({ isHydrated: v }),
+
+      reset: () => set({ ...initialState, isCompleted: false, userId: null }),
     }),
     {
       name: 'shecare.onboarding',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ isCompleted: state.isCompleted }),
+      partialize: (state) => ({ isCompleted: state.isCompleted, userId: state.userId }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
+      },
     },
   ),
 );
@@ -76,12 +86,10 @@ export async function submitOnboarding(): Promise<void> {
       sleep_hours: state.sleepHours!,
       diet: state.diet!,
       current_cycle_start: state.currentCycleStart!,
-      current_cycle_length: state.currentCycleLength!,
       current_period_length: state.currentPeriodLength!,
       current_symptoms: state.currentSymptoms,
       past_cycles: state.pastCycles.map(p => ({
         cycle_start: p.cycle_start,
-        cycle_length: p.cycle_length,
         period_length: p.period_length,
         symptoms: p.symptoms,
       })),

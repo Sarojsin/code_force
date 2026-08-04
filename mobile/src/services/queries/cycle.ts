@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
 import { cycleService, CycleEntry } from 'src/services/api';
+import { useAuthStore } from 'src/stores/authStore';
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { useEndDateStore } from 'src/stores/endDateStore';
 import { isNetworkError } from 'src/services/sync';
@@ -10,18 +11,44 @@ import { calculateCyclePhases, applyPhaseToDays, toLocalDateStr, parseISODateLoc
 import { generateId } from 'src/utils';
 
 import { upsertCycleEntry, upsertSnoozeEvent } from 'src/services/localDb/writeThroughHelpers';
-export const cycleKeys = {
-  all: ['cycle'] as const,
-  entries: ['cycle', 'entries'] as const,
-  predictions: ['cycle', 'predictions'] as const,
-  predictionHistory: ['cycle', 'predictions', 'history'] as const,
-  calendar: ['cycle', 'calendar'] as const,
-  analytics: ['cycle', 'analytics'] as const,
-};
+
+/**
+ * Scoped React Query keys. CYCLE CACHE IS STRICTLY PER-USER (§3 rule 1 +
+ * signin_signout "sister" isolation). Never key cycle queries with a static
+ * prefix — always scope by user.id, otherwise User A's cached calendar is
+ * served to User B. Invalidations must use the SAME factory so they match.
+ */
+export interface CycleKeys {
+  all: readonly string[];
+  entries: readonly string[];
+  predictions: readonly string[];
+  predictionHistory: readonly string[];
+  calendar: readonly string[];
+  analytics: readonly string[];
+}
+
+export function getCycleKeys(userId?: string | null): CycleKeys {
+  const id = userId ?? 'guest';
+  return {
+    all: ['cycle', id],
+    entries: ['cycle', id, 'entries'],
+    predictions: ['cycle', id, 'predictions'],
+    predictionHistory: ['cycle', id, 'predictions', 'history'],
+    calendar: ['cycle', id, 'calendar'],
+    analytics: ['cycle', id, 'analytics'],
+  };
+}
+
+/** Scoped keys for the currently-authenticated user (mutation/invalidation use). */
+function useCycleKeys(): CycleKeys {
+  const userId = useAuthStore((s) => s.user?.id);
+  return getCycleKeys(userId);
+}
 
 export function useCycleEntries(params?: { limit?: number; offset?: number; months_back?: number }) {
+  const keys = useCycleKeys();
   return useQuery({
-    queryKey: [...cycleKeys.entries, params],
+    queryKey: [...keys.entries, params],
     queryFn: () => cycleService.getEntries(params),
     staleTime: 10 * 60 * 1000,
     retry: false,
@@ -30,14 +57,15 @@ export function useCycleEntries(params?: { limit?: number; offset?: number; mont
 
 export function useCreateCycleEntry() {
   const qc = useQueryClient();
+  const keys = useCycleKeys();
   return useMutation({
     mutationFn: (data: Partial<CycleEntry>) => cycleService.createEntry(data),
     onSuccess: (result) => {
       upsertCycleEntry(result as unknown as Record<string, unknown>);
-      qc.invalidateQueries({ queryKey: cycleKeys.entries });
-      qc.invalidateQueries({ queryKey: cycleKeys.calendar });
-      qc.invalidateQueries({ queryKey: cycleKeys.predictions });
-      qc.invalidateQueries({ queryKey: cycleKeys.analytics });
+      qc.invalidateQueries({ queryKey: keys.entries });
+      qc.invalidateQueries({ queryKey: keys.calendar });
+      qc.invalidateQueries({ queryKey: keys.predictions });
+      qc.invalidateQueries({ queryKey: keys.analytics });
     },
     onError: (error, data) => {
       if (isNetworkError(error)) {
@@ -52,7 +80,7 @@ export function useCreateCycleEntry() {
           priority: 'normal',
         });
         Toast.show({ type: 'info', text1: 'Saved offline — will sync when online' });
-        qc.setQueryData(cycleKeys.entries, (old: any) => {
+        qc.setQueryData(keys.entries, (old: any) => {
           if (!old) return [{ ...data, id: tempId, _optimistic: true }];
           if (Array.isArray(old)) return [{ ...data, id: tempId, _optimistic: true }, ...old];
           return old;
@@ -73,18 +101,19 @@ export function useCreateCycleEntry() {
 
 export function useUpdateCycleEntry() {
   const qc = useQueryClient();
+  const keys = useCycleKeys();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<CycleEntry> }) =>
       cycleService.updateEntry(id, data),
     onMutate: async ({ id, data }) => {
       // Optimistically update the calendar when an end date is set on an open entry.
       if (data.period_end_date) {
-        await qc.cancelQueries({ queryKey: cycleKeys.calendar });
-        const previousCalendar = qc.getQueryData([...cycleKeys.calendar, 3, 3]);
-        qc.setQueryData([...cycleKeys.calendar, 3, 3], (old: any) => {
+        await qc.cancelQueries({ queryKey: keys.calendar });
+        const previousCalendar = qc.getQueryData([...keys.calendar, 3, 3]);
+        qc.setQueryData([...keys.calendar, 3, 3], (old: any) => {
           if (!old?.days) return old;
-          const entry = Array.isArray(qc.getQueryData(cycleKeys.entries))
-            ? (qc.getQueryData(cycleKeys.entries) as any[]).find((e: any) => e.id === id)
+          const entry = Array.isArray(qc.getQueryData(keys.entries))
+            ? (qc.getQueryData(keys.entries) as any[]).find((e: any) => e.id === id)
             : undefined;
           const start = entry?.period_start_date
             ? parseISODateLocal(entry.period_start_date)
@@ -101,11 +130,11 @@ export function useUpdateCycleEntry() {
     },
     onSuccess: (result) => {
       upsertCycleEntry(result as unknown as Record<string, unknown>);
-      qc.invalidateQueries({ queryKey: cycleKeys.entries });
-      qc.invalidateQueries({ queryKey: cycleKeys.calendar });
-      qc.invalidateQueries({ queryKey: cycleKeys.predictions });
-      qc.invalidateQueries({ queryKey: cycleKeys.analytics });
-      qc.invalidateQueries({ queryKey: cycleKeys.predictionHistory });
+      qc.invalidateQueries({ queryKey: keys.entries });
+      qc.invalidateQueries({ queryKey: keys.calendar });
+      qc.invalidateQueries({ queryKey: keys.predictions });
+      qc.invalidateQueries({ queryKey: keys.analytics });
+      qc.invalidateQueries({ queryKey: keys.predictionHistory });
     },
     onError: (error, variables, context: any) => {
       if (isNetworkError(error)) {
@@ -118,7 +147,7 @@ export function useUpdateCycleEntry() {
           priority: 'normal',
         });
         Toast.show({ type: 'info', text1: 'Saved offline — will sync when online' });
-        qc.setQueryData(cycleKeys.entries, (old: any) => {
+        qc.setQueryData(keys.entries, (old: any) => {
           if (!Array.isArray(old)) return old;
           return old.map((item: any) => item.id === variables.id ? { ...item, ...variables.data, _optimistic: true } : item);
         });
@@ -129,10 +158,10 @@ export function useUpdateCycleEntry() {
       if ((error as any)?.response?.status === 409) {
         const serverData = (error as any)?.response?.data;
         if (serverData?.data?.days) {
-          qc.setQueryData([...cycleKeys.calendar, 3, 3], serverData.data);
+          qc.setQueryData([...keys.calendar, 3, 3], serverData.data);
           Toast.show({ type: 'info', text1: 'Updated from another device' });
         } else {
-          qc.invalidateQueries({ queryKey: cycleKeys.calendar });
+          qc.invalidateQueries({ queryKey: keys.calendar });
           Toast.show({ type: 'info', text1: 'Updated from another device' });
         }
         return;
@@ -140,7 +169,7 @@ export function useUpdateCycleEntry() {
 
       // Rollback on other errors
       if (context?.previousCalendar) {
-        qc.setQueryData([...cycleKeys.calendar, 3, 3], context.previousCalendar);
+        qc.setQueryData([...keys.calendar, 3, 3], context.previousCalendar);
       }
       Toast.show({ type: 'error', text1: error instanceof Error ? error.message : 'Failed to update' });
     },
@@ -148,8 +177,9 @@ export function useUpdateCycleEntry() {
 }
 
 export function useCyclePredictions() {
+  const keys = useCycleKeys();
   return useQuery({
-    queryKey: cycleKeys.predictions,
+    queryKey: keys.predictions,
     queryFn: () => cycleService.getPredictions(),
     staleTime: 10 * 60 * 1000,
     retry: false,
@@ -157,16 +187,18 @@ export function useCyclePredictions() {
 }
 
 export function usePredictionHistory(limit = 12) {
+  const keys = useCycleKeys();
   return useQuery({
-    queryKey: [...cycleKeys.predictionHistory, limit],
+    queryKey: [...keys.predictionHistory, limit],
     queryFn: () => cycleService.getPredictionHistory(limit),
     staleTime: 10 * 60 * 1000,
   });
 }
 
 export function useCycleCalendar(monthsBack = 3, monthsForward = 3) {
+  const keys = useCycleKeys();
   return useQuery({
-    queryKey: [...cycleKeys.calendar, monthsBack, monthsForward],
+    queryKey: [...keys.calendar, monthsBack, monthsForward],
     queryFn: () =>
       cycleService.getCalendar(monthsBack, monthsForward, toLocalDateStr(new Date())),
     staleTime: 10 * 60 * 1000,
@@ -175,8 +207,9 @@ export function useCycleCalendar(monthsBack = 3, monthsForward = 3) {
 }
 
 export function useCycleAnalytics() {
+  const keys = useCycleKeys();
   return useQuery({
-    queryKey: cycleKeys.analytics,
+    queryKey: keys.analytics,
     queryFn: () => cycleService.getAnalytics(),
     staleTime: 10 * 60 * 1000,
   });
@@ -184,6 +217,7 @@ export function useCycleAnalytics() {
 
 export function useLogCorrection() {
   const qc = useQueryClient();
+  const keys = useCycleKeys();
 
   return useMutation({
     mutationFn: (data: {
@@ -199,10 +233,10 @@ export function useLogCorrection() {
     ),
 
     onMutate: async (variables) => {
-      await qc.cancelQueries({ queryKey: cycleKeys.calendar });
-      const previous = qc.getQueryData([...cycleKeys.calendar, 3, 3]);
+      await qc.cancelQueries({ queryKey: keys.calendar });
+      const previous = qc.getQueryData([...keys.calendar, 3, 3]);
 
-      qc.setQueryData([...cycleKeys.calendar, 3, 3], (old: any) => {
+      qc.setQueryData([...keys.calendar, 3, 3], (old: any) => {
         if (!old?.days) return old;
         const days: Record<string, string> = { ...old.days };
 
@@ -271,11 +305,11 @@ export function useLogCorrection() {
       if (result && result.id) {
         upsertCycleEntry(result);
       }
-      qc.invalidateQueries({ queryKey: cycleKeys.calendar });
-      qc.invalidateQueries({ queryKey: cycleKeys.predictions });
-      qc.invalidateQueries({ queryKey: cycleKeys.entries });
-      qc.invalidateQueries({ queryKey: cycleKeys.analytics });
-      qc.invalidateQueries({ queryKey: cycleKeys.predictionHistory });
+      qc.invalidateQueries({ queryKey: keys.calendar });
+      qc.invalidateQueries({ queryKey: keys.predictions });
+      qc.invalidateQueries({ queryKey: keys.entries });
+      qc.invalidateQueries({ queryKey: keys.analytics });
+      qc.invalidateQueries({ queryKey: keys.predictionHistory });
 
       // If correction was sent without end_date, set pending end-date notification
       if (!variables.period_end_date && result?.id && result?.avg_period_length) {
@@ -295,10 +329,10 @@ export function useLogCorrection() {
       if ((error as any)?.response?.status === 409) {
         const serverData = (error as any)?.response?.data;
         if (serverData?.data?.days) {
-          qc.setQueryData([...cycleKeys.calendar, 3, 3], serverData.data);
+          qc.setQueryData([...keys.calendar, 3, 3], serverData.data);
           Toast.show({ type: 'info', text1: 'Updated from another device' });
         } else {
-          qc.invalidateQueries({ queryKey: cycleKeys.calendar });
+          qc.invalidateQueries({ queryKey: keys.calendar });
           Toast.show({ type: 'info', text1: 'Updated from another device' });
         }
         return;
@@ -314,14 +348,14 @@ export function useLogCorrection() {
           priority: 'normal',
         });
         Toast.show({ type: 'info', text1: 'Saved offline — will sync when online' });
-        qc.setQueryData(cycleKeys.calendar, (old: any) => {
+        qc.setQueryData(keys.calendar, (old: any) => {
           if (!old) return old;
           return { ...old, _correction: variables, _optimistic: true };
         });
       } else {
         // Rollback on other errors
         if (context?.previousCalendar) {
-          qc.setQueryData([...cycleKeys.calendar, 3, 3], context.previousCalendar);
+          qc.setQueryData([...keys.calendar, 3, 3], context.previousCalendar);
         }
         Toast.show({ type: 'error', text1: error instanceof Error ? error.message : 'Failed to save correction' });
       }
@@ -331,6 +365,7 @@ export function useLogCorrection() {
 
 export function useLogSnooze() {
   const qc = useQueryClient();
+  const keys = useCycleKeys();
   return useMutation({
     mutationFn: ({ predictedCycleId, dayOffset }: { predictedCycleId: string; dayOffset: number }) =>
       cycleService.logSnooze(predictedCycleId, dayOffset),
@@ -339,7 +374,7 @@ export function useLogSnooze() {
         upsertCycleEntry(result);
         upsertSnoozeEvent(result);
       }
-      qc.invalidateQueries({ queryKey: cycleKeys.calendar });
+      qc.invalidateQueries({ queryKey: keys.calendar });
     },
     onError: (error, variables) => {
       if (isNetworkError(error)) {
@@ -352,7 +387,7 @@ export function useLogSnooze() {
           priority: 'normal',
         });
         Toast.show({ type: 'info', text1: 'Saved offline — will sync when online' });
-        qc.setQueryData(cycleKeys.calendar, (old: any) => {
+        qc.setQueryData(keys.calendar, (old: any) => {
           if (!old) return old;
           return { ...old, _snooze: variables, _optimistic: true };
         });

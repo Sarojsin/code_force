@@ -5,6 +5,7 @@ interface AchievementStoreState {
   currentPopup: Achievement | null;
   showPopup: (achievement: Achievement) => void;
   dismissPopup: () => void;
+  reset: () => void;
 }
 
 export const useAchievementStore = create<AchievementStoreState>((set) => ({
@@ -15,6 +16,10 @@ export const useAchievementStore = create<AchievementStoreState>((set) => ({
   },
 
   dismissPopup: () => {
+    set({ currentPopup: null });
+  },
+
+  reset: () => {
     set({ currentPopup: null });
   },
 }));

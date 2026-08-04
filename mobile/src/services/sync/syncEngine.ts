@@ -20,6 +20,13 @@ export function setQueryClient(qc: any): void {
   _queryClient = qc;
 }
 
+/** Clear all cached server state (used on logout for user isolation). */
+export function clearQueryCache(): void {
+  if (_queryClient && typeof _queryClient.clear === 'function') {
+    _queryClient.clear();
+  }
+}
+
 function isRetryableError(error: unknown): boolean {
   const axiosErr = error as AxiosError;
   const status = axiosErr?.response?.status;

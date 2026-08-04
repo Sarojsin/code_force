@@ -32,13 +32,23 @@ jest.mock('@react-native-async-storage/async-storage', () => ({ setItem: jest.fn
 jest.mock('src/services/storage', () => ({
   EncryptedStorage: { getItem: jest.fn(), setItem: jest.fn(), removeItem: jest.fn(), clear: jest.fn() },
 }));
+jest.mock('src/stores/authStore', () => ({
+  useAuthStore: jest.fn().mockImplementation((selector: any) => {
+    const state = { user: { id: 'user-a' } };
+    return selector ? selector(state) : state;
+  }),
+}));
+
+// Real writeThroughHelpers call useAuthStore.getState() — expose it on the mock.
+const { useAuthStore } = jest.requireMock('src/stores/authStore') as any;
+useAuthStore.getState = () => ({ user: { id: 'user-a' } });
 jest.mock('src/utils', () => ({
   generateId: jest.fn(() => 'test-uuid'),
   toLocalDateStr: jest.fn((d: Date) => d.toISOString().slice(0, 10)),
   logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
-import { useCreateCycleEntry, useUpdateCycleEntry, useLogCorrection, useLogSnooze, useCyclePredictions, useCycleEntries, useCycleCalendar } from '../cycle';
+import { useCreateCycleEntry, useUpdateCycleEntry, useLogCorrection, useLogSnooze, useCyclePredictions, useCycleEntries, useCycleCalendar, getCycleKeys } from '../cycle';
 import { cycleService } from 'src/services/api';
 import { useOfflineStore } from 'src/stores/offlineStore';
 
@@ -333,5 +343,31 @@ describe('Scenario 11: future date', () => {
     expect(cycleService.createEntry).toHaveBeenCalledWith(
       expect.objectContaining({ period_start_date: futureStr }),
     );
+  });
+});
+
+// ─── Sister isolation: cycle cache keys MUST be user-scoped ──────
+
+describe('Sister isolation: user-scoped cycle cache keys', () => {
+  it('getCycleKeys returns distinct keys per user', () => {
+    const keysA = getCycleKeys('user-a');
+    const keysB = getCycleKeys('user-b');
+    expect(keysA.all).not.toEqual(keysB.all);
+    expect(keysA.calendar[1]).toBe('user-a');
+    expect(keysB.calendar[1]).toBe('user-b');
+  });
+
+  it('getCycleKeys defaults to a guest scope when no user', () => {
+    const keys = getCycleKeys(null);
+    expect(keys.all).toContain('guest');
+  });
+
+  it('useCycleCalendar queries under the authenticated user scope', async () => {
+    (cycleService.getCalendar as jest.Mock).mockResolvedValue({ days: {} });
+    const { result } = renderHook(() => useCycleCalendar(6, 3), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    // Data is keyed by ['cycle', 'user-a', 'calendar', 6, 3] — never a static ['cycle','calendar'] key.
+    expect(queryClient.getQueryState(['cycle', 'user-a', 'calendar', 6, 3])).not.toBeUndefined();
+    expect(queryClient.getQueryState(['cycle', 'user-b', 'calendar', 6, 3])).toBeUndefined();
   });
 });
