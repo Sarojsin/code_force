@@ -44,7 +44,7 @@ export function DiaryPageScreen({ route, navigation }: any) {
       case 'mood':
         return (
           <View style={styles.moodBadge}>
-            <Text style={{ fontSize: 32 }}>{MOOD_EMOJI[obj.text_content ?? 'calm'] ?? '😊'}</Text>
+            <Text style={[{ fontFamily: 'System' }, { fontSize: 32 }]}>{MOOD_EMOJI[obj.text_content ?? 'calm'] ?? '😊'}</Text>
             <Text style={styles.moodLabel}>{obj.text_content}</Text>
           </View>
         );

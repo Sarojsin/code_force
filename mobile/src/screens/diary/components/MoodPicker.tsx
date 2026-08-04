@@ -30,7 +30,7 @@ export function MoodPicker({ visible, onSelect, onClose }: MoodPickerProps) {
                 style={styles.moodItem}
                 onPress={() => { onSelect(mood); onClose(); }}
               >
-                <Text style={styles.emoji}>{emoji}</Text>
+                <Text style={[styles.emoji, { fontFamily: 'System' }]}>{emoji}</Text>
                 <Text style={styles.label}>{mood}</Text>
               </TouchableOpacity>
             ))}

@@ -1,24 +1,28 @@
 /**
  * Root navigator. Shows Splash → then decides Auth/Onboarding/Main.
  *
- * Onboarding decision (priority order):
- * 1. AsyncStorage direct read (fast path — no network, no race)
- * 2. `user.onboarding_completed` from auth /me response (hydrate gives us this)
- * 3. Server check (fallback for fresh installs or users who changed device)
+ * Onboarding decision — SINGLE source of truth is the onboarding Zustand store
+ * (persisted, user-scoped). Zustand `persist` rehydrates asynchronously, so we
+ * NEVER parse AsyncStorage manually inside this component (that would read a
+ * stale/null value and flash between stacks).
  *
- * Safe fallback when server is unreachable:
- * - User has `onboarding_completed: true` on their User object → Main (correct)
- * - User has `onboarding_completed: false` → never auto-assume; show retry
+ * Decision priority:
+ * 1. Store's persisted `userId` matches current user → trust store `isCompleted`.
+ * 2. Otherwise (foreign/null flag) → trust server `user.onboarding_completed`;
+ *    unknown server state defaults to showing onboarding (golden rule).
+ *
+ * A `useEffect` acts as a garbage collector: if the persisted flag belongs to a
+ * DIFFERENT user, we immediately clear it (in-memory + AsyncStorage) via
+ * `setCompleted(false)` so a sibling can never inherit it.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Platform, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useAuthStore, useOnboardingStore } from 'src/stores';
-import { onboardingService } from 'src/services/api/onboarding';
+import { shouldShowOnboarding } from 'src/utils';
 import { SplashScreen } from 'src/screens/SplashScreen';
 import { AuthStack } from './AuthStack';
 import { OnboardingStack } from './OnboardingStack';
@@ -28,109 +32,42 @@ import { navigationRef } from './rootNavigation';
 import type { RootStackParamList } from './types';
 
 const Root = createStackNavigator<RootStackParamList>();
-const ONBOARDING_KEY = 'shecare.onboarding';
 
 export function RootNavigator() {
   const user = useAuthStore((s) => s.user);
-  const isHydrated = useAuthStore((s) => s.isHydrated);
+  const authIsHydrated = useAuthStore((s) => s.isHydrated);
   const hydrate = useAuthStore((s) => s.hydrate);
   const onboardingCompleted = useOnboardingStore((s) => s.isCompleted);
+  const storedUserId = useOnboardingStore((s) => s.userId);
   const setCompleted = useOnboardingStore((s) => s.setCompleted);
   const [showSplash, setShowSplash] = useState(true);
-  const [storageCompleted, setStorageCompleted] = useState<boolean | null>(null);
-  const [serverRetry, setServerRetry] = useState(false);
-  const serverChecked = useRef(false);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
 
-  // 1. AsyncStorage direct read
+  // Garbage collector: if the persisted flag belongs to a DIFFERENT user, clear
+  // it immediately (in-memory + AsyncStorage) so a sibling never inherits it.
   useEffect(() => {
-    AsyncStorage.getItem(ONBOARDING_KEY).then((val) => {
-      if (val) {
-        try {
-          const parsed = JSON.parse(val);
-          if (parsed?.state?.isCompleted === true) {
-            setStorageCompleted(true);
-            return;
-          }
-        } catch {}
-      }
-      setStorageCompleted(false);
-    });
-  }, []);
-
-  // 2. When hydrate completes, use `user.onboarding_completed` as the second source.
-  //    Falls back to server check when local state is inconclusive.
-  useEffect(() => {
-    if (!isHydrated || storageCompleted === null) return;
-
-    // Fast path: local or user object says completed (runs every time, even if
-    // `serverChecked` is stale from a previous lifecycle — e.g. logout+login)
-    if (storageCompleted || user?.onboarding_completed === true) {
-      serverChecked.current = true;
-      setCompleted(true);
-      return;
+    if (user && storedUserId && storedUserId !== user.id) {
+      setCompleted(false);
     }
+  }, [user?.id, storedUserId, setCompleted]);
 
-    if (serverChecked.current) return;
-
-    // Never server-check when unauthenticated (avoids stale 401 errors)
-    if (!user) {
-      return;
-    }
-
-    // Not completed locally and user says not completed — try server
-    if (serverRetry) {
-      return;
-    }
-
-    onboardingService.getStatus()
-      .then((resp) => {
-        serverChecked.current = true;
-        setServerRetry(false);
-        if (resp.completed) {
-          setCompleted(true);
-        }
-      })
-      .catch(() => {
-        serverChecked.current = true;
-        setServerRetry(true);
-      });
-  }, [isHydrated, user, storageCompleted, onboardingCompleted, setCompleted, serverRetry]);
-
-  if (showSplash) {
-    return <SplashScreen onFinish={() => setShowSplash(false)} />;
-  }
-
-  const onboardingOk = storageCompleted !== null;
-  if (!isHydrated || !onboardingOk) {
-    return <SplashScreen onFinish={() => setShowSplash(false)} />;
-  }
-
-  const showOnboarding = !onboardingCompleted && !storageCompleted;
-
-  // Persistent retry state when server is unreachable for an unconfirmed user
-  if (user && serverRetry && !onboardingCompleted && !storageCompleted) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-        <Text style={{ fontSize: 16, textAlign: 'center', marginBottom: 16 }}>
-          We're having trouble checking your account.{'\n'}Please make sure you have internet access.
-        </Text>
-        <TouchableOpacity
-          onPress={() => { serverChecked.current = false; setServerRetry(false); }}
-          style={{
-            paddingVertical: 12,
-            paddingHorizontal: 32,
-            backgroundColor: '#E91E63',
-            borderRadius: 8,
-          }}
-        >
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Retry</Text>
-        </TouchableOpacity>
-      </View>
+  const showOnboarding = useMemo(() => {
+    if (!user) return false;
+    return shouldShowOnboarding(
+      { isCompleted: onboardingCompleted, userId: storedUserId },
+      user.id,
+      user.onboarding_completed ?? null,
     );
+  }, [user, onboardingCompleted, storedUserId]);
+
+  // Wait for auth hydration. The onboarding decision does NOT gate on onboarding
+  // store hydration: it falls back to the authoritative server flag whenever the
+  // stored userId is null/mismatched, so there is no flash between stacks.
+  if (showSplash || !authIsHydrated) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
 
   return (

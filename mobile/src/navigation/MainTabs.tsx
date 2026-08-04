@@ -75,8 +75,8 @@ export function MainTabs() {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused }) => (
           <View style={{
-            width: focused ? 42 : 36,
-            height: 32,
+            width: focused ? 44 : 40,
+            height: 36,
             alignItems: 'center',
             justifyContent: 'center',
           }}>
@@ -86,8 +86,8 @@ export function MainTabs() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
-                  width: 42,
-                  height: 32,
+                  width: 44,
+                  height: 34,
                   borderRadius: 12,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -107,7 +107,7 @@ export function MainTabs() {
         ),
         tabBarLabel: ({ focused, children }) => (
           <RNText style={{
-            fontSize: 10,
+            fontSize: focused ? 10 : 10,
             fontWeight: focused ? '800' : '500',
             color: focused ? theme.colors.primary : INACTIVE_COLOR,
             textAlign: 'center',

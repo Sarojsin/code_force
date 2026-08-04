@@ -82,7 +82,7 @@ function MoodItem({
             style={StyleSheet.absoluteFill}
           />
         )}
-        <Text style={styles.emoji}>{mood.emoji}</Text>
+        <Text variant="emoji">{mood.emoji}</Text>
         <Text style={moodLabelStyle}>
           {mood.label}
         </Text>
@@ -128,10 +128,6 @@ const styles = StyleSheet.create({
   },
   moodItemUnselected: {
     borderWidth: 1.5,
-  },
-  emoji: {
-    fontSize: 28,
-    marginBottom: 4,
   },
   label: {
     fontSize: 11,

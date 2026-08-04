@@ -18,6 +18,8 @@ export interface TextProps_ extends TextProps {
   variant?: Variant;
   color?: 'primary' | 'secondary' | 'muted' | 'inverse' | 'danger' | 'success' | 'accent';
   align?: TextStyle['textAlign'];
+  suppressAndroidPadding?: boolean;
+  includeFontPadding?: boolean;
 }
 
 export function Text({
@@ -26,6 +28,8 @@ export function Text({
   align,
   style,
   children,
+  suppressAndroidPadding,
+  includeFontPadding: explicitIncludeFontPadding,
   ...rest
 }: TextProps_) {
   const theme = useTheme();
@@ -34,16 +38,27 @@ export function Text({
     ? (theme.fontsLoaded ? token.fontFamily : SYSTEM_FONTS[token.fontFamily] ?? undefined)
     : undefined;
 
+  const effectiveIncludeFontPadding = explicitIncludeFontPadding ?? suppressAndroidPadding ?? false;
+
+  const computedLineHeight: number | undefined =
+    (token as TextStyle | undefined)?.lineHeight ?? (token?.fontSize ? Math.round(token.fontSize * 1.2) : undefined);
+
+  const restWithPadding = {
+    ...rest,
+    includeFontPadding: effectiveIncludeFontPadding,
+  };
+
   return (
     <RNText
+      {...(restWithPadding as TextProps & { includeFontPadding?: boolean })}
       style={[
         token,
         { fontFamily: fontFamily ?? token?.fontFamily },
         { color: theme.colors[`text${capitalize(color)}` as keyof typeof theme.colors] ?? theme.colors.textPrimary },
+        { lineHeight: computedLineHeight },
         align ? { textAlign: align } : null,
         style,
       ]}
-      {...rest}
     >
       {children}
     </RNText>

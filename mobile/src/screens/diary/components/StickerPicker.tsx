@@ -32,7 +32,7 @@ export function StickerPicker({ visible, onSelect, onClose }: StickerPickerProps
               <View style={styles.grid}>
                 {emojis.map((emoji) => (
                   <TouchableOpacity key={emoji} onPress={() => onSelect(emoji)} style={styles.stickerBtn}>
-                    <Text style={styles.emoji}>{emoji}</Text>
+                    <Text style={[styles.emoji, { fontFamily: 'System' }]}>{emoji}</Text>
                   </TouchableOpacity>
                 ))}
               </View>

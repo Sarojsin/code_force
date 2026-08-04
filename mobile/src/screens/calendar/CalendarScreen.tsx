@@ -1,6 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { StyleSheet, View, Pressable, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useMemo, useState, useCallback } from 'react';
+import { StyleSheet, View, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +9,7 @@ import Toast from 'react-native-toast-message';
 import { format, addMonths, subMonths } from 'date-fns';
 
 import { Text, Button, BottomSheet, DatePickerField, Calendar, DayDetailSheet, Skeleton } from 'src/components/ui';
+import { ScreenContainer } from 'src/components/core';
 import { useTheme } from 'src/theme';
 import {
   useCycleCalendar,
@@ -18,11 +18,14 @@ import {
   useCreateMoodLog,
   useCreateJournalEntry,
   useUpdateCycleEntry,
+  useMoodLogs,
 } from 'src/services/queries';
-import { computeCycleDay, computePhaseRanges, PHASE_META, toLocalDateStr } from 'src/utils';
+import { computeCycleDay, computePhaseRanges, PHASE_META, toLocalDateStr, derivePhaseForDate, getPhaseMeta } from 'src/utils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEndDateStore } from 'src/stores/endDateStore';
 import { cancelEndDateNotification } from 'src/services/endDateNotifications';
+import { PhaseDetailSheet } from 'src/components/calendar/PhaseDetailSheet';
+import { PHASE_CONTENT } from 'src/constants/phaseContent';
 import type { PhaseRange } from 'src/utils/cyclePhases';
 
 const overrideSchema = z.object({
@@ -57,27 +60,37 @@ const OVERVIEW_META: Record<PhaseRange['key'], (typeof PHASE_META)['menstrual']>
   luteal: PHASE_META.luteal,
 };
 
-function getPhaseForDate(encodedDay: string | undefined): { emoji: string; label: string; color: string; description: string } {
-  if (!encodedDay) return { emoji: '🌸', label: 'Unknown', color: '#f0f0f0', description: '' };
-  const phaseMatch = encodedDay.toUpperCase();
-  if (phaseMatch === 'P') return { emoji: '🩸', label: 'Period', color: '#F48FB1', description: 'Rest and recharge' };
-  if (phaseMatch === 'FL') return { emoji: '🌱', label: 'Follicular', color: '#FFDAB9', description: 'Rising energy' };
-  if (phaseMatch === 'F') return { emoji: '💮', label: 'Fertile', color: '#CE93D8', description: 'Conception window' };
-  if (phaseMatch === 'O') return { emoji: '🌟', label: 'Ovulation', color: '#81C784', description: 'Peak vitality' };
-  if (phaseMatch === 'L') return { emoji: '🌙', label: 'Luteal', color: '#90CAF9', description: 'Slow down' };
-  return { emoji: '🌸', label: 'Transition', color: '#E8E8E8', description: '' };
+function getPhaseForDate(days: Record<string, string>, dateStr: string): { emoji: string; label: string; color: string; description: string } {
+  const phaseKey = derivePhaseForDate(days, dateStr);
+  const meta = getPhaseMeta(phaseKey);
+  return { emoji: meta.emoji, label: meta.label, color: meta.accent, description: meta.desc };
 }
 
-function getPhaseAccent(encodedDay: string | undefined): string {
-  if (!encodedDay) return '#f0f0f0';
-  const map: Record<string, string> = {
-    P: '#F48FB1', p: '#F48FB1', u: '#F48FB1', pw: '#B83058',
-    Fl: '#FFDAB9', fl: '#FFDAB9',
-    F: '#CE93D8', f: '#CE93D8',
-    O: '#81C784', o: '#81C784',
-    L: '#90CAF9', l: '#90CAF9',
-  };
-  return map[encodedDay] ?? '#f0f0f0';
+function getPhaseAccent(days: Record<string, string>, dateStr: string): string {
+  const phaseKey = derivePhaseForDate(days, dateStr);
+  return getPhaseMeta(phaseKey).accent;
+}
+
+function computeCycleLengthStats(
+  entries: { period_start_date: string; period_end_date?: string | null }[],
+): { lengths: number[]; stdDev: number; irregularCount: number } {
+  const completed = entries.filter((e) => e.period_end_date);
+  if (completed.length < 2) return { lengths: [], stdDev: 0, irregularCount: 0 };
+  const sorted = [...completed].sort((a, b) => a.period_start_date.localeCompare(b.period_start_date));
+  const lengths: number[] = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const diff =
+      (new Date(sorted[i].period_start_date).getTime() -
+        new Date(sorted[i - 1].period_start_date).getTime()) /
+      86_400_000;
+    if (diff >= 20 && diff <= 45) lengths.push(Math.round(diff));
+  }
+  if (lengths.length < 2) return { lengths, stdDev: 0, irregularCount: 0 };
+  const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+  const variance = lengths.reduce((sum, l) => sum + (l - mean) ** 2, 0) / lengths.length;
+  const stdDev = Math.round(Math.sqrt(variance) * 10) / 10;
+  const irregularCount = lengths.filter((l) => l < 21 || l > 35).length;
+  return { lengths, stdDev, irregularCount };
 }
 
 export function CalendarScreen() {
@@ -95,6 +108,8 @@ export function CalendarScreen() {
   const [noteText, setNoteText] = useState('');
 
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
+  const [selectedPhaseDetail, setSelectedPhaseDetail] = useState<PhaseRange['key'] | null>(null);
+  const [preFillSymptoms, setPreFillSymptoms] = useState<string[]>([]);
 
   const { control, handleSubmit, reset } = useForm<OverrideForm>({
     resolver: zodResolver(overrideSchema),
@@ -103,6 +118,7 @@ export function CalendarScreen() {
 
   const { data: calData, isLoading } = useCycleCalendar(3, 3);
   const { data: cycleEntries = [] } = useCycleEntries({ months_back: 6 });
+  const { data: moodLogs } = useMoodLogs({ per_page: 50 });
   const logCorrection = useLogCorrection();
   const createMoodLog = useCreateMoodLog();
   const createJournal = useCreateJournalEntry();
@@ -113,12 +129,11 @@ export function CalendarScreen() {
 
   const today = useMemo(() => new Date(), []);
   const cycleDay = computeCycleDay(calData?.days, today);
-  const todaysEncoded = encodedDays[format(today, 'yyyy-MM-dd')];
-  const currentPhase = getPhaseForDate(todaysEncoded);
+  const todaysStr = format(today, 'yyyy-MM-dd');
+  const currentPhase = getPhaseForDate(encodedDays, todaysStr);
 
   const selectedStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
-  const selectedEncoded = encodedDays[selectedStr] ?? '';
-  const selectedPhase = getPhaseForDate(selectedEncoded);
+  const selectedPhase = getPhaseForDate(encodedDays, selectedStr);
 
   const coveringEntry = useMemo(() => {
     if (!selectedDate) return null;
@@ -143,6 +158,27 @@ export function CalendarScreen() {
   }, [activePhaseFilter, encodedDays]);
 
   const phaseRanges = useMemo(() => computePhaseRanges(calData?.days, today), [calData, today]);
+  const predictedCycleLength = calData?.predictions?.predicted_cycle_length ?? 28;
+  const cycleStats = useMemo(() => computeCycleLengthStats(cycleEntries), [cycleEntries]);
+
+  const todayMood = useMemo(() => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todayLog = moodLogs?.find((l) => l.logged_at?.startsWith(todayStr));
+    if (!todayLog) return null;
+    return { mood: todayLog.mood, intensity: todayLog.intensity };
+  }, [moodLogs]);
+
+  const openDaySheetFromPhase = useCallback(() => {
+    setSelectedPhaseDetail(null);
+    setTimeout(() => {
+      setSelectedDate(today);
+      setSelectedMood(null);
+      setMoodIntensity(5);
+      setNoteText('');
+      setSelectedSymptoms(preFillSymptoms);
+      setShowDaySheet(true);
+    }, 300);
+  }, [today, preFillSymptoms]);
 
   const handlePermanentOverride = handleSubmit((data) => {
     const endDate = addDays(new Date(data.overrideDate), 5);
@@ -271,15 +307,18 @@ export function CalendarScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+    <ScreenContainer
+      scroll
+      style={{ backgroundColor: theme.colors.background }}
+      contentContainerStyle={styles.container}
+    >
       <LinearGradient
         colors={[theme.colors.accentLight + '59', 'transparent']}
         locations={[0, 0.6]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.calHeader}>
+      <View style={styles.calHeader}>
           <Pressable
             onPress={() => setCurrentMonth((m) => subMonths(m, 1))}
             accessibilityLabel="Previous month"
@@ -319,15 +358,16 @@ export function CalendarScreen() {
                 style={[
                   styles.phasePill,
                   {
-                    backgroundColor: isActive ? p.color + '66' : p.color + '22',
+                    backgroundColor: isActive ? p.color : p.color + '22',
                     borderRadius: 100,
-                    borderWidth: isActive ? 1.5 : 0,
-                    borderColor: p.color,
+                    borderWidth: isActive ? 0 : 1,
+                    borderColor: p.color + '55',
                   },
+                  isActive && theme.shadow.chip,
                 ]}
               >
-                <Text style={{ fontSize: 14 }}>{p.emoji}</Text>
-                <Text style={[styles.phasePillLabel, { color: p.color }]}>{p.label}</Text>
+                <Text variant="emoji">{p.emoji}</Text>
+                <Text style={[styles.phasePillLabel, { color: isActive ? '#fff' : '#5A3A47' }]}>{p.label}</Text>
               </Pressable>
             );
           })}
@@ -339,7 +379,7 @@ export function CalendarScreen() {
           selectedDate={selectedDate ?? undefined}
           onDateSelect={handleDateSelect}
           encodedDays={encodedDays}
-          phaseAccentForDate={getPhaseAccent}
+          phaseAccentForDate={(dateStr) => getPhaseAccent(encodedDays, dateStr)}
           dimmedDates={dimmedDates}
           showHeader={false}
           isLoading={isLoading}
@@ -350,7 +390,7 @@ export function CalendarScreen() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text variant="h3">{format(selectedDate, 'MMMM d')}</Text>
               <View style={[styles.phaseBadge, { backgroundColor: selectedPhase.color + '22', borderRadius: 100 }]}>
-                <Text style={{ fontSize: 14 }}>{selectedPhase.emoji}</Text>
+                <Text variant="emoji">{selectedPhase.emoji}</Text>
                 <Text style={[styles.phaseBadgeLabel, { color: selectedPhase.color }]}>{selectedPhase.label}</Text>
               </View>
             </View>
@@ -387,6 +427,7 @@ export function CalendarScreen() {
           ) : (
             phaseRanges.map((range) => {
               const meta = OVERVIEW_META[range.key];
+              const content = PHASE_CONTENT[range.key];
               const badge =
                 range.startDay === null
                   ? 'Upcoming'
@@ -394,11 +435,17 @@ export function CalendarScreen() {
                     ? `Day ${range.startDay}`
                     : `Day ${range.startDay}–${range.endDay}`;
               return (
-                <View
+                <Pressable
                   key={range.key}
+                  onPress={() => {
+                    setPreFillSymptoms([]);
+                    setSelectedPhaseDetail(range.key);
+                  }}
                   style={[styles.phaseOverviewCard, { backgroundColor: meta.bg + '66', borderRadius: 16 }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${content.label} phase, ${badge}`}
                 >
-                  <Text style={{ fontSize: 24 }}>{meta.emoji}</Text>
+                  <Text variant="emoji">{meta.emoji}</Text>
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Text variant="body" style={{ fontWeight: '600' }}>{meta.label}</Text>
@@ -406,9 +453,11 @@ export function CalendarScreen() {
                         <Text style={{ color: meta.fg, fontSize: 10, fontWeight: '600' }}>{badge}</Text>
                       </View>
                     </View>
-                    <Text variant="caption" color="muted" style={{ marginTop: 2 }}>{meta.desc}</Text>
+                    <Text variant="caption" color="muted" style={{ marginTop: 2 }}>
+                      {content.energyTag} · {content.desc}
+                    </Text>
                   </View>
-                </View>
+                </Pressable>
               );
             })
           )}
@@ -451,14 +500,33 @@ export function CalendarScreen() {
             doneLoading={doneLoading}
           />
         )}
-      </ScrollView>
-    </SafeAreaView>
+
+        {selectedPhaseDetail && (
+          <BottomSheet
+            visible={!!selectedPhaseDetail}
+            onClose={() => setSelectedPhaseDetail(null)}
+            title=""
+            snapPoints={[0.7, 0.9]}
+          >
+            <PhaseDetailSheet
+              phaseKey={selectedPhaseDetail}
+              phaseStartDay={phaseRanges.find((r) => r.key === selectedPhaseDetail)?.startDay ?? null}
+              phaseEndDay={phaseRanges.find((r) => r.key === selectedPhaseDetail)?.endDay ?? null}
+              predictedCycleLength={predictedCycleLength}
+              cycleDay={cycleDay}
+              todayMood={todayMood}
+              cycleStats={cycleStats}
+              onLogToday={openDaySheetFromPhase}
+              onPreFill={(symptoms) => setPreFillSymptoms(symptoms)}
+            />
+          </BottomSheet>
+        )}
+      </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  container: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 },
+  container: { paddingHorizontal: 24 },
   calHeader: {
     flexDirection: 'row',
     alignItems: 'center',

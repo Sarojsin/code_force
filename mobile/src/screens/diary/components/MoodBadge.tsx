@@ -21,7 +21,7 @@ export function MoodBadge({ mood }: MoodBadgeProps) {
   const m = MOOD_MAP[mood.toLowerCase()] ?? UNKNOWN;
   return (
     <View style={[styles.badge, { backgroundColor: m.bg }]}>
-      <Text style={styles.emoji}>{m.emoji}</Text>
+      <Text style={[styles.emoji, { fontFamily: 'System' }]}>{m.emoji}</Text>
       <Text style={[styles.label, { color: m.color }]}>{mood}</Text>
     </View>
   );

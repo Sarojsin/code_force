@@ -33,6 +33,7 @@ import { SosHistoryScreen } from 'src/screens/safety/SosHistoryScreen';
 import { SOSActiveScreen } from 'src/screens/safety/SOSActiveScreen';
 import { ProfileHomeScreen } from 'src/screens/profile/ProfileHomeScreen';
 import { EditProfileScreen } from 'src/screens/profile/EditProfileScreen';
+import { EditHealthScreen } from 'src/screens/profile/EditHealthScreen';
 import { ChangePasswordScreen } from 'src/screens/profile/ChangePasswordScreen';
 import { SettingsScreen } from 'src/screens/profile/SettingsScreen';
 import { LinkedFamilyScreen } from 'src/screens/profile/LinkedFamilyScreen';
@@ -127,6 +128,7 @@ export function ProfileStack() {
     <ProfileNav.Navigator screenOptions={opts}>
       <ProfileNav.Screen name="ProfileHome" component={ProfileHomeScreen} options={{ title: 'Profile' }} />
       <ProfileNav.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit Profile' }} />
+      <ProfileNav.Screen name="EditHealth" component={EditHealthScreen} options={{ title: 'Health Info' }} />
       <ProfileNav.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'Change Password' }} />
       <ProfileNav.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
       <ProfileNav.Screen name="LinkedFamily" component={LinkedFamilyScreen} options={{ title: 'Linked Family' }} />
