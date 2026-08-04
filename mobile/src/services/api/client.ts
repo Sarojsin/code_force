@@ -97,6 +97,14 @@ async function triggerSessionExpired(detail: string): Promise<void> {
   const { useAuthStore } = await import('src/stores/authStore');
   useAuthStore.getState().reset();
 
+  // Full per-user isolation (stores, storage, SQLite, query cache).
+  try {
+    const { resetAppForLogout } = await import('src/services/sessionReset');
+    await resetAppForLogout();
+  } catch {
+    // Fallback already cleared tokens via authStore.reset — suppress.
+  }
+
   // Navigate to Auth screen
   try {
     const { navigationRef } = await import('src/navigation/rootNavigation');

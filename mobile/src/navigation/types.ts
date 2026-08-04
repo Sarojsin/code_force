@@ -53,6 +53,7 @@ export type SafetyStackParamList = {
 export type ProfileStackParamList = {
   ProfileHome: undefined;
   EditProfile: undefined;
+  EditHealth: undefined;
   ChangePassword: undefined;
   Settings: undefined;
   LinkedFamily: undefined;

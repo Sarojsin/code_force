@@ -51,10 +51,10 @@ export function getDb(): SqliteRemoteDatabase {
   return dbInstance;
 }
 
-export function closeDb(): void {
+export async function closeDb(): Promise<void> {
   if (nativeDb) {
     try {
-      nativeDb.closeAsync();
+      await nativeDb.closeAsync();
     } catch {
       // ignore close errors
     }

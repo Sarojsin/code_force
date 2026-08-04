@@ -21,6 +21,7 @@ export interface CalendarResponse {
   predictions?: PredictionDetail | null;
   next_period_in_days?: number | null;
   needs_checkin?: boolean;
+  predicted_cycle_length?: number | null;
 }
 
 export interface PredictionDetail {
@@ -34,6 +35,7 @@ export interface PredictionDetail {
   confidence_label?: string | null;
   training_data_points: number;
   prediction_window_days?: number | null;
+  predicted_cycle_length?: number | null;
 }
 
 export interface PredictionListResponse {

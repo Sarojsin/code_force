@@ -1,5 +1,10 @@
 import { api, ApiSuccess } from './client';
-import type { OnboardingData, OnboardingResponse, OnboardingStatusResponse } from 'src/types/onboarding';
+import type {
+  LifestyleUpdate,
+  OnboardingData,
+  OnboardingResponse,
+  OnboardingStatusResponse,
+} from 'src/types/onboarding';
 
 function unwrap<T>(payload: ApiSuccess<T> | T): T {
   if (payload && typeof payload === 'object' && 'data' in payload) {
@@ -27,5 +32,13 @@ export const onboardingService = {
       '/onboarding/status',
     );
     return unwrap<OnboardingStatusResponse>(resp.data);
+  },
+
+  async updateLifestyle(data: LifestyleUpdate): Promise<OnboardingResponse> {
+    const resp = await api.patch<ApiSuccess<OnboardingResponse> | OnboardingResponse>(
+      '/onboarding/lifestyle',
+      data,
+    );
+    return unwrap<OnboardingResponse>(resp.data);
   },
 };
