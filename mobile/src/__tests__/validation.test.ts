@@ -105,7 +105,6 @@ describe('currentCycleSchema', () => {
   it('accepts valid cycle', () => {
     const result = currentCycleSchema.safeParse({
       cycleStartDate: '2024-01-01',
-      cycleLength: 28,
       periodLength: 5,
       symptoms: ['cramps'],
     });
@@ -115,27 +114,15 @@ describe('currentCycleSchema', () => {
   it('accepts empty symptoms', () => {
     const result = currentCycleSchema.safeParse({
       cycleStartDate: '2024-01-01',
-      cycleLength: 28,
       periodLength: 5,
       symptoms: [],
     });
     expect(result.success).toBe(true);
   });
 
-  it('rejects cycle length below 20', () => {
-    const result = currentCycleSchema.safeParse({
-      cycleStartDate: '2024-01-01',
-      cycleLength: 15,
-      periodLength: 5,
-      symptoms: [],
-    });
-    expect(result.success).toBe(false);
-  });
-
   it('rejects period length above 10', () => {
     const result = currentCycleSchema.safeParse({
       cycleStartDate: '2024-01-01',
-      cycleLength: 28,
       periodLength: 12,
       symptoms: [],
     });
@@ -144,7 +131,6 @@ describe('currentCycleSchema', () => {
 
   it('rejects missing cycleStartDate', () => {
     const result = currentCycleSchema.safeParse({
-      cycleLength: 28,
       periodLength: 5,
       symptoms: [],
     });
@@ -158,7 +144,6 @@ describe('pastCycleSchema', () => {
   it('accepts valid past cycle', () => {
     const result = pastCycleSchema.safeParse({
       cycleStart: '2024-02-01',
-      cycleLength: 30,
       periodLength: 4,
       symptoms: ['headache'],
     });

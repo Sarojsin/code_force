@@ -5,7 +5,7 @@ import { BlurView } from 'expo-blur';
 
 import { useTheme } from 'src/theme';
 
-export type CardVariant = 'standard' | 'hero' | 'glass' | 'flat';
+export type CardVariant = 'standard' | 'hero' | 'feature' | 'glass' | 'flat';
 
 export interface CardProps extends ViewProps {
   children: ReactNode;
@@ -83,6 +83,15 @@ const CARD_VARIANTS: Record<CardVariant, (theme: ReturnType<typeof useTheme>) =>
       backgroundColor: 'transparent',
       borderRadius: 26,
       ...theme.shadow.hero,
+    },
+  }),
+  feature: (theme) => ({
+    base: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: theme.colors.primaryLight,
+      ...theme.shadow.lg,
     },
   }),
   glass: (theme) => ({

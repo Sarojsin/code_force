@@ -3,7 +3,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 
-import { Card, StickyCard, Text } from 'src/components/ui';
+import { Card, StickyCard, Text, Button } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useCreateMoodLog, useMoodLogs } from 'src/services/queries';
 import { usePeriodCheckIn } from 'src/hooks/usePeriodCheckIn';
@@ -68,7 +68,7 @@ export function CheckInCard({ calData }: CheckInCardProps) {
         />
       )}
 
-      <Card elevated style={[styles.card, { borderRadius: theme.radius.lg }]}>
+      <Card variant="feature" elevated style={styles.card}>
         <View style={styles.header}>
           <Text variant="h3">Daily Check-in</Text>
           <Text variant="bodySmall" color="secondary">How are you feeling today?</Text>
@@ -79,20 +79,20 @@ export function CheckInCard({ calData }: CheckInCardProps) {
             <View
               style={[styles.loggedBubble, { backgroundColor: activeMood.color, borderRadius: theme.radius.pill }]}
             >
-              <Text style={styles.bubbleEmoji}>{activeMood.emoji}</Text>
+               <Text variant="emoji" style={styles.bubbleEmoji}>{activeMood.emoji}</Text>
             </View>
             <View style={styles.loggedText}>
               <Text variant="body" style={styles.loggedLabel}>{activeMood.label} — logged today</Text>
               <Text variant="caption" color="muted">Check in again anytime</Text>
             </View>
-            <Pressable
+            <Button
+              label="Update"
+              size="sm"
+              variant="outline"
               onPress={() => navigation.navigate('MoodLog')}
-              accessibilityRole="button"
               accessibilityLabel="Update today's mood"
-              style={[styles.updateBtn, { borderRadius: theme.radius.md }]}
-            >
-              <Text variant="bodySmall" color="primary" style={styles.actionLabel}>Update</Text>
-            </Pressable>
+              style={styles.updateBtn}
+            />
           </View>
         ) : (
           <>
@@ -105,7 +105,7 @@ export function CheckInCard({ calData }: CheckInCardProps) {
                   accessibilityLabel={`Log mood ${m.label}`}
                   style={[styles.moodBtn, { backgroundColor: m.color, borderRadius: theme.radius.pill }]}
                 >
-                  <Text style={styles.moodEmoji}>{m.emoji}</Text>
+                   <Text variant="emoji">{m.emoji}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -144,11 +144,8 @@ const styles = StyleSheet.create({
   loggedLabel: { fontWeight: '600' },
   actionLabel: { fontWeight: '600' },
   updateBtn: {
-    minWidth: 72,
+    minWidth: 76,
     minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,107,138,0.12)',
   },
   moodRow: { flexGrow: 0 },
   moodBtn: {

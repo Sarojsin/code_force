@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
 });
 
 const SIZE_STYLES = StyleSheet.create({
-  sm: { paddingHorizontal: 12, paddingVertical: 8, minHeight: 36 },
+  sm: { paddingHorizontal: 12, paddingVertical: 8, minHeight: 44 },
   md: { paddingHorizontal: 16, paddingVertical: 12, minHeight: 44 },
   lg: { paddingHorizontal: 20, paddingVertical: 14, minHeight: 52 },
 });

@@ -87,7 +87,7 @@ export function DayDetailSheet({
         >
           <Text style={styles.heroDate}>{format(date, 'EEEE, MMMM d')}</Text>
           <View style={styles.heroPhaseRow}>
-            <Text style={styles.heroPhaseEmoji}>{phase.emoji}</Text>
+            <Text variant="emoji" style={styles.heroPhaseEmoji}>{phase.emoji}</Text>
             <Text style={styles.heroPhaseLabel}>{phase.label}</Text>
           </View>
           <Text style={styles.heroPhaseDesc}>{phase.description}</Text>
@@ -96,13 +96,13 @@ export function DayDetailSheet({
         <View style={styles.flagRow}>
           <Button
             label={`🩸  Start Period`}
-            size="md"
+            size="lg"
             onPress={() => onFlagStart(date)}
             style={styles.flagBtn}
           />
           <Button
             label={`✅  End Period`}
-            size="md"
+            size="lg"
             variant="outline"
             onPress={() => onFlagEnd(date)}
             style={styles.flagBtn}

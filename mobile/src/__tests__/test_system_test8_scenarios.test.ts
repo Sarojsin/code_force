@@ -6,7 +6,7 @@
  * Scenario 22: EncryptedStorage fails — getItem returns null, setItem silent, no crash.
  * Scenario 23: SQLite fails — BaseLocalService returns []/null, no crash, write path survives.
  * Scenario 24: App update — ALTER TABLE ADD COLUMN preserves data, idempotent, NULL for old rows.
- * Scenario 25: Kill-Switch — tokenStore.clear + offlineStore.clear, SQLite untouched, user_id isolation.
+ * Scenario 25: Kill-Switch — tokenStore.clear + offlineStore.clear, full isolation via sessionReset (SQLite purge, storage clear), user_id isolation.
  */
 
 const encryptedStore: Record<string, string> = {};
@@ -381,15 +381,16 @@ describe('Scenario 25: Kill-switch — global logout isolation', () => {
     });
   });
 
-  describe('SQLite data is untouched on logout', () => {
-    it('history rows survive authStore.reset', () => {
+  describe('SQLite cleanup is handled by resetAppForLogout (not authStore)', () => {
+    it('authStore.reset clears user/tokens only; SQLite purge is an orchestrator concern', () => {
       const sqliteRows = [
         { id: '1', user_id: 'user-a', period_start_date: '2025-01-01' },
         { id: '2', user_id: 'user-a', period_start_date: '2025-02-01' },
       ];
       const countBefore = sqliteRows.length;
 
-      // Simulate logout — SQLite is NOT touched
+      // authStore.reset intentionally does NOT touch SQLite — full isolation is
+      // enforced by src/services/sessionReset.ts (purges SQLite on logout).
       expect(sqliteRows.length).toBe(countBefore);
       expect(sqliteRows[0].user_id).toBe('user-a');
     });

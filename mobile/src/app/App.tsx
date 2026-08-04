@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { runMigrations } from '../db/runMigrations';
 
 import { AppProviders, queryClient } from './providers';
+import { AppProvider } from 'src/providers/AppProvider';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -191,14 +192,16 @@ export default function App() {
   return (
     <AppProviders>
       <MigrationGate>
-        <View style={{ flex: 1 }}>
-          <StatusBar barStyle="default" />
-          <ConnectivityBanner />
-          <ErrorBoundary>
-            <RootNavigator />
-          </ErrorBoundary>
-          <Toast />
-        </View>
+        <AppProvider>
+          <View style={{ flex: 1 }}>
+            <StatusBar barStyle="default" />
+            <ConnectivityBanner />
+            <ErrorBoundary>
+              <RootNavigator />
+            </ErrorBoundary>
+            <Toast />
+          </View>
+        </AppProvider>
       </MigrationGate>
     </AppProviders>
   );

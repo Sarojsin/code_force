@@ -109,14 +109,14 @@ export const Calendar = React.memo(function Calendar({
           const selectedBg = selected ? (phaseAccent ?? theme.colors.primary) : undefined;
           const dimmed = dimmedDates !== undefined && dimmedDates.has(dateStr);
 
-          const cellBorder = selected ? 0 : (today && !selected ? 2 : (isPredicted ? 1.5 : 0));
-          const cellBorderColor = today && !selected ? '#FF6B8A' : (isPredicted ? '#FF6B8A' : 'transparent');
+          const cellBorder = today && !selected ? 2.5 : (isPredicted ? 1.5 : 0);
+          const cellBorderColor = today && !selected ? theme.colors.primary : (isPredicted ? theme.colors.primary : 'transparent');
           const cellBorderStyle = isPredicted ? 'dashed' : 'solid';
 
           const txtColor = typeColor?.text ?? (
             disabled ? theme.colors.textMuted
             : selected ? theme.colors.textInverse
-            : today ? '#FF6B8A'
+            : today ? theme.colors.primary
             : inMonth ? theme.colors.textDark
             : theme.colors.textMuted
           );
@@ -150,16 +150,19 @@ export const Calendar = React.memo(function Calendar({
                   align="center"
                   style={[
                     { color: txtColor },
+                    (today || selected) && styles.dayEmphasis,
                     isStrikethrough && { opacity: 0.5, textDecorationLine: 'line-through' },
                   ]}
                 >
                   {format(day, 'd')}
                 </Text>
+                {today && (
+                  <Text variant="caption" style={[styles.todayTag, { color: selected ? theme.colors.textInverse : theme.colors.primary }]}>
+                    Today
+                  </Text>
+                )}
                 {marked && !selected && !dayType && (
                   <View style={[styles.markedDot, { backgroundColor: theme.colors.primary }]} />
-                )}
-                {today && (
-                  <View style={styles.todayDot} />
                 )}
               </Pressable>
             </AnimatingWrapper>
@@ -206,7 +209,7 @@ export const Calendar = React.memo(function Calendar({
         <View style={styles.phaseLegend}>
           {PHASES.map((p) => (
             <View key={p.id} style={[styles.phasePill, { backgroundColor: p.bg, borderColor: `${p.fg}22` }]}>
-              <Text style={styles.phaseEmoji}>{p.emoji}</Text>
+              <Text variant="emoji">{p.emoji}</Text>
               <Text style={[styles.phaseLabel, { color: p.fg }]}>{p.label}</Text>
             </View>
           ))}
@@ -282,6 +285,8 @@ const styles = StyleSheet.create({
   },
   markedDot: { width: 5, height: 5, borderRadius: 3, marginTop: 2, position: 'absolute', bottom: 4 },
   todayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#EF4444', position: 'absolute', bottom: 4 },
+  dayEmphasis: { fontWeight: '800' },
+  todayTag: { fontSize: 7, fontWeight: '700', position: 'absolute', bottom: 3 },
   phaseLegend: {
     flexDirection: 'row',
     gap: 7,
@@ -298,6 +303,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderWidth: 1,
   },
-  phaseEmoji: { fontSize: 12 },
   phaseLabel: { fontSize: 11, fontWeight: '700', lineHeight: 14 },
 });
