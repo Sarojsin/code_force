@@ -73,19 +73,16 @@ SAMPLE_DATA = OnboardingCreate(
     sleep_hours=7.5,
     diet="balanced",
     current_cycle_start=date(2026, 6, 1),
-    current_cycle_length=28,
     current_period_length=5,
     current_symptoms=["Cramps", "Bloating"],
     past_cycles=[
         PastCycleSchema(
             cycle_start=date(2026, 5, 4),
-            cycle_length=28,
             period_length=5,
             symptoms=["Headache"],
         ),
         PastCycleSchema(
             cycle_start=date(2026, 4, 6),
-            cycle_length=28,
             period_length=4,
             symptoms=[],
         ),
@@ -213,3 +210,40 @@ async def test_event_not_emitted_on_repeated_completion(
     await svc.create_or_update(user.id, SAMPLE_DATA)
     await svc.create_or_update(user.id, SAMPLE_DATA)
     assert len(events) == 1  # only emitted once
+
+
+@pytest.mark.asyncio
+async def test_ml_metrics_derived_from_date_gaps(
+    svc: OnboardingService, user: User, db_session: AsyncSession,
+) -> None:
+    """avg_cycle_length is derived from gaps, never from user-supplied lengths.
+
+    SAMPLE_DATA starts: 2026-06-01, 2026-05-04, 2026-04-06 -> gaps 28, 28 => avg 28, stdev 0.
+    """
+    await svc.create_or_update(user.id, SAMPLE_DATA)
+    from app.modules.auth.models import User
+    from sqlalchemy import select
+    stored = (
+        await db_session.execute(select(User).where(User.id == user.id))
+    ).scalar_one()
+    assert stored.avg_cycle_length == 28.0
+    assert stored.total_cycles_logged == 2
+
+
+@pytest.mark.asyncio
+async def test_ml_metrics_derived_from_gaps_irregular(
+    svc: OnboardingService, user: User, db_session: AsyncSession,
+) -> None:
+    data = SAMPLE_DATA.model_copy(update={"past_cycles": [
+        PastCycleSchema(cycle_start=date(2026, 5, 20), period_length=5, symptoms=[]),
+        PastCycleSchema(cycle_start=date(2026, 4, 10), period_length=5, symptoms=[]),
+    ]})
+    await svc.create_or_update(user.id, data)
+    from app.modules.auth.models import User
+    from sqlalchemy import select
+    stored = (
+        await db_session.execute(select(User).where(User.id == user.id))
+    ).scalar_one()
+    # gaps: Jun1->May20=12 (excluded <20), May20->Apr10=40 => avg 40
+    assert stored.avg_cycle_length == 40.0
+    assert stored.total_cycles_logged == 1

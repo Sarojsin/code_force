@@ -10,7 +10,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class PastCycleSchema(BaseModel):
     cycle_start: date
-    cycle_length: int = Field(..., ge=20, le=45)
     period_length: int = Field(..., ge=2, le=10)
     symptoms: list[str] = Field(default_factory=list)
 
@@ -31,7 +30,6 @@ class OnboardingCreate(BaseModel):
     sleep_hours: float = Field(..., ge=0, le=24)
     diet: str = Field(..., pattern=r"^(balanced|normal|junk)$")
     current_cycle_start: date
-    current_cycle_length: int = Field(..., ge=20, le=45)
     current_period_length: int = Field(..., ge=2, le=10)
     current_symptoms: list[str] = Field(default_factory=list)
     past_cycles: list[PastCycleSchema] = Field(default_factory=list, max_length=3)
@@ -57,7 +55,6 @@ class OnboardingResponse(BaseModel):
     sleep_hours: float | None
     diet: str | None
     current_cycle_start: date | None
-    current_cycle_length: int | None
     current_period_length: int | None
     current_symptoms: list[str]
     past_cycles: list
@@ -69,3 +66,14 @@ class OnboardingResponse(BaseModel):
 
 class OnboardingStatusResponse(BaseModel):
     completed: bool
+
+
+class LifestyleUpdate(BaseModel):
+    """Partial update for health/lifestyle fields. All optional — only provided fields are overwritten."""
+    age: int | None = Field(None, ge=13, le=120)
+    height_cm: float | None = Field(None, ge=50, le=250)
+    weight_kg: float | None = Field(None, ge=20, le=300)
+    stress_level: str | None = Field(None, pattern=r"^(low|moderate|high)$")
+    exercise_frequency: str | None = Field(None, pattern=r"^(low|moderate|high)$")
+    sleep_hours: float | None = Field(None, ge=0, le=24)
+    diet: str | None = Field(None, pattern=r"^(balanced|normal|junk)$")

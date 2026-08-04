@@ -28,10 +28,10 @@ PRIYA_ONBOARDING = {
     "stress_level": "moderate", "exercise_frequency": "moderate",
     "sleep_hours": 7.5, "diet": "balanced",
     "current_cycle_start": P_DATES[5].isoformat(),
-    "current_cycle_length": 28, "current_period_length": 5,
+    "current_period_length": 5,
     "current_symptoms": ["cramps"],
     "past_cycles": [
-        {"cycle_start": d.isoformat(), "cycle_length": 28, "period_length": 5,
+        {"cycle_start": d.isoformat(), "period_length": 5,
          "symptoms": s}
         for d, s in zip(P_DATES[2:5], [
             ["bloating", "fatigue"],
@@ -77,12 +77,12 @@ ANANYA_ONBOARDING = {
     "stress_level": "high", "exercise_frequency": "low",
     "sleep_hours": 5.5, "diet": "normal",
     "current_cycle_start": A_DATES[5].isoformat(),
-    "current_cycle_length": GAPS[-1], "current_period_length": 6,
+    "current_period_length": 6,
     "current_symptoms": ["severe_cramps", "nausea", "backache", "fatigue", "bloating"],
     "past_cycles": [
-        {"cycle_start": d.isoformat(), "cycle_length": gl, "period_length": pl,
+        {"cycle_start": d.isoformat(), "period_length": pl,
          "symptoms": s}
-        for d, gl, pl, s in zip(A_DATES[2:5], GAPS[1:4], [7, 6, 6], [
+        for d, pl, s in zip(A_DATES[2:5], [7, 6, 6], [
             ["severe_cramps", "nausea", "bloating", "migraine", "spotting"],
             ["cramps", "backache", "fatigue", "dizziness", "cravings"],
             ["bloating", "headache", "cramps", "breast_tenderness"],

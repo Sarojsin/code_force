@@ -14,6 +14,7 @@ from app.core.event_bus import EventBus
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.onboarding.dependencies import OnboardingServiceDep
 from app.modules.onboarding.schemas import (
+    LifestyleUpdate,
     OnboardingCreate,
     OnboardingResponse,
     OnboardingStatusResponse,
@@ -61,6 +62,20 @@ async def get_onboarding_status(
 ) -> OnboardingStatusResponse:
     completed = await svc.get_status(current_user.id)
     return OnboardingStatusResponse(completed=completed)
+
+
+@router.patch(
+    "/lifestyle",
+    response_model=OnboardingResponse,
+    summary="Update health/lifestyle fields (partial — only provided fields are overwritten).",
+)
+async def update_lifestyle(
+    payload: LifestyleUpdate,
+    current_user: CurrentUser,
+    svc: OnboardingServiceDep,
+) -> OnboardingResponse:
+    onboarding = await svc.update_lifestyle(current_user.id, payload)
+    return OnboardingResponse.model_validate(onboarding)
 
 
 def init_module(app, event_bus: EventBus) -> None:

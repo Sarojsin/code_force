@@ -192,7 +192,10 @@ async def test_compute_initial_prediction_with_onboarding(svc: CycleService, use
     onboarding = UserOnboarding(
         user_id=user.id,
         current_cycle_start=date(2026, 5, 1),
-        current_cycle_length=30,
+        past_cycles=[
+            {"cycle_start": "2026-04-01"},
+            {"cycle_start": "2026-03-02"},
+        ],
         onboarding_completed=True,
     )
     svc.db.add(onboarding)
@@ -200,6 +203,7 @@ async def test_compute_initial_prediction_with_onboarding(svc: CycleService, use
 
     prediction = await svc.compute_initial_prediction(user.id)
     assert prediction is not None
+    # avg gap between consecutive starts = 30 days (May1-Apr1, Apr1-Mar2)
     assert prediction.predicted_next_period_start >= date(2026, 5, 25)
 
 

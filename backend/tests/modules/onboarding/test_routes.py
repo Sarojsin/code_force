@@ -132,13 +132,11 @@ _ONBOARDING_PAYLOAD = {
     "sleep_hours": 7.5,
     "diet": "balanced",
     "current_cycle_start": str(date(2026, 5, 28)),
-    "current_cycle_length": 28,
     "current_period_length": 5,
     "current_symptoms": ["cramps"],
     "past_cycles": [
         {
             "cycle_start": str(date(2026, 4, 28)),
-            "cycle_length": 30,
             "period_length": 4,
             "symptoms": ["bloating"],
         },
