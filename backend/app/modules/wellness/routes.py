@@ -211,7 +211,9 @@ async def get_journal_analysis(
 )
 async def get_health_tips(
     svc: WellnessServiceDep,
-    metric_type: str | None = Query(None, description="Filter by metric type (sleep, water, food, exercise, medication)"),
+    metric_type: str | None = Query(
+        None, description="Filter by metric type (sleep, water, food, exercise, medication)"
+    ),
     limit: int = Query(3, ge=1, le=10),
 ) -> HealthTipListResponse:
     tips = await svc.get_health_tips(metric_type=metric_type, limit=limit)
@@ -231,3 +233,40 @@ def init_module(app, event_bus) -> None:
 
         async with async_session_maker() as session:
             await seed_health_tips(session)
+
+    # ---- Bridge: cycle module emits `day_logged` on DayDetailSheet save ----
+    # The Wellness tab reads mood_logs (NOT cycle_days). Subscriber lives in the
+    # wellness module (owner of mood_logs) and idempotently upserts one mood log
+    # per user/date (one per day, matching the source day's mood).
+    async def _on_day_logged(
+        user_id: str,
+        log_date: str,
+        mood: str,
+        mood_intensity: int | None,
+        notes: str | None,
+    ) -> None:
+        import logging
+        from datetime import date
+        from uuid import UUID
+
+        from app.core.database import async_session_maker
+        from app.modules.wellness.services import upsert_mood_for_date
+
+        try:
+            async with async_session_maker() as session:
+                parsed_date = date.fromisoformat(log_date)
+                await upsert_mood_for_date(
+                    session,
+                    user_id=UUID(user_id),
+                    mood=mood,
+                    intensity=mood_intensity,
+                    notes=notes,
+                    log_date=parsed_date,
+                )
+        except Exception:
+            logging.getLogger("app.modules.wellness").exception(
+                "wellness.day_logged_subscriber",
+            )
+
+    if event_bus is not None:
+        event_bus.subscribe_sync("day_logged", _on_day_logged)

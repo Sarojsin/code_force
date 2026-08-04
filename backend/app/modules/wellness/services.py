@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,23 +19,70 @@ from app.modules.wellness.models import (
     MoodLog,
     UserExerciseSession,
 )
-from app.modules.wellness.schemas import (
-    JournalAnalysisCreate,
-    JournalEntryCreate,
-    MoodLogCreate,
-)
+from app.modules.wellness.schemas import JournalAnalysisCreate, JournalEntryCreate, MoodLogCreate
+
+
+async def upsert_mood_for_date(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    mood: str,
+    intensity: int | None,
+    notes: str | None,
+    log_date: date,
+) -> MoodLog:
+    """Idempotent per-date mood log — the Wellness tab reads ``mood_logs``.
+
+    Bridge for the ``day_logged`` event emitted by the cycle module when a
+    DayDetailSheet save includes a mood. One mood log per date: re-saving the
+    same day updates the existing row instead of inserting a duplicate.
+    """
+    start = datetime.combine(log_date, time.min, tzinfo=UTC)
+    end = start + timedelta(days=1)
+    stmt = (
+        select(MoodLog)
+        .where(
+            MoodLog.user_id == user_id,
+            MoodLog.logged_at >= start,
+            MoodLog.logged_at < end,
+        )
+        .order_by(MoodLog.logged_at.desc())
+    )
+    existing = (await db.execute(stmt)).scalars().first()
+    if existing is not None:
+        existing.mood = mood
+        existing.intensity = intensity or 5
+        existing.notes = notes
+        log = existing
+    else:
+        log = MoodLog(
+            user_id=user_id,
+            mood=mood,
+            intensity=intensity or 5,
+            notes=notes,
+            logged_at=start,
+        )
+        db.add(log)
+    await db.commit()
+    await db.refresh(log)
+    return log
 
 
 class WellnessService:
     def __init__(
-        self, db: AsyncSession, encryption: EncryptionService, hf_client: HuggingFaceClient,
+        self,
+        db: AsyncSession,
+        encryption: EncryptionService,
+        hf_client: HuggingFaceClient,
     ) -> None:
         self.db = db
         self.encryption = encryption
         self.hf_client = hf_client
 
     async def create_journal_entry(
-        self, user_id: uuid.UUID, data: JournalEntryCreate, user_salt: str | None,
+        self,
+        user_id: uuid.UUID,
+        data: JournalEntryCreate,
+        user_salt: str | None,
     ) -> JournalEntry:
         encrypted_content = self.encryption.encrypt_for_user(data.content, user_salt or "")
         entry = JournalEntry(
@@ -50,7 +97,9 @@ class WellnessService:
         await self.db.refresh(entry)
         return entry
 
-    async def get_journal_entry(self, entry_id: uuid.UUID, user_id: uuid.UUID, user_salt: str | None = None) -> JournalEntry:
+    async def get_journal_entry(
+        self, entry_id: uuid.UUID, user_id: uuid.UUID, user_salt: str | None = None
+    ) -> JournalEntry:
         stmt = (
             select(JournalEntry)
             .where(JournalEntry.id == entry_id)
@@ -65,7 +114,10 @@ class WellnessService:
         return entry
 
     async def list_journal_entries(
-        self, user_id: uuid.UUID, limit: int = 50, offset: int = 0,
+        self,
+        user_id: uuid.UUID,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[JournalEntry]:
         stmt = (
             select(JournalEntry)
@@ -97,7 +149,9 @@ class WellnessService:
         return mood
 
     async def list_mood_history(
-        self, user_id: uuid.UUID, days_back: int = 30,
+        self,
+        user_id: uuid.UUID,
+        days_back: int = 30,
     ) -> list[MoodLog]:
         cutoff = datetime.now(tz=UTC) - timedelta(days=days_back)
         stmt = (
@@ -115,7 +169,9 @@ class WellnessService:
         return list(result.scalars().all())
 
     async def log_exercise_completion(
-        self, user_id: uuid.UUID, exercise_id: uuid.UUID,
+        self,
+        user_id: uuid.UUID,
+        exercise_id: uuid.UUID,
     ) -> UserExerciseSession:
         ex_stmt = select(BreathingExercise).where(BreathingExercise.id == exercise_id)
         exercise = (await self.db.execute(ex_stmt)).scalar_one_or_none()
@@ -177,7 +233,6 @@ class WellnessService:
             "recommendation": recommendation,
         }
 
-
     async def get_health_tips(
         self,
         metric_type: str | None = None,
@@ -207,7 +262,9 @@ class JournalAnalysisService:
         self.db = db
 
     async def create_analysis(
-        self, user_id: uuid.UUID, data: JournalAnalysisCreate,
+        self,
+        user_id: uuid.UUID,
+        data: JournalAnalysisCreate,
     ) -> JournalAnalysis:
         stmt = (
             select(JournalEntry)
@@ -236,7 +293,9 @@ class JournalAnalysisService:
         return analysis
 
     async def get_analysis(
-        self, journal_id: uuid.UUID, user_id: uuid.UUID,
+        self,
+        journal_id: uuid.UUID,
+        user_id: uuid.UUID,
     ) -> JournalAnalysis | None:
         stmt = (
             select(JournalAnalysis)

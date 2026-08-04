@@ -5,14 +5,19 @@ from __future__ import annotations
 import logging
 import os
 import uuid
-from datetime import date, timedelta
+from contextlib import suppress
+from datetime import UTC, date, datetime, timedelta
+from itertools import pairwise
 from statistics import median
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
+from app.core.encryption import EncryptionError, EncryptionService, get_encryption_service
+from app.core.event_bus import event_bus
 from app.integrations.prediction_engine import (
     PROD_DIR,
     PredictionResult,
@@ -27,16 +32,31 @@ from app.modules.cycle.exceptions import (
     PeriodEndDateRequiredError,
     PredictionNotFoundError,
 )
-from app.modules.cycle.models import CycleEntry, PredictedCycle, SnoozeEvent, SystemConfig
+from app.modules.cycle.models import (
+    CycleDay,
+    CycleEntry,
+    DayMedication,
+    DaySymptom,
+    Medication,
+    PredictedCycle,
+    SnoozeEvent,
+    Symptom,
+    SystemConfig,
+)
 from app.modules.cycle.phase_utils import calculate_cycle_phases, compute_period_length
-from app.modules.cycle.schemas import CycleEntryCreate, CycleEntryUpdate
+from app.modules.cycle.schemas import CycleEntryCreate, CycleEntryUpdate, DayUpsert
 
 logger = logging.getLogger("app.modules.cycle")
 
 
 class CycleService:
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(
+        self,
+        db: AsyncSession,
+        encryption: EncryptionService | None = None,
+    ) -> None:
         self.db = db
+        self.encryption = encryption or get_encryption_service()
 
     # ---- 3-state buffer logic ----
 
@@ -60,7 +80,11 @@ class CycleService:
         )
         predictions = (await self.db.execute(stmt)).scalars().all()
         entries = await self._get_recent_entries(user_id, limit=12)
-        avg_length = self._compute_average_period_length(entries) if entries else get_settings().cycle.period_default_length
+        avg_length = (
+            self._compute_average_period_length(entries)
+            if entries
+            else get_settings().cycle.period_default_length
+        )
         for pred in predictions:
             pred_end = pred.predicted_next_period_start + timedelta(days=avg_length - 1)
             if pred.predicted_next_period_start <= start_date <= pred_end:
@@ -113,6 +137,10 @@ class CycleService:
             await self.db.commit()
             await self.db.refresh(existing)
             await self._auto_close_open_entry(user_id, data.period_start_date)
+
+            with suppress(InsufficientDataError):
+                await self.compute_predictions(user_id)
+
             return existing
         await self.db.refresh(entry)
         await self._try_auto_link_prediction(user_id, entry)
@@ -120,7 +148,30 @@ class CycleService:
             await self._suspend_predictions(user_id)
         await self._auto_close_open_entry(user_id, data.period_start_date)
         await self.db.commit()
+
+        with suppress(InsufficientDataError):
+            await self.compute_predictions(user_id)
+
         return entry
+
+    async def apply_correction_if_needed(
+        self, entry: CycleEntry, prediction: PredictedCycle
+    ) -> None:
+        """Link a prediction to an entry and store correction data.
+
+        Called from:
+        1. log_correction() — Sticky Card "Yes" + Calendar "Start Period"
+        2. _try_auto_link_prediction() — LogPeriodScreen auto-link
+
+        Ensures correction_delta is ALWAYS stored when a prediction is matched.
+        """
+        error = (entry.period_start_date - prediction.predicted_next_period_start).days
+        prediction.actual_cycle_entry_id = entry.id
+        prediction.prediction_error_days = error
+        entry.is_correction = True
+        entry.corrected_prediction_id = prediction.id
+        entry.correction_delta = error  # positive = late, negative = early
+        await self._update_user_ml_metrics(entry.user_id, error)
 
     async def _try_auto_link_prediction(self, user_id: uuid.UUID, entry: CycleEntry) -> None:
         base_window = get_settings().cycle.auto_link_window_days
@@ -136,12 +187,8 @@ class CycleService:
             link_window = max(base_window, pred.prediction_window_days or 0)
             diff = (entry.period_start_date - pred.predicted_next_period_start).days
             if -link_window <= diff <= link_window:
-                pred.actual_cycle_entry_id = entry.id
-                pred.prediction_error_days = diff
-                entry.is_correction = True
-                entry.corrected_prediction_id = pred.id
+                await self.apply_correction_if_needed(entry, pred)
                 await self.db.flush()
-                await self._update_user_ml_metrics(user_id, diff)
                 break
 
     async def _suspend_predictions(self, user_id: uuid.UUID) -> None:
@@ -156,7 +203,9 @@ class CycleService:
             p.is_active = False
         await self.db.flush()
 
-    async def _get_entry_by_user_and_date(self, user_id: uuid.UUID, period_start: date) -> CycleEntry:
+    async def _get_entry_by_user_and_date(
+        self, user_id: uuid.UUID, period_start: date
+    ) -> CycleEntry:
         stmt = (
             select(CycleEntry)
             .where(CycleEntry.user_id == user_id)
@@ -191,7 +240,11 @@ class CycleService:
         return entry
 
     async def list_entries(
-        self, user_id: uuid.UUID, limit: int = 50, offset: int = 0, months_back: int = 6,
+        self,
+        user_id: uuid.UUID,
+        limit: int = 50,
+        offset: int = 0,
+        months_back: int = 6,
     ) -> list[CycleEntry]:
         cutoff = date.today() - timedelta(days=months_back * 30)
         stmt = (
@@ -207,7 +260,10 @@ class CycleService:
         return list(result.scalars().all())
 
     async def update_entry(
-        self, entry_id: uuid.UUID, user_id: uuid.UUID, data: CycleEntryUpdate,
+        self,
+        entry_id: uuid.UUID,
+        user_id: uuid.UUID,
+        data: CycleEntryUpdate,
     ) -> CycleEntry:
         entry = await self.get_entry(entry_id, user_id)
         update_data = data.model_dump(exclude_unset=True)
@@ -238,6 +294,7 @@ class CycleService:
             )
 
         from app.modules.auth.models import User
+
         user_obj = (
             await self.db.execute(
                 select(User).where(User.id == user_id).where(User.is_active.is_(True))
@@ -253,16 +310,23 @@ class CycleService:
         return await self._upsert_prediction(user_id, result)
 
     async def _predict_with_global_model(
-        self, user: object, entries: list[CycleEntry], model: dict | None = None,
+        self,
+        user: object,
+        entries: list[CycleEntry],
+        model: dict | None = None,
     ) -> PredictionResult:
+        from app.integrations.prediction_engine import build_rolling_features
         from app.modules.auth.models import User
         from app.modules.onboarding.models import UserOnboarding
+
         u = user if isinstance(user, User) else None
         start_dates = [e.period_start_date for e in entries]
         cycle_lengths = self._compute_cycle_lengths(entries)
-        period_lengths = [compute_period_length(e.period_start_date, e.period_end_date, 5) for e in entries]
+        period_lengths = [
+            compute_period_length(e.period_start_date, e.period_end_date, 5) for e in entries[:4]
+        ]
 
-        avg_cycle = (u.avg_cycle_length or median(cycle_lengths)) if cycle_lengths else 28
+        features = build_rolling_features(cycle_lengths, period_lengths)
 
         onboarding = None
         if u:
@@ -299,28 +363,31 @@ class CycleService:
                 user_bmi_bucket_ordinal = 3
 
         user_stress_level = onboarding.stress_level if onboarding else None
-        user_trend_slope = u.trend_slope if u and hasattr(u, 'trend_slope') else None
+        user_sleep_hours = onboarding.sleep_hours if onboarding else None
+        user_exercise_frequency = onboarding.exercise_frequency if onboarding else None
+        user_diet = onboarding.diet if onboarding else None
 
         if model is None:
             return self._predict_with_fallback(entries, u)
 
         predicted_length, confidence = apply_global_model(
             model,
-            user_avg_cycle=avg_cycle,
+            user_avg_cycle=features.avg_cycle_length,
             user_std_cycle=u.cycle_length_std_dev if u else None,
-            user_trend_slope=user_trend_slope,
+            user_trend_slope=features.trend_slope,
             user_avg_error=u.avg_prediction_error_days if u else None,
             user_age_bucket_ordinal=age_bucket_ordinal,
             user_bmi_bucket_ordinal=user_bmi_bucket_ordinal,
             user_stress_level=user_stress_level,
-            user_avg_period_length=float(median(period_lengths)) if period_lengths else 5,
+            user_avg_period_length=features.avg_period_length,
+            user_sleep_hours=user_sleep_hours,
+            user_exercise_frequency=user_exercise_frequency,
+            user_diet=user_diet,
         )
 
         latest_start = max(start_dates)
         next_start = latest_start + timedelta(days=predicted_length)
-        next_end = next_start + timedelta(
-            days=int(median(period_lengths)) if period_lengths else 5
-        )
+        next_end = next_start + timedelta(days=round(features.avg_period_length))
         fertile_start = next_start - timedelta(days=14)
         fertile_end = fertile_start + timedelta(days=5)
 
@@ -340,24 +407,29 @@ class CycleService:
         )
 
     def _predict_with_fallback(
-        self, entries: list[CycleEntry], user: object | None,
+        self,
+        entries: list[CycleEntry],
+        user: object | None,
     ) -> PredictionResult:
         start_dates = [e.period_start_date for e in entries]
         cycle_lengths = self._compute_cycle_lengths(entries)
-        period_lengths = [compute_period_length(e.period_start_date, e.period_end_date, 5) for e in entries]
+        period_lengths = [
+            compute_period_length(e.period_start_date, e.period_end_date, 5) for e in entries
+        ]
 
         from app.modules.auth.models import User
+
         u = user if isinstance(user, User) else None
         avg_error = u.avg_prediction_error_days if u else None
 
         pred_std = u.cycle_length_std_dev if (u and u.cycle_length_std_dev is not None) else None
-        predicted_length, confidence, window = fallback_prediction(cycle_lengths, avg_error, pred_std)
+        predicted_length, confidence, window = fallback_prediction(
+            cycle_lengths, avg_error, pred_std
+        )
 
         latest_start = max(start_dates)
         next_start = latest_start + timedelta(days=predicted_length)
-        next_end = next_start + timedelta(
-            days=int(median(period_lengths)) if period_lengths else 5
-        )
+        next_end = next_start + timedelta(days=int(median(period_lengths)) if period_lengths else 5)
         fertile_start = next_start - timedelta(days=14)
         fertile_end = fertile_start + timedelta(days=5)
 
@@ -408,7 +480,9 @@ class CycleService:
         return lengths
 
     async def _upsert_prediction(
-        self, user_id: uuid.UUID, result: PredictionResult,
+        self,
+        user_id: uuid.UUID,
+        result: PredictionResult,
     ) -> PredictedCycle:
         # Deactivate any existing active prediction so history is preserved
         old_stmt = (
@@ -462,7 +536,9 @@ class CycleService:
         return latest
 
     async def get_prediction_history(
-        self, user_id: uuid.UUID, limit: int = 12,
+        self,
+        user_id: uuid.UUID,
+        limit: int = 12,
     ) -> list[dict]:
         """Return past predictions with actual dates and error deltas."""
         stmt = (
@@ -490,24 +566,29 @@ class CycleService:
                     actual_date = entry.period_start_date
 
             pred_month = p.predicted_next_period_start.strftime("%b")
-            history.append({
-                "id": str(p.id),
-                "month": pred_month,
-                "predicted_date": p.predicted_next_period_start.isoformat(),
-                "actual_date": actual_date.isoformat() if actual_date else None,
-                "delta_days": p.prediction_error_days,
-                "on_time": p.prediction_error_days is not None and abs(p.prediction_error_days) <= 1,
-            })
+            history.append(
+                {
+                    "id": str(p.id),
+                    "month": pred_month,
+                    "predicted_date": p.predicted_next_period_start.isoformat(),
+                    "actual_date": actual_date.isoformat() if actual_date else None,
+                    "delta_days": p.prediction_error_days,
+                    "on_time": p.prediction_error_days is not None
+                    and abs(p.prediction_error_days) <= 1,
+                }
+            )
 
         return history
 
     # ---- Calendar (Phase 2: dictionary-encoded) ----
 
     async def get_calendar(
-        self, user_id: uuid.UUID, months_back: int = 3, months_forward: int = 3,
+        self,
+        user_id: uuid.UUID,
+        months_back: int = 3,
+        months_forward: int = 3,
         today: date | None = None,
     ) -> dict:
-        start = date.today() - timedelta(days=months_back * 30)
         end = date.today() + timedelta(days=months_forward * 30)
         today_ref = today or date.today()
         today_str = today_ref.isoformat()
@@ -515,7 +596,6 @@ class CycleService:
         entries_stmt = (
             select(CycleEntry)
             .where(CycleEntry.user_id == user_id)
-            .where(CycleEntry.period_start_date >= start)
             .where(CycleEntry.period_start_date <= end)
             .where(CycleEntry.is_active.is_(True))
             .order_by(CycleEntry.period_start_date.asc())
@@ -538,13 +618,15 @@ class CycleService:
 
         days: dict[str, str] = {}
 
-        avg_period_length = self._compute_average_period_length(entries)
-        cycle_lengths = [
-            (entries[i + 1].period_start_date - entries[i].period_start_date).days
-            for i in range(len(entries) - 1)
-            if 20 <= (entries[i + 1].period_start_date - entries[i].period_start_date).days <= 45
+        from app.integrations.prediction_engine import build_rolling_features
+
+        cycle_lengths = self._compute_cycle_lengths(entries)
+        period_lengths = [
+            compute_period_length(e.period_start_date, e.period_end_date, 5) for e in entries[:4]
         ]
-        avg_cycle_length = round(median(cycle_lengths)) if cycle_lengths else 28
+        features = build_rolling_features(cycle_lengths, period_lengths)
+        avg_period_length = round(features.avg_period_length)
+        avg_cycle_length = round(features.avg_cycle_length)
 
         cancelled_preds = [p for p in predictions if p.actual_cycle_entry_id is not None]
         active_preds = [p for p in predictions if p.actual_cycle_entry_id is None]
@@ -560,7 +642,9 @@ class CycleService:
 
         for i, pred in enumerate(cancelled_preds):
             cycle_len = self._pred_cycle_length(cancelled_preds, i, avg_cycle_length)
-            phases = calculate_cycle_phases(pred.predicted_next_period_start, cycle_len, avg_period_length)
+            phases = calculate_cycle_phases(
+                pred.predicted_next_period_start, cycle_len, avg_period_length
+            )
             for d in self._iter_date_range(phases["period_start"], phases["period_end"]):
                 key = d.isoformat()
                 if key not in days:
@@ -568,7 +652,9 @@ class CycleService:
 
         for i, pred in enumerate(active_preds):
             cycle_len = self._pred_cycle_length(active_preds, i, avg_cycle_length)
-            phases = calculate_cycle_phases(pred.predicted_next_period_start, cycle_len, avg_period_length)
+            phases = calculate_cycle_phases(
+                pred.predicted_next_period_start, cycle_len, avg_period_length
+            )
             self._apply_predicted_phases(days, phases, pred.prediction_window_days)
 
         days[today_str] = "T"
@@ -585,9 +671,12 @@ class CycleService:
                 "predicted_fertile_window_end": first.predicted_fertile_window_end,
                 "model_type": first.model_type or first.model_version or "unknown",
                 "confidence_score": first.confidence_score,
-                "confidence_label": confidence_label(first.confidence_score) if first.confidence_score else None,
+                "confidence_label": (
+                    confidence_label(first.confidence_score) if first.confidence_score else None
+                ),
                 "training_data_points": first.training_data_points or 0,
                 "prediction_window_days": first.prediction_window_days,
+                "predicted_cycle_length": avg_cycle_length,
             }
             next_period_in_days = (first.predicted_next_period_start - today_ref).days
 
@@ -623,14 +712,18 @@ class CycleService:
                     )
                     last_snooze = (await self.db.execute(snooze_stmt)).scalar_one_or_none()
                     if last_snooze and last_snooze.snoozed_at:
-                        snooze_until = last_snooze.snoozed_at + timedelta(days=last_snooze.day_offset)
+                        snooze_until = last_snooze.snoozed_at + timedelta(
+                            days=last_snooze.day_offset
+                        )
                         if today_ref <= snooze_until.date():
                             needs_checkin = False
 
         return {
             "days": days,
             "predictions": prediction_detail,
-            "next_period_in_days": max(0, next_period_in_days) if next_period_in_days is not None else None,
+            "next_period_in_days": (
+                max(0, next_period_in_days) if next_period_in_days is not None else None
+            ),
             "needs_checkin": needs_checkin,
         }
 
@@ -666,7 +759,9 @@ class CycleService:
                 days[key] = "L"
 
     @staticmethod
-    def _apply_pending_phases(days: dict[str, str], phases: dict[str, date], confirmed_start: date) -> None:
+    def _apply_pending_phases(
+        days: dict[str, str], phases: dict[str, date], confirmed_start: date
+    ) -> None:
         for d in CycleService._iter_date_range(phases["period_start"], phases["period_end"]):
             key = d.isoformat()
             if d == confirmed_start:
@@ -675,7 +770,9 @@ class CycleService:
                 days[key] = "u"
 
     @staticmethod
-    def _apply_predicted_phases(days: dict[str, str], phases: dict[str, date], window: int | None = None) -> None:
+    def _apply_predicted_phases(
+        days: dict[str, str], phases: dict[str, date], window: int | None = None
+    ) -> None:
         # B: prediction-window band FIRST so fertile/luteal (only-if-absent) still win.
         if window and window > 0:
             lead = CycleService._iter_date_range(
@@ -732,7 +829,10 @@ class CycleService:
     @staticmethod
     def _pred_cycle_length(predictions: list[PredictedCycle], index: int, fallback: int) -> int:
         if index < len(predictions) - 1:
-            gap = (predictions[index + 1].predicted_next_period_start - predictions[index].predicted_next_period_start).days
+            gap = (
+                predictions[index + 1].predicted_next_period_start
+                - predictions[index].predicted_next_period_start
+            ).days
             if 20 <= gap <= 45:
                 return gap
         return fallback
@@ -764,11 +864,28 @@ class CycleService:
         except InsufficientDataError:
             logger.warning("cycle.initial_prediction_fallback", extra={"user_id": str(user_id)})
             from app.modules.onboarding.models import UserOnboarding
+
             stmt = select(UserOnboarding).where(UserOnboarding.user_id == user_id)
             onboarding = (await self.db.execute(stmt)).scalar_one_or_none()
             if onboarding and onboarding.current_cycle_start:
                 latest = onboarding.current_cycle_start
-                avg_cycle = onboarding.current_cycle_length or 28
+                # Derive avg cycle length from gaps between the onboarding start dates.
+                raw_starts = [latest] + [
+                    p.get("cycle_start") for p in (onboarding.past_cycles or [])
+                ]
+                starts: list[date] = []
+                for s in raw_starts:
+                    if isinstance(s, str):
+                        s = date.fromisoformat(s)
+                    if s is not None:
+                        starts.append(s)
+                starts = sorted(starts)
+                gaps = []
+                for a, b in pairwise(starts):
+                    gap = (b - a).days
+                    if 20 <= gap <= 45:
+                        gaps.append(gap)
+                avg_cycle = round(median(gaps)) if gaps else 28
             else:
                 latest = date.today()
                 avg_cycle = 28
@@ -821,9 +938,10 @@ class CycleService:
                 .limit(1)
             )
             latest = (await self.db.execute(latest_stmt)).scalar_one_or_none()
-            if latest and hasattr(latest, 'created_at') and latest.created_at:
+            if latest and hasattr(latest, "created_at") and latest.created_at:
                 try:
                     from datetime import datetime as dt
+
                     client_ts = dt.fromisoformat(client_updated_at.replace("Z", "+00:00"))
                     # Strip tzinfo if server's stored datetime is naive (SQLite)
                     server_ts = latest.created_at
@@ -855,14 +973,11 @@ class CycleService:
 
         if corrected_prediction_id is not None:
             prediction = await self.get_prediction_by_id(corrected_prediction_id, user_id)
-            error = (period_start_date - prediction.predicted_next_period_start).days
-            prediction.actual_cycle_entry_id = entry.id
-            prediction.prediction_error_days = error
+            await self.apply_correction_if_needed(entry, prediction)
             cutoff = prediction.predicted_next_period_start - timedelta(days=3)
             if period_start_date < cutoff:
                 prediction.checkin_sent = True
             await self.db.flush()
-            await self._update_user_ml_metrics(user_id, error)
 
         if entry.cycle_type == "anovulatory":
             await self._suspend_predictions(user_id)
@@ -870,10 +985,8 @@ class CycleService:
         await self.db.commit()
         await self.db.refresh(entry)
 
-        try:
+        with suppress(InsufficientDataError):
             await self.compute_predictions(user_id)
-        except InsufficientDataError:
-            pass
 
         return entry
 
@@ -897,7 +1010,9 @@ class CycleService:
             )
             await self.db.flush()
 
-    async def get_prediction_by_id(self, prediction_id: uuid.UUID, user_id: uuid.UUID) -> PredictedCycle:
+    async def get_prediction_by_id(
+        self, prediction_id: uuid.UUID, user_id: uuid.UUID
+    ) -> PredictedCycle:
         stmt = (
             select(PredictedCycle)
             .where(PredictedCycle.id == prediction_id)
@@ -959,10 +1074,14 @@ class CycleService:
 
         from statistics import stdev
 
-        stmt = sa_select(CycleEntry.period_start_date).where(
-            CycleEntry.user_id == user_id,
-            CycleEntry.is_active.is_(True),
-        ).order_by(CycleEntry.period_start_date.asc())
+        stmt = (
+            sa_select(CycleEntry.period_start_date)
+            .where(
+                CycleEntry.user_id == user_id,
+                CycleEntry.is_active.is_(True),
+            )
+            .order_by(CycleEntry.period_start_date.asc())
+        )
         rows = (await self.db.execute(stmt)).scalars().all()
 
         if len(rows) >= 2:
@@ -1010,9 +1129,9 @@ class CycleService:
         symptom_counts: dict[str, int] = {}
         mood_counts: dict[str, int] = {}
         for e in entries:
-            for s in (e.symptoms or []):
+            for s in e.symptoms or []:
                 symptom_counts[str(s)] = symptom_counts.get(str(s), 0) + 1
-            for m in (e.mood_tags or []):
+            for m in e.mood_tags or []:
                 mood_counts[str(m)] = mood_counts.get(str(m), 0) + 1
 
         sorted_symptoms = sorted(symptom_counts.items(), key=lambda x: -x[1])[:10]
@@ -1026,3 +1145,224 @@ class CycleService:
             "common_moods": [{"mood": k, "count": v} for k, v in sorted_moods],
             "total_entries": len(entries),
         }
+
+    # ---- Day observations (cycle_days) ----
+
+    async def _get_day(self, user_id: uuid.UUID, log_date: date) -> CycleDay | None:
+        stmt = select(CycleDay).where(CycleDay.user_id == user_id, CycleDay.log_date == log_date)
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def _get_symptom_by_name(self, name: str) -> Symptom | None:
+        stmt = select(Symptom).where(Symptom.name == name)
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def _get_medication_by_name(self, name: str) -> Medication | None:
+        stmt = select(Medication).where(Medication.name == name)
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def upsert_day(
+        self,
+        user_id: uuid.UUID,
+        log_date: date,
+        data: DayUpsert,
+        user_salt: str | None = None,
+    ) -> CycleDay:
+        """Upsert a day's observations (replace semantics for symptoms/medications).
+
+        Row-scoped to ``user_id`` (rule §1.12). ``notes`` is encrypted in the
+        service layer and never sent to Celery for sentiment analysis. On any
+        join replacement the parent row's ``updated_at`` AND ``client_updated_at``
+        are bumped so the sync engine detects the change (§13.3).
+        """
+        dump = data.model_dump(exclude_unset=True)
+
+        day = await self._get_day(user_id, log_date)
+        if day is None:
+            day = CycleDay(user_id=user_id, log_date=log_date)
+            self.db.add(day)
+
+        for field in (
+            "mood",
+            "mood_intensity",
+            "pain_level",
+            "energy_level",
+            "sleep_minutes",
+            "water_glasses",
+            "flow_level",
+        ):
+            if field in dump:
+                setattr(day, field, dump[field])
+
+        if "notes" in dump:
+            raw_notes = dump["notes"] or ""
+            day.notes = self.encryption.encrypt_for_user(raw_notes, user_salt or "")
+
+        if "symptoms" in dump:
+            joins = await self._build_day_symptoms(dump["symptoms"])
+            await self._load_day_joins(day)
+            day.day_symptoms = joins
+
+        if "medications" in dump:
+            joins = await self._build_day_medications(dump["medications"])
+            await self._load_day_joins(day)
+            day.day_medications = joins
+
+        # Gotcha §13.3: parent timestamps drive offline sync detection.
+        day.updated_at = datetime.now(tz=UTC)
+        day.client_updated_at = datetime.now(tz=UTC)
+
+        try:
+            await self.db.commit()
+        except IntegrityError as exc:
+            await self.db.rollback()
+            raise CycleConflictError("Could not save this day's log") from exc
+
+        # Reload with relationships so the response carries symptom/medication
+        # details (bare refresh() does not reload selectin relationships).
+        stmt = (
+            select(CycleDay)
+            .where(CycleDay.id == day.id)
+            .options(
+                selectinload(CycleDay.day_symptoms).selectinload(DaySymptom.symptom),
+                selectinload(CycleDay.day_medications).selectinload(DayMedication.medication),
+            )
+        )
+        day = (await self.db.execute(stmt)).scalar_one()
+
+        # Return plaintext notes in the response; ciphertext stays at rest.
+        if user_salt and day.notes:
+            try:
+                day.notes = self.encryption.decrypt_for_user(day.notes, user_salt)
+            except EncryptionError:
+                day.notes = None
+
+        # Bridge to wellness: the Wellness tab reads mood_logs (NOT cycle_days).
+        # Emitted on the event bus so subscriber module (wellness) owns that table.
+        if day.mood is not None:
+            await event_bus.emit(
+                "day_logged",
+                user_id=str(user_id),
+                log_date=log_date.isoformat(),
+                mood=day.mood,
+                mood_intensity=day.mood_intensity,
+                notes=dump.get("notes") or "",
+            )
+
+        return day
+
+    async def _build_day_symptoms(self, items: list) -> list[DaySymptom]:
+        built: list[DaySymptom] = []
+        for item in items:
+            if isinstance(item, dict):
+                symptom_name = item.get("symptom")
+                severity = item.get("severity", 3)
+            else:
+                symptom_name = getattr(item, "symptom", None)
+                severity = getattr(item, "severity", 3)
+            if not symptom_name:
+                continue
+            sym = await self._get_symptom_by_name(symptom_name)
+            if sym is None:
+                logger.info(
+                    "cycle.day_unknown_symptom",
+                    extra={"symptom": symptom_name},
+                )
+                continue
+            built.append(DaySymptom(symptom_id=sym.id, severity=severity))
+        return built
+
+    async def _build_day_medications(self, items: list) -> list[DayMedication]:
+        built: list[DayMedication] = []
+        for item in items:
+            if isinstance(item, dict):
+                name = item.get("name")
+                dose = item.get("dose")
+                taken_at = item.get("taken_at")
+            else:
+                name = getattr(item, "name", None)
+                dose = getattr(item, "dose", None)
+                taken_at = getattr(item, "taken_at", None)
+            if not name:
+                continue
+            med = await self._get_medication_by_name(name)
+            if med is None:
+                logger.info(
+                    "cycle.day_unknown_medication",
+                    extra={"medication": name},
+                )
+                continue
+            built.append(
+                DayMedication(
+                    medication_id=med.id,
+                    dose=dose,
+                    taken_at=taken_at,
+                )
+            )
+        return built
+
+    async def _load_day_joins(self, day: CycleDay) -> None:
+        """Materialize a day's selectin collections in async context.
+
+        After the day is flushed (autoflush from the master lookups) its selectin
+        collections are unloaded; assigning to them would trigger a sync
+        lazy-load (MissingGreenlet). A selectinload query here populates them
+        greenlet-safe so the later relationship assignment is pure in-memory and
+        the delete-orphan cascade does the replace.
+        """
+        if day.id is None:
+            await self.db.flush()
+        await self.db.execute(
+            select(CycleDay)
+            .where(CycleDay.id == day.id)
+            .options(
+                selectinload(CycleDay.day_symptoms),
+                selectinload(CycleDay.day_medications),
+            )
+        )
+
+    async def list_days(
+        self,
+        user_id: uuid.UUID,
+        start: date,
+        end: date,
+        user_salt: str | None = None,
+    ) -> list[CycleDay]:
+        """List a user's day observations within [start, end], notes decrypted."""
+        stmt = (
+            select(CycleDay)
+            .where(
+                CycleDay.user_id == user_id,
+                CycleDay.log_date >= start,
+                CycleDay.log_date <= end,
+            )
+            .options(
+                selectinload(CycleDay.day_symptoms).selectinload(DaySymptom.symptom),
+                selectinload(CycleDay.day_medications).selectinload(DayMedication.medication),
+            )
+            .order_by(CycleDay.log_date)
+        )
+        days = list((await self.db.execute(stmt)).scalars().all())
+        if user_salt:
+            for day in days:
+                if day.notes:
+                    try:
+                        day.notes = self.encryption.decrypt_for_user(day.notes, user_salt)
+                    except EncryptionError:
+                        day.notes = None
+        return days
+
+    async def list_symptoms(self) -> list[Symptom]:
+        stmt = (
+            select(Symptom)
+            .where(Symptom.is_active.is_(True))
+            .order_by(Symptom.display_order, Symptom.name)
+        )
+        return list((await self.db.execute(stmt)).scalars().all())
+
+    async def list_medications(self) -> list[Medication]:
+        stmt = (
+            select(Medication)
+            .where(Medication.is_active.is_(True))
+            .order_by(Medication.display_order, Medication.name)
+        )
+        return list((await self.db.execute(stmt)).scalars().all())

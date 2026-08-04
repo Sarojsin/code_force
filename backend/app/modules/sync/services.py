@@ -50,6 +50,7 @@ class SyncService:
             "cycle/delete": self._cycle_delete,
             "cycle/correction": self._cycle_correction,
             "cycle/snooze": self._cycle_snooze,
+            "cycle/day": self._cycle_day_upsert,
             "safety/contact/create": self._safety_contact_create,
             "safety/contact/update": self._safety_contact_update,
             "safety/contact/delete": self._safety_contact_delete,
@@ -313,6 +314,80 @@ class SyncService:
             server_data=self._serialize(snooze),
         )
 
+    async def _cycle_day_upsert(self, user_id: uuid.UUID, op: SyncOperation, index: int) -> SyncResultItem:
+        from app.modules.auth.models import User
+        from app.modules.cycle.models import (
+            CycleDay,
+            DayMedication,
+            DaySymptom,
+        )
+        from app.modules.cycle.schemas import DayMedicationIn, DaySymptomIn, DayUpsert
+        from app.modules.cycle.services import CycleService
+        from sqlalchemy.orm import selectinload
+
+        log_date_str = op.data.get("log_date")
+        if not log_date_str:
+            return SyncResultItem(
+                index=index, status="failed", temp_id=op.temp_id,
+                error="Missing log_date",
+            )
+        try:
+            log_date = date.fromisoformat(log_date_str)
+        except (ValueError, TypeError):
+            return SyncResultItem(
+                index=index, status="failed", temp_id=op.temp_id,
+                error="Invalid log_date format",
+            )
+
+        user_stmt = select(User).where(User.id == user_id)
+        user_row = (await self.db.execute(user_stmt)).scalar_one_or_none()
+        user_salt = getattr(user_row, "encryption_key_salt", None) if user_row else None
+
+        symptoms_data = [
+            DaySymptomIn(symptom=s["symptom"], severity=s.get("severity", 3))
+            for s in (op.data.get("symptoms") or [])
+            if isinstance(s, dict) and s.get("symptom")
+        ]
+        medications_data = [
+            DayMedicationIn(name=m["name"], dose=m.get("dose"), taken_at=m.get("taken_at"))
+            for m in (op.data.get("medications") or [])
+            if isinstance(m, dict) and m.get("name")
+        ]
+
+        payload = DayUpsert(
+            mood=op.data.get("mood"),
+            mood_intensity=op.data.get("mood_intensity"),
+            pain_level=op.data.get("pain_level"),
+            energy_level=op.data.get("energy_level"),
+            sleep_minutes=op.data.get("sleep_minutes"),
+            water_glasses=op.data.get("water_glasses"),
+            flow_level=op.data.get("flow_level"),
+            notes=op.data.get("notes"),
+            symptoms=symptoms_data,
+            medications=medications_data,
+        )
+
+        svc = CycleService(self.db)
+        day = await svc.upsert_day(user_id, log_date, payload, user_salt)
+
+        stmt = (
+            select(CycleDay)
+            .where(CycleDay.id == day.id)
+            .options(
+                selectinload(CycleDay.day_symptoms).selectinload(DaySymptom.symptom),
+                selectinload(CycleDay.day_medications).selectinload(DayMedication.medication),
+            )
+        )
+        day = (await self.db.execute(stmt)).scalar_one()
+
+        from app.modules.cycle.schemas import DayResponse
+
+        response = DayResponse.from_day(day, list(day.day_symptoms), list(day.day_medications))
+        return SyncResultItem(
+            index=index, status="updated", entity_id=str(day.id), temp_id=op.temp_id,
+            server_data=response.model_dump(mode="json"),
+        )
+
     # ------------------------------------------------------------------
     # Safety — emergency contact handlers
     # ------------------------------------------------------------------
@@ -553,8 +628,9 @@ class SyncService:
             pass
 
         try:
-            from app.modules.cycle.models import CycleEntry
+            from app.modules.cycle.models import CycleEntry, CycleDay
             queryables.append((CycleEntry, "cycle", "cycle_entry"))
+            queryables.append((CycleDay, "cycle_day", "cycle_days"))
         except ImportError:
             pass
 
