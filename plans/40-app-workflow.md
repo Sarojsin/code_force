@@ -38,12 +38,18 @@ cycle backfill and the first prediction computation.
 | `sleep_hours` | Float | 0–24 |
 | `diet` | String | `balanced` \| `normal` \| `junk` |
 | `current_cycle_start` | Date | Most recent period start |
-| `current_cycle_length` | SmallInteger | 20–45 days |
 | `current_period_length` | SmallInteger | 2–10 days |
 | `current_symptoms` | JSONB | `list[str]` |
 | `past_cycles` | JSONB | `list[PastCycleSchema]` (max 3) |
 | `onboarding_completed` | Boolean | Default `false` |
 | `completed_at` | DateTime (TZ) | Set when first completed |
+
+> **Derived, not collected:** Cycle lengths are NEVER accepted as user input. A user cannot know
+> an ongoing cycle's length. `current_cycle_length` and `PastCycleSchema.cycle_length` were removed
+> from the input contract. Completed cycle lengths are derived server-side from the gaps between
+> consecutive `current_cycle_start`/`cycle_start` dates (up to 4 starts → up to 3 completed-cycle
+> features for the rolling window). The `current_cycle_start` is the prediction **anchor**; the
+> 3 gaps to the past starts are the **completed-cycle features**.
 
 ### 1.3 Frontend Flow (6 steps)
 
