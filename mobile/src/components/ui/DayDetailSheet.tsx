@@ -12,10 +12,11 @@ import { SymptomAccordion } from './dayDetail/SymptomAccordion';
 import { FlowSelector } from './dayDetail/FlowSelector';
 import { PainSlider } from './dayDetail/PainSlider';
 import { EnergySegmented } from './dayDetail/EnergySegmented';
-import { MetricStepper } from './dayDetail/MetricStepper';
 import { MedicationSection } from './dayDetail/MedicationSection';
 import { NotesSection } from './dayDetail/NotesSection';
 import { AIInsightCard } from './dayDetail/AIInsightCard';
+import { SleepWheelPicker } from './dayDetail/SleepWheelPicker';
+import { WaterChips } from './dayDetail/WaterChips';
 
 import { useSymptoms, useMedications, useUpsertDay } from 'src/services/queries/cycle';
 import { toLocalDateStr } from 'src/utils/date';
@@ -236,29 +237,17 @@ export function DayDetailSheet({
 
         <View style={styles.section}>
           <SectionHeader icon="🌙" title="Sleep" theme={theme} />
-          <MetricStepper
-            label="Hours of sleep"
-            icon="🌙"
-            value={obs.sleepMinutes}
+          <SleepWheelPicker
+            totalMinutes={obs.sleepMinutes}
             onChange={(v) => update({ sleepMinutes: v })}
-            min={0}
-            max={720}
-            step={15}
-            formatValue={(v) => `${Math.floor(v / 60)}h ${v % 60}m`}
           />
         </View>
 
         <View style={styles.section}>
           <SectionHeader icon="💧" title="Water" theme={theme} />
-          <MetricStepper
-            label="Glasses of water"
-            icon="💧"
+          <WaterChips
             value={obs.waterGlasses}
             onChange={(v) => update({ waterGlasses: v })}
-            min={0}
-            max={30}
-            step={1}
-            formatValue={(v) => `${v} glasses`}
           />
         </View>
 

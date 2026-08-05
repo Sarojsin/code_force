@@ -8,3 +8,5 @@ export { MetricStepper } from './MetricStepper';
 export { MedicationSection } from './MedicationSection';
 export { NotesSection } from './NotesSection';
 export { AIInsightCard } from './AIInsightCard';
+export { SleepWheelPicker } from './SleepWheelPicker';
+export { WaterChips } from './WaterChips';
