@@ -1,9 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View, Pressable, ActivityIndicator, Modal, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
+import { format } from 'date-fns';
 
 import { Button, Card, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
@@ -87,6 +88,13 @@ export function JournalListScreen() {
   const { data: entries, isLoading, isError, refetch } = useJournalEntries({ page: 0, per_page: 50 });
   const { isConnected } = useNetworkStatus();
 
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayCount = useMemo(
+    () => (entries ?? []).filter((e) => e.entry_date === todayStr).length,
+    [entries, todayStr],
+  );
+  const canCreateNew = todayCount < 3;
+
   const handleEntryPress = useCallback((id: string) => {
     navigation.navigate('JournalEntry', { id });
   }, [navigation]);
@@ -142,6 +150,9 @@ export function JournalListScreen() {
               <Txt variant="body" color="secondary" style={styles.headerSubtitle}>
                 Your personal thoughts and reflections.
               </Txt>
+              <Txt variant="caption" color="muted" style={styles.todayCount}>
+                {todayCount}/3 entries today
+              </Txt>
             </View>
           }
           ListEmptyComponent={
@@ -167,9 +178,10 @@ export function JournalListScreen() {
         />
         <View style={styles.fab}>
           <Button
-            label="+ New Entry"
-            onPress={() => setShowNewEntrySheet(true)}
+            label={canCreateNew ? '+ New Entry' : 'Limit reached (3/day)'}
+            onPress={() => canCreateNew && setShowNewEntrySheet(true)}
             fullWidth
+            disabled={!canCreateNew}
           />
         </View>
 
@@ -227,6 +239,11 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     marginTop: 10,
+  },
+  todayCount: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '600',
   },
   itemCard: {
     marginBottom: 14,

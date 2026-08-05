@@ -5,6 +5,7 @@ import Svg, { Path, Circle as SvgCircle, Text as SvgText, Defs, LinearGradient, 
 
 import { Card, Text, Skeleton } from 'src/components/ui';
 import { useTheme } from 'src/theme';
+import { safeStep, buildAreaPath, buildLinePath } from 'src/utils/svg';
 import { useCycleEntries, useCycleAnalytics } from 'src/services/queries/cycle';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -23,15 +24,15 @@ function MiniLineChart({ cycleData, months }: { cycleData: number[]; months: str
   const padding = { top: 10, bottom: 20, left: 0, right: 0 };
   const plotW = w - padding.left - padding.right;
   const plotH = h - padding.top - padding.bottom;
-  const stepX = plotW / (cycleData.length - 1);
+  const stepX = safeStep(plotW, cycleData.length);
 
   const points = cycleData.map((v, i) => ({
     x: padding.left + i * stepX,
     y: padding.top + plotH - ((v - minVal) / range) * plotH,
   }));
 
-  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-  const areaPath = `${linePath} L${points[points.length - 1].x},${h} L${points[0].x},${h} Z`;
+  const linePath = buildLinePath(points);
+  const areaPath = buildAreaPath(linePath, points[points.length - 1].x, points[0].x, h);
 
   return (
     <Svg width={w} height={h}>

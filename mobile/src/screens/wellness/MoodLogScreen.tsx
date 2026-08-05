@@ -9,6 +9,7 @@ import Svg, { Path, Circle as SvgCircle, Defs, LinearGradient, Stop } from 'reac
 
 import { Button, Card, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
+import { safeStep, buildAreaPath, buildLinePath } from 'src/utils/svg';
 import { logger } from 'src/utils';
 import { wellnessService } from 'src/services/api/wellness';
 
@@ -35,15 +36,15 @@ function MoodTrendChart() {
   const padding = { top: 10, bottom: 20, left: 10, right: 10 };
   const plotW = w - padding.left - padding.right;
   const plotH = h - padding.top - padding.bottom;
-  const stepX = plotW / (MOCK_MOOD_TREND.length - 1);
+  const stepX = safeStep(plotW, MOCK_MOOD_TREND.length);
 
   const points = MOCK_MOOD_TREND.map((v, i) => ({
     x: padding.left + i * stepX,
     y: padding.top + plotH - (v / 10) * plotH,
   }));
 
-  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-  const areaPath = `${linePath} L${points[points.length - 1].x},${h} L${points[0].x},${h} Z`;
+  const linePath = buildLinePath(points);
+  const areaPath = buildAreaPath(linePath, points[points.length - 1].x, points[0].x, h);
 
   return (
     <View style={{ alignItems: 'center' }}>

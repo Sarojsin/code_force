@@ -57,7 +57,7 @@ export function JournalEntryScreen() {
   const { control, handleSubmit, formState, watch, reset } = useForm<JournalForm>({
     resolver: zodResolver(journalSchema),
     defaultValues: { title: '', content: '' },
-    mode: 'onBlur',
+    mode: 'onChange',
   });
 
   const { data: existingEntry, isLoading: entryLoading } = useQuery({
@@ -90,9 +90,12 @@ export function JournalEntryScreen() {
   }, [id, reset, isNew]);
 
   const autoSaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const submittedRef = useRef(false);
+
   useEffect(() => {
     if (!isNew) return;
     autoSaveTimer.current = setInterval(async () => {
+      if (submittedRef.current) return;
       const values = watch();
       if (values.title || values.content) {
         try {
@@ -111,6 +114,7 @@ export function JournalEntryScreen() {
   useEffect(() => {
     if (!isNew) return;
     const unsub = navigation.addListener('beforeRemove', async () => {
+      if (submittedRef.current) return;
       const values = watch();
       if (values.title || values.content) {
         await EncryptedStorage.setItem(
@@ -126,17 +130,29 @@ export function JournalEntryScreen() {
     mutationFn: (data: { title?: string; content: string; mood?: string | null }) =>
       wellnessService.createJournalEntry(data),
     onSuccess: () => {
+      if (isNew) EncryptedStorage.removeItem(DRAFT_KEY(id));
       queryClient.invalidateQueries({ queryKey: ['wellness', 'journal'] });
       Toast.show({ type: 'success', text1: 'Journal entry saved' });
       navigation.goBack();
     },
-    onError: (err) => {
-      logger.error('JournalEntryScreen.save.failed', err);
-      Toast.show({ type: 'error', text1: 'Failed to save entry' });
+    onError: (err: any) => {
+      submittedRef.current = false;
+      const code = err?.response?.data?.error?.code ?? err?.code;
+      if (code === 'DAILY_JOURNAL_LIMIT') {
+        Toast.show({ type: 'info', text1: 'Daily limit reached', text2: 'You can save up to 3 journal entries per day' });
+      } else {
+        logger.error('JournalEntryScreen.save.failed', err);
+        Toast.show({ type: 'error', text1: 'Failed to save entry' });
+      }
     },
   });
 
   const onSubmit = async (data: JournalForm) => {
+    submittedRef.current = true;
+    if (autoSaveTimer.current) {
+      clearInterval(autoSaveTimer.current);
+      autoSaveTimer.current = null;
+    }
     if (isNew) {
       await EncryptedStorage.removeItem(DRAFT_KEY(id));
     }

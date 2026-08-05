@@ -16,6 +16,7 @@ import type { ProfileStackParamList } from 'src/navigation/types';
 type Nav = StackNavigationProp<ProfileStackParamList, 'ProfileHome'>;
 
 const MENU_ITEMS = [
+  { label: 'Daily Log', route: 'DailyLog' as const, icon: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z' },
   { label: 'Edit Profile', route: 'EditProfile' as const, icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
   { label: 'Health Info', route: 'EditHealth' as const, icon: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z' },
   { label: 'Settings', route: 'Settings' as const, icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z' },

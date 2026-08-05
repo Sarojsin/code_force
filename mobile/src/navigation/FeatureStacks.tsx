@@ -32,6 +32,7 @@ import { EmergencyContactEditScreen } from 'src/screens/safety/EmergencyContactE
 import { SosHistoryScreen } from 'src/screens/safety/SosHistoryScreen';
 import { SOSActiveScreen } from 'src/screens/safety/SOSActiveScreen';
 import { ProfileHomeScreen } from 'src/screens/profile/ProfileHomeScreen';
+import { DailyLogScreen } from 'src/screens/profile/DailyLogScreen';
 import { EditProfileScreen } from 'src/screens/profile/EditProfileScreen';
 import { EditHealthScreen } from 'src/screens/profile/EditHealthScreen';
 import { ChangePasswordScreen } from 'src/screens/profile/ChangePasswordScreen';
@@ -127,6 +128,7 @@ export function ProfileStack() {
   return (
     <ProfileNav.Navigator screenOptions={opts}>
       <ProfileNav.Screen name="ProfileHome" component={ProfileHomeScreen} options={{ title: 'Profile' }} />
+      <ProfileNav.Screen name="DailyLog" component={DailyLogScreen} options={{ title: 'Daily Log' }} />
       <ProfileNav.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit Profile' }} />
       <ProfileNav.Screen name="EditHealth" component={EditHealthScreen} options={{ title: 'Health Info' }} />
       <ProfileNav.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'Change Password' }} />
