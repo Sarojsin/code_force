@@ -145,8 +145,4 @@ class AuditMiddleware:
                         )
             await send(message)
 
-        try:
-            await self.app(scope, receive, _send_with_audit)
-        except Exception:
-            await self.app(scope, receive, send)
-            raise
+        await self.app(scope, receive, _send_with_audit)

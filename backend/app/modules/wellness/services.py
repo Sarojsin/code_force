@@ -10,7 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.encryption import EncryptionService
 from app.integrations.huggingface_client import HuggingFaceClient
-from app.modules.wellness.exceptions import ExerciseNotFoundError, JournalEntryNotFoundError
+from app.modules.wellness.exceptions import (
+    DailyJournalLimitError,
+    ExerciseNotFoundError,
+    JournalEntryNotFoundError,
+)
 from app.modules.wellness.models import (
     BreathingExercise,
     HealthTip,
@@ -78,19 +82,34 @@ class WellnessService:
         self.encryption = encryption
         self.hf_client = hf_client
 
+    DAILY_JOURNAL_LIMIT = 3
+
     async def create_journal_entry(
         self,
         user_id: uuid.UUID,
         data: JournalEntryCreate,
         user_salt: str | None,
     ) -> JournalEntry:
+        today = data.entry_date or date.today()
+        count_stmt = select(func.count()).select_from(JournalEntry).where(
+            JournalEntry.user_id == user_id,
+            JournalEntry.entry_date >= today,
+            JournalEntry.entry_date < today + timedelta(days=1),
+            JournalEntry.is_active.is_(True),
+        )
+        today_count = (await self.db.execute(count_stmt)).scalar() or 0
+        if today_count >= self.DAILY_JOURNAL_LIMIT:
+            raise DailyJournalLimitError(
+                f"Daily limit of {self.DAILY_JOURNAL_LIMIT} journal entries reached"
+            )
+
         encrypted_content = self.encryption.encrypt_for_user(data.content, user_salt or "")
         entry = JournalEntry(
             user_id=user_id,
             title=data.title,
             content=encrypted_content,
             mood=data.mood,
-            entry_date=data.entry_date or date.today(),
+            entry_date=today,
         )
         self.db.add(entry)
         await self.db.commit()

@@ -22,3 +22,8 @@ class MoodLogNotFoundError(WellnessError):
 class ExerciseNotFoundError(WellnessError):
     code = "EXERCISE_NOT_FOUND"
     http_status = 404
+
+
+class DailyJournalLimitError(WellnessError):
+    code = "DAILY_JOURNAL_LIMIT"
+    http_status = 429
