@@ -574,3 +574,55 @@ Hermes precompiled bytecode AOT (much faster JS execution)
 Minified/bundled JS, no Metro, no debugger checks
 Optimized native builds (no debug symbols/dev flags)
 So the lag you felt before was mostly dev-mode overhead, not your code. The app itself was fine.
+
+file re;ated to on_board_account_plan.md
+🔍 The Reality Check: How does Sister get to the Login Screen?
+For Sister to create a new account, the app must be showing the Auth Stack (Login/Signup).
+
+The app shows the Auth Stack only if user === null (i.e., no valid auth token exists).
+
+There are only two ways this happens:
+
+User A explicitly taps "Logout" → resetAppForLogout() runs → clears the token → user becomes null → RootNavigator switches to Auth.
+
+User A's token expires (or is manually revoked by the backend) → triggerSessionExpired() runs → clears the token → user becomes null → RootNavigator switches to Auth.
+
+So how did I describe the "without logout" bug?
+I described a scenario where User A completes onboarding and closes the app (without logging out). If Sister opens the app, the app does not show the Login screen—it shows the Home screen (because User A is still logged in). Sister cannot create a new account here without manually clearing app data or deleting the token, which is not a realistic UX flow.
+
+So the "without logout" scenario is invalid for the signup action.
+
+✅ Why the Scoped Flag is STILL Critical (The Real Race Condition)
+Even though Sister must log out User A to reach the Login screen, the scoped flag protects us from a race condition during the logout/registration transition:
+
+The exact sequence where the bug would happen (without scoping):
+
+User A logs out → resetAppForLogout() runs.
+
+Step 1: Zustand stores are reset (onboardingStore.reset() sets isCompleted = false).
+
+Step 2: EncryptedStorage and AsyncStorage are cleared.
+
+Step 3: SQLite is purged.
+
+Step 4: React Query cache is cleared.
+
+RootNavigator sees user === null → renders AuthStack.
+
+Sister taps "Sign Up" → creates account → backend returns user object with onboarding_completed: false.
+
+RootNavigator sees user !== null → decides whether to show MainTabs or OnboardingStack.
+
+Where does the bug hide?
+In Step 2, if the AsyncStorage removeItem('shecare.onboarding') fails (network error, storage permission issue, or race condition), the old { isCompleted: true } object remains in storage.
+When Step 8 runs, RootNavigator reads that stale global key (if it uses a manual read), or Zustand's persist rehydrates the store with isCompleted: true from that stale key.
+Result: Sister is sent to MainTabs, skipping onboarding.
+
+With the scoped flag:
+Even if the stale key survives, it contains userId: 'A'. Sister's user.id is 'B'. The RootNavigator says: "This flag belongs to User A, not User B," and ignores it, falling back to the server flag (onboarding_completed: false). Sister sees Onboarding.
+
+🧠 So, is the "without logout" scenario completely irrelevant?
+No. It matters for new installations or manual app data clears.
+If User A completes onboarding and manually clears the app's cache (but not the storage), and Sister downloads the app later on the same device (unlikely, but possible), the stale flag might persist. Scoping the flag makes it resilient to any scenario where the storage layer isn't perfectly wiped.
+
+But more importantly, scoping the flag is the correct architectural pattern. It means the app's navigation decision never depends on a fragile "delete this key" operation. It depends on logical identity (userId). This is the exact same reasoning we used for the React Query caches.

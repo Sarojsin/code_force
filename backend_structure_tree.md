@@ -1,7 +1,4 @@
 backend/
-├── 📂 .expo/
-│   ├── 📝 README.md
-│   └── 🧾 settings.json
 ├── 📂 .mypy_cache/
 │   ├── 📂 3.11/
 │   │   ├── 📄 cache.0.db
@@ -38,6 +35,7 @@ backend/
 │   │   ├── 📄 15874315730049980434
 │   │   ├── 📄 17083526993251310600
 │   │   ├── 📄 17486771763653982909
+│   │   ├── 📄 2365673087956526988
 │   │   ├── 📄 2640832589956608446
 │   │   ├── 📄 2746877669418958015
 │   │   ├── 📄 3521625753462411193
@@ -213,6 +211,11 @@ backend/
 │   │   │   ├── 🐍 schemas.py
 │   │   │   ├── 🐍 services.py
 │   │   │   └── 🐍 tasks.py
+│   │   ├── 📂 simulation/
+│   │   │   └── 📂 web/
+│   │   │       ├── 📂 components/
+│   │   │       ├── 📂 css/
+│   │   │       └── 📂 js/
 │   │   ├── 📂 sync/
 │   │   │   ├── 🐍 __init__.py
 │   │   │   ├── 🐍 dependencies.py
@@ -252,8 +255,6 @@ backend/
 │   ├── 🐍 __init__.py
 │   ├── 🐍 main.py
 │   └── 🐍 seed.py
-├── 🖼️ assets/
-│   └── 🗄️ models/
 ├── 📚 docs/
 │   ├── 📂 adr/
 │   │   ├── 📝 0001-use-fastapi.md
@@ -301,6 +302,7 @@ backend/
 │   │   ├── 📂 cycle/
 │   │   │   ├── 🐍 __init__.py
 │   │   │   ├── 🐍 system_test.py
+│   │   │   ├── 🐍 test_calendar_day_codes.py
 │   │   │   ├── 🐍 test_extended_services.py
 │   │   │   ├── 🐍 test_extra_services.py
 │   │   │   ├── 🐍 test_routes.py
@@ -338,6 +340,7 @@ backend/
 │   │   │   ├── 🐍 test_routes.py
 │   │   │   ├── 🐍 test_services.py
 │   │   │   └── 🐍 test_tasks.py
+│   │   ├── 📂 simulation/
 │   │   ├── 📂 sync/
 │   │   │   ├── 🐍 test_routes.py
 │   │   │   └── 🐍 test_services.py

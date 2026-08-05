@@ -59,13 +59,6 @@ mobile/
 │   ├── 📝 Splash_Screen.md
 │   ├── 📝 Video_Section.md
 │   └── 📝 missing_ui_ux_Plan.md
-├── 📂 __tests__/
-│   └── 🧩 components/
-├── 🖼️ assets/
-│   ├── 📂 fonts/
-│   ├── 📂 icons/
-│   ├── 🤖 models/
-│   └── 📂 splash/
 ├── 📚 docs/
 │   ├── 📝 adopt_design_system_prompt.md
 │   ├── 📝 codebase_map.md
@@ -75,6 +68,12 @@ mobile/
 │   └── 📝 storage_store_audit.md
 ├── 🧪 e2e/
 │   └── 📘 offline.test.ts
+├── 📂 scripts/
+│   ├── 📗 _tmp_check_bundle.js
+│   ├── 📗 _tmp_extract_chunks.js
+│   ├── 📗 _tmp_js_migrate.js
+│   ├── 📗 _tmp_run_migrate.js
+│   └── 📗 _tmp_sqlite_version.js
 ├── 📦 src/
 │   ├── 📂 __tests__/
 │   │   ├── 📂 companion/
@@ -84,6 +83,7 @@ mobile/
 │   │   │   ├── 📘 MoodManager.test.ts
 │   │   │   ├── 📘 eventFlow.test.ts
 │   │   │   └── 📘 healthTips.test.ts
+│   │   ├── 📘 fixtures.ts
 │   │   ├── 📘 storage_integration.test.ts
 │   │   ├── 📘 syncEngine.test.ts
 │   │   ├── 📘 test_system_test10_scenarios.test.ts
@@ -100,22 +100,25 @@ mobile/
 │   │   ├── 📘 test_system_test9_scenarios.test.ts
 │   │   └── 📘 validation.test.ts
 │   ├── 📱 app/
-│   │   ├── 📂 __tests__/
 │   │   ├── 🚀 App.tsx
 │   │   └── ⚛️ providers.tsx
 │   ├── 🖼️ assets/
-│   │   ├── 📂 companion/
-│   │   │   ├── 🧾 dialogues.json
-│   │   │   ├── 🧾 health_tips_fallback.json
-│   │   │   ├── 📄 luna_assets_v1.1.0.zip
-│   │   │   ├── 🖼️ luna_fallback.png
-│   │   │   └── 🧾 spritesheet.json
-│   │   └── 🤖 models/
+│   │   └── 📂 companion/
+│   │       ├── 🧾 dialogues.json
+│   │       ├── 🧾 health_tips_fallback.json
+│   │       ├── 📄 luna_assets_v1.1.0.zip
+│   │       ├── 🖼️ luna_fallback.png
+│   │       └── 🧾 spritesheet.json
 │   ├── 🧩 components/
-│   │   ├── 💼 business/
+│   │   ├── 🏠 home/
+│   │   │   ├── ⚛️ CatchUpCard.tsx
+│   │   │   └── ⚛️ CheckInCard.tsx
 │   │   └── 🎨 ui/
+│   │       ├── 📂 __tests__/
+│   │       │   └── ⚛️ Calendar.test.tsx
 │   │       ├── ⚛️ AchievementBadge.tsx
 │   │       ├── ⚛️ AchievementPopup.tsx
+│   │       ├── ⚛️ AnimatedSection.tsx
 │   │       ├── ⚛️ BackfillCard.tsx
 │   │       ├── ⚛️ BottomSheet.tsx
 │   │       ├── ⚛️ Button.tsx
@@ -124,6 +127,7 @@ mobile/
 │   │       ├── ⚛️ CelebrationAnimation.tsx
 │   │       ├── ⚛️ ConnectivityBanner.tsx
 │   │       ├── ⚛️ DatePickerField.tsx
+│   │       ├── ⚛️ DayDetailSheet.tsx
 │   │       ├── ⚛️ EmptyState.tsx
 │   │       ├── ⚛️ EndDatePromptCard.tsx
 │   │       ├── ⚛️ ErrorBoundary.tsx
@@ -131,6 +135,7 @@ mobile/
 │   │       ├── ⚛️ FormField.tsx
 │   │       ├── ⚛️ HealthMetricCard.tsx
 │   │       ├── ⚛️ KeyboardAvoidingWrapper.tsx
+│   │       ├── ⚛️ LazyScreen.tsx
 │   │       ├── ⚛️ Loader.tsx
 │   │       ├── ⚛️ MarkEndDateModal.tsx
 │   │       ├── ⚛️ Modal.tsx
@@ -165,11 +170,18 @@ mobile/
 │   │   │   ├── 🗃️ 0003_add_health_metrics.sql
 │   │   │   ├── 🗃️ 0004_add_cycle_type.sql
 │   │   │   ├── 🗃️ 0005_add_diary_module.sql
+│   │   │   ├── 🗃️ 0006_fix_diary_tables.sql
+│   │   │   ├── 🗃️ 0007_add_diary_fts.sql
 │   │   │   ├── 📘 migrations.d.ts
 │   │   │   └── 📗 migrations.js
 │   │   ├── 📘 connection.ts
+│   │   ├── 📘 runMigrations.ts
 │   │   └── 📘 schema.ts
 │   ├── 🪝 hooks/
+│   │   ├── 📘 useCatchUp.ts
+│   │   ├── 📘 useCurrentCycleState.ts
+│   │   ├── 📘 useDebouncedValue.ts
+│   │   ├── 📘 usePeriodCheckIn.ts
 │   │   ├── 📘 usePressScale.ts
 │   │   └── 📘 useStaggerEntrance.ts
 │   ├── 🧭 navigation/
@@ -227,6 +239,7 @@ mobile/
 │   │   │   ├── 🧩 components/
 │   │   │   │   ├── ⚛️ DateStamp.tsx
 │   │   │   │   ├── ⚛️ DiaryCard.tsx
+│   │   │   │   ├── ⚛️ DraggableObject.tsx
 │   │   │   │   ├── ⚛️ FloatingToolbar.tsx
 │   │   │   │   ├── ⚛️ MemoryChip.tsx
 │   │   │   │   ├── ⚛️ MoodBadge.tsx
@@ -246,15 +259,9 @@ mobile/
 │   │   │   ├── ⚛️ DiaryScreen.tsx
 │   │   │   ├── ⚛️ DiarySearchScreen.tsx
 │   │   │   └── ⚛️ DiaryTimelineScreen.tsx
-│   │   ├── 👨‍👩‍👧 family/
-│   │   │   ├── ⚛️ FamilyHomeScreen.tsx
-│   │   │   └── ⚛️ InviteFamilyScreen.tsx
 │   │   ├── 🏠 home/
 │   │   │   ├── ⚛️ HomeDashboardScreen.tsx
 │   │   │   └── ⚛️ VideoLibraryScreen.tsx
-│   │   ├── 👩‍⚕️ nurse_content/
-│   │   │   ├── ⚛️ ContentDetailScreen.tsx
-│   │   │   └── ⚛️ ContentListScreen.tsx
 │   │   ├── 🚀 onboarding/
 │   │   │   ├── ⚛️ CompleteScreen.tsx
 │   │   │   ├── ⚛️ CurrentCycleScreen.tsx
@@ -281,10 +288,10 @@ mobile/
 │   │   │   ├── ⚛️ SOSActiveScreen.tsx
 │   │   │   ├── ⚛️ SafetyHomeScreen.tsx
 │   │   │   └── ⚛️ SosHistoryScreen.tsx
-│   │   ├── 🎙️ voice/
-│   │   │   ├── ⚛️ VoiceHistoryScreen.tsx
-│   │   │   └── ⚛️ VoiceJournalScreen.tsx
 │   │   ├── 🌿 wellness/
+│   │   │   ├── 🎙️ voice/
+│   │   │   │   ├── ⚛️ VoiceHistoryScreen.tsx
+│   │   │   │   └── ⚛️ VoiceJournalScreen.tsx
 │   │   │   ├── ⚛️ BreathingListScreen.tsx
 │   │   │   ├── ⚛️ InsightsScreen.tsx
 │   │   │   ├── ⚛️ JournalEntryScreen.tsx
@@ -354,7 +361,6 @@ mobile/
 │   │   │   ├── 📘 index.ts
 │   │   │   ├── 📘 migrateStoreDataToSqlite.ts
 │   │   │   ├── 📘 pruneLocalDb.ts
-│   │   │   ├── 📘 syncPlaceholders.ts
 │   │   │   └── 📘 writeThroughHelpers.ts
 │   │   ├── 🧠 ml/
 │   │   │   ├── 📂 __tests__/
@@ -384,10 +390,12 @@ mobile/
 │   │   │   ├── 📘 useRefreshWithSqlite.ts
 │   │   │   ├── 📘 voice.ts
 │   │   │   └── 📘 wellness.ts
+│   │   ├── 📂 simulation/
+│   │   │   └── 📂 __tests__/
 │   │   ├── 🔄 sync/
 │   │   │   ├── 📂 __tests__/
 │   │   │   │   └── 📘 isNetworkError.test.ts
-│   │   │   ├── 📘 backgroundSync.ts
+│   │   │   ├── 📘 dbMaintenance.ts
 │   │   │   ├── 📘 index.ts
 │   │   │   ├── 📘 isNetworkError.ts
 │   │   │   ├── 📘 queryKeyMapper.ts
@@ -431,13 +439,17 @@ mobile/
 │   ├── 📐 types/
 │   │   ├── 📘 assets.d.ts
 │   │   ├── 📘 auth.ts
-│   │   ├── 📘 expo-location.d.ts
 │   │   ├── 📘 index.ts
 │   │   └── 📘 onboarding.ts
 │   ├── 🔧 utils/
 │   │   ├── 📂 __tests__/
-│   │   │   └── 📘 backfillCards.test.ts
+│   │   │   ├── 📘 backfillCards.test.ts
+│   │   │   ├── 📘 cyclePhases.test.ts
+│   │   │   └── 📘 date.test.ts
+│   │   ├── 📘 backfillCards.ts
 │   │   ├── 📘 cyclePhases.ts
+│   │   ├── 📘 date.ts
+│   │   ├── 📘 idle.ts
 │   │   ├── 📘 index.ts
 │   │   ├── 📘 logger.ts
 │   │   ├── 📘 predictionColors.ts
@@ -463,6 +475,7 @@ mobile/
 ├── 📗 index.js
 ├── 📗 jest.config.js
 ├── 📗 jest.setup.js
+├── 📗 jest.setupAfterEnv.js
 ├── 📄 libexpo-av-aar.so
 ├── 📄 libexpo-av.so
 ├── 📗 metro.config.js
