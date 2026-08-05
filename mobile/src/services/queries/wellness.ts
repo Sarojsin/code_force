@@ -61,8 +61,8 @@ export function useJournalEntries(params?: { page?: number; per_page?: number })
       const local = userId
         ? (await localDb.journal.getRecent(userId, params?.per_page ?? 50)) as unknown as JournalEntry[]
         : [];
-      if (server.length > 0) {
-        localDb.journal.upsertMany(server as any);
+      if (server.length > 0 && userId) {
+        localDb.journal.upsertMany(server.map((e) => ({ ...e, user_id: userId })) as any);
       }
       return mergeJournalEntries(server, local);
     },
@@ -125,8 +125,8 @@ export function useMoodLogs(params?: { page?: number; per_page?: number }) {
             new Date().toISOString(),
           )) as unknown as MoodLog[]
         : [];
-      if (server.length > 0) {
-        localDb.mood.upsertMany(server as any);
+      if (server.length > 0 && userId) {
+        localDb.mood.upsertMany(server.map((m) => ({ ...m, user_id: userId })) as any);
       }
       return mergeMoodLogs(server, local);
     },

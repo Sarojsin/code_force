@@ -137,11 +137,17 @@ api.interceptors.response.use(
   resp => resp,
   async (error: AxiosError) => {
     const status = error.response?.status;
-    const detail = (error.response?.data as any)?.detail || '';
+    const responseData = error.response?.data as any;
+    // Backend wraps errors in {"error": {code, details}} envelope
+    const errorCode = responseData?.error?.code ?? '';
+    const errorDetails = responseData?.error?.details ?? responseData?.detail ?? '';
 
     // Handle session-expired / compromised (usk kill-switch / replay detection)
-    if (status === 401 && SESSION_EXPIRED_DETAILS.includes(detail)) {
-      triggerSessionExpired(detail);
+    const isSessionExpired =
+      errorCode === 'UNAUTHORIZED' && SESSION_EXPIRED_DETAILS.some((msg) => errorDetails.includes(msg));
+
+    if (status === 401 && isSessionExpired) {
+      triggerSessionExpired(errorDetails);
       return Promise.reject(error);
     }
 
@@ -155,6 +161,9 @@ api.interceptors.response.use(
         (original.headers as Record<string, string>).Authorization = `Bearer ${newToken}`;
         return api.request(original);
       }
+      // Refresh failed — session is dead
+      triggerSessionExpired('Refresh token expired. Please log in again.');
+      return Promise.reject(error);
     }
     return Promise.reject(error);
   },

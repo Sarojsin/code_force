@@ -61,6 +61,18 @@ export interface JournalAnalysis {
   created_at: string;
 }
 
+export interface HealthTipResponse {
+  id: string;
+  metric_type: string;
+  tip: string;
+  priority: number;
+}
+
+export interface HealthTipListResponse {
+  data: HealthTipResponse[];
+  total: number;
+}
+
 export interface SyncAnalysisPayload {
   journal_id: string;
   mood_score: number;
@@ -121,6 +133,13 @@ export const wellnessService = {
   async getInsights(): Promise<WellnessInsights> {
     const resp = await api.get('/wellness/insights');
     return unwrap(resp.data);
+  },
+
+  async getHealthTips(metric_type?: string, limit: number = 3): Promise<HealthTipListResponse> {
+    const params: Record<string, unknown> = { limit };
+    if (metric_type) params.metric_type = metric_type;
+    const resp = await api.get('/wellness/health-tips', { params });
+    return resp.data;
   },
 
   async syncJournalAnalysis(data: SyncAnalysisPayload): Promise<JournalAnalysis> {

@@ -4,4 +4,5 @@ export * from './idle';
 export * from './logger';
 export * from './onboardingDecision';
 export * from './predictionColors';
+export * from './svg';
 export * from './uuid';

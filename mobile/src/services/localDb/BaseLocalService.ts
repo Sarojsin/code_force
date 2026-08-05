@@ -40,18 +40,16 @@ export abstract class BaseLocalService<T extends { id: string }> {
     try {
       const db = getDb();
       const target = this.idColumn ?? this.table.id;
-      await db.transaction(async (tx) => {
-        for (const record of records) {
-          const values = this.normalize(record);
-          await tx
-            .insert(this.table)
-            .values(values)
-            .onConflictDoUpdate({
-              target,
-              set: values,
-            });
-        }
-      });
+      for (const record of records) {
+        const values = this.normalize(record);
+        await db
+          .insert(this.table)
+          .values(values)
+          .onConflictDoUpdate({
+            target,
+            set: values,
+          });
+      }
     } catch (error) {
       this.handleError('upsertMany', error);
     }
