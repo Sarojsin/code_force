@@ -274,5 +274,131 @@
     "You're leveling up in real life!",
     "Celebrate this win — you worked hard for it.",
     "Milestone reached! The journey continues!"
+  ],
+  "memory_sleep_late": [
+    "You've been logging sleep around 11pm — need a wind-down tip?",
+    "I noticed you tend to sleep late. Want to try an earlier wind-down tonight?",
+    "Your bedtime keeps drifting late. A small night routine could help!",
+    "We both know the night owl pattern — want a sleep tip?",
+    "Late bedtime streak detected. Your morning self says hi!"
+  ],
+  "memory_water_hero": [
+    "You're turning into a hydration hero! Six glasses or more is impressive!",
+    "Look at that water streak — your future self is glowing!",
+    "You drink more water than most — genuinely proud of you!",
+    "Hydration hero status: confirmed!",
+    "Your water game is elite. Cheers!"
+  ],
+  "memory_streak": [
+    "Three days in a row — this habit is sticking!",
+    "Your consistency is building something real. Keep going!",
+    "Streak is growing! You showed up every day this week!",
+    "Habit on lock. I can feel the momentum!",
+    "That streak is a promise you're keeping to yourself!"
+  ],
+  "memory_medication_consistent": [
+    "You have been on schedule for days — your body notices the consistency.",
+    "Consistency with medication is a huge win. I am cheering for you!",
+    "Medication streak intact. You are showing up for yourself!",
+    "Routine locked in! Your future self is grateful.",
+    "You have been so consistent — that is real self-care."
+  ],
+  "memory_period_due": [
+    "Your period should be close — I have got the heating pad energy ready.",
+    "Period due soon. Rest, hydrate, and be gentle with yourself.",
+    "I remember this feeling. You are prepared and not alone.",
+    "Cycle check: comfort mode recommended for the next few days.",
+    "You are close to your period — I am here for the aches and all."
+  ],
+  "memory_mood_recall": [
+    "Last time you felt this way you went for a walk. Want to try again?",
+    "You have felt like this before and got through it. I remember that strength.",
+    "Last time this feeling came, a little fresh air helped. Should we try it?",
+    "You survived this mood before. We can do it together again.",
+    "I remember a day like this — a walk turned it around. Up for it?"
+  ],
+  "memory_welcome_missed": [
+    "You were away for a while — I kept your spot warm!",
+    "It has been a few days! I missed you a lot.",
+    "Welcome back, stranger! I saved every purr for you.",
+    "I counted the days you were gone. Too many!",
+    "Look who decided to come back! I missed your company."
+  ],
+  "diary_page_created": [
+    "New page, new you! I love a fresh start.",
+    "A brand new page — let us fill it with good things.",
+    "I can almost smell the paper. What will we write?",
+    "A fresh page and endless possibilities. Exciting!",
+    "Another page, another memory. I love it!"
+  ],
+  "diary_photo_added": [
+    "Ooh, I saw that snapshot — beautiful!",
+    "That photo caught my eye. Lovely choice.",
+    "A little moment, frozen forever. Nice.",
+    "What a snapshot! It belongs in the memory book.",
+    "That photo says a thousand words. I love it!"
+  ],
+  "diary_page_saved": [
+    "Saved. You showed up for yourself today.",
+    "Page tucked away safely. Nicely done.",
+    "Good save. That page is yours to keep.",
+    "Saved with care. Your future self will thank you.",
+    "Page locked in. Beautiful work!"
+  ],
+  "diary_opened": [
+    "Let's write something beautiful together.",
+    "I love when you open your diary.",
+    "Another page awaits. Take your time.",
+    "The diary is open — let the words flow.",
+    "Ready when you are. I'll keep you company."
+  ],
+  "diary_media_synced": [
+    "Your memory is safely backed up now.",
+    "All synced — your photos are safe.",
+    "Everything uploaded. Nothing lost.",
+    "Backed up and secure. You can relax now.",
+    "Synced! Your precious moments are protected."
+  ],
+  "day_logged": [
+    "Feeling it today — logged it. Good job.",
+    "I see you took a moment for yourself. That counts.",
+    "Another day, captured. You are doing great.",
+    "Logged! Honoring how you feel is a win.",
+    "You checked in with yourself today. Beautiful."
+  ],
+  "cycle_phase_menstrual": [
+    "You are in your period phase. Rest, hydrate, and be gentle with yourself.",
+    "Period days are rest days. I have got the warmth covered.",
+    "Be extra kind to yourself right now. Your body is working hard.",
+    "Menstrual phase — slow down, stay cozy, listen to your body.",
+    "Your body is doing something powerful. Honor it with rest."
+  ],
+  "cycle_phase_follicular": [
+    "Follicular phase — rising energy. A great time to start something new.",
+    "Your energy is building. Today is good for fresh beginnings.",
+    "Early-cycle glow. You have the momentum to begin.",
+    "Follicular days bring clarity and drive. Use them well.",
+    "Energy is on the rise — a beautiful window to create."
+  ],
+  "cycle_phase_luteal": [
+    "Luteal phase — time to wind down and nurture yourself.",
+    "Late-cycle days call for softness. Protect your peace.",
+    "You may feel more inward right now. That is okay.",
+    "Luteal phase — go gently. Rest is productive too.",
+    "Your body is asking for calm. Give it some grace."
+  ],
+  "cycle_phase_fertile": [
+    "You are in your fertile window — energy and confidence are high.",
+    "Fertile phase. A bright, magnetic stretch of days.",
+    "High-vitality days. Make the most of that spark.",
+    "Fertile window — you are glowing with possibility.",
+    "This phase brings warmth and connection. Enjoy it."
+  ],
+  "cycle_phase_ovulation": [
+    "Ovulation day — peak vitality. You are radiating.",
+    "Ovulation peak. You have never been more magnetic.",
+    "At your peak today. Go make it count.",
+    "Peak energy day — you are unstoppable right now.",
+    "Ovulation — your brightness is at its highest."
   ]
 }

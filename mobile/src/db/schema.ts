@@ -434,6 +434,8 @@ export const companionMetadata = sqliteTable('companion_metadata', {
   assets_version: text('assets_version'),
   install_status: text('install_status', { enum: ['none', 'downloading', 'extracting', 'ready', 'error'] }).notNull().default('none'),
   last_active_at: isoDatetimeOptional('last_active_at'),
+  relationship_level: integer('relationship_level').notNull().default(1),
+  last_seen_at: integer('last_seen_at'),
   created_at: isoDatetime('created_at').default(sql`(datetime('now'))`),
   updated_at: isoDatetime('updated_at').default(sql`(datetime('now'))`),
 });
@@ -687,3 +689,23 @@ export const dayMedications = sqliteTable(
     medIdx: index('idx_day_medications_medication_id').on(table.medication_id),
   }),
 );
+
+// ---------------------------------------------------------------------------
+// 26. Companion memory — rolling, bounded on-device memory for Luna (no sync)
+// ---------------------------------------------------------------------------
+
+export const companionMemory = sqliteTable(
+  'companion_memory',
+  {
+    key: text('key').primaryKey(),
+    value: text('value').notNull(),
+    updated_at: integer('updated_at').notNull(),
+    created_at: integer('created_at').notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index('idx_companion_memory_created_at').on(table.created_at),
+  }),
+);
+
+export type CompanionMemory = typeof companionMemory.$inferSelect;
+export type NewCompanionMemory = typeof companionMemory.$inferInsert;

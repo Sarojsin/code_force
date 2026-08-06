@@ -130,6 +130,10 @@ export default function App() {
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = setTimeout(() => {
       syncAll().catch((err) => logger.error('sync.debounced_failed', err));
+      // Luna2 Phase 4: aggregate companion state follows the user across devices.
+      import('src/services/companion/lunaSyncClient')
+        .then(({ syncLunaState }) => syncLunaState())
+        .catch((err) => logger.warn('luna.sync.failed', err));
     }, 300);
   }).current;
 

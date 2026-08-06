@@ -64,6 +64,13 @@
       "when": 1792000000000,
       "tag": "0008_add_day_observations",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "9",
+      "when": 1792600000000,
+      "tag": "0009_add_companion_memory",
+      "breakpoints": true
     }
   ]
 }
