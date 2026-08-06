@@ -7,6 +7,7 @@ import { generateId } from 'src/utils/uuid';
 import { diaryLocal } from '../../services/localDb';
 import { useDiary, useCreatePage } from '../../services/queries/diary';
 import { useDiaryMediaUpload } from '../../services/diary/useDiaryMediaUpload';
+import { emitDiaryPageSaved } from '../../services/diary/diaryEvents';
 import { FloatingToolbar } from './components/FloatingToolbar';
 import { ObjectToolOverlay } from './components/ObjectToolOverlay';
 import { StickerPicker } from './components/StickerPicker';
@@ -289,12 +290,16 @@ export function DiaryEditorScreen({ route, navigation }: any) {
 
   const finishEditing = useCallback(async () => {
     setSaving(true);
-    if (pageId) {
-      await syncRef.current.flush(pageId);
+    try {
+      if (pageId) {
+        await syncRef.current.flush(pageId);
+        emitDiaryPageSaved({ diaryId, pageId });
+      }
+    } finally {
+      setSaving(false);
+      navigation.goBack();
     }
-    setSaving(false);
-    navigation.goBack();
-  }, [pageId, navigation]);
+  }, [pageId, diaryId, navigation]);
 
   const selected = objects.find(o => o.id === selectedId);
 

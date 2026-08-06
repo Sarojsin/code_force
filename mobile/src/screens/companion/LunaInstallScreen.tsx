@@ -13,12 +13,12 @@ import { logger } from '../../utils';
 
 const LUNA_FEATURES = [
   { icon: '\u{1F4AC}', title: 'Daily Companion', description: 'Luna greets you every day with warmth and encouragement.' },
+  { icon: '\u{1F431}', title: '3D Luna', description: 'A fully animated 3D cat appears on your dashboard once installed.' },
   { icon: '\u{1F389}', title: 'Celebrates Your Wins', description: 'Log a period, journal, or exercise \u2014 Luna celebrates with you.' },
   { icon: '\u{1F3AE}', title: 'XP & Levels', description: 'Earn XP for healthy habits. Level up your friendship with Luna.' },
-  { icon: '\u{1F3A8}', title: 'Customizable', description: 'Hats, glasses, beds, backgrounds \u2014 make Luna yours. (Phase 2)' },
   { icon: '\u{1F50A}', title: 'Sound Effects', description: 'Meows, purrs, yawns, and celebration sounds \u2014 Luna comes alive.' },
   { icon: '\u{1F512}', title: '100% Private', description: 'Luna lives on your device. No data ever leaves your phone.' },
-  { icon: '\u{1F4E6}', title: 'Downloadable', description: '~4.5 MB download. Uninstall anytime to free up space.' },
+  { icon: '\u{1F4E6}', title: 'Downloadable', description: '~5.5 MB download. Uninstall anytime to free up space.' },
 ];
 
 export function LunaInstallScreen() {
@@ -176,8 +176,8 @@ export function LunaInstallScreen() {
         </View>
 
         <Text variant="caption" color="muted" align="center" style={{ paddingHorizontal: 16, marginBottom: 16, opacity: 0.7 }}>
-          Luna code is pre-bundled (~200 KB). Assets (sprites, sounds, dialogues) are downloaded
-          only when you install. Luna is 100% offline and private \u2014 no data leaves your device.
+          Luna code is pre-bundled (~200 KB). Assets (3D model, sprites, sounds, dialogues) are
+          downloaded only when you install. Luna is 100% offline and private \u2014 no data leaves your device.
         </Text>
 
         <Text variant="caption" color="muted" align="center" style={{ opacity: 0.5 }}>

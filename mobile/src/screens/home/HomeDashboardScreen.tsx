@@ -14,6 +14,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { LunaOverlay } from '../companion/LunaOverlay';
 import { initEventEngine } from '../../services/companion/EventEngine';
 import { useSpeechBubble } from '../../services/companion/EventEngine';
+import { dialogueEngine } from '../../services/companion/DialogueEngine';
+import type { CyclePhase } from '../../services/companion/DialogueEngine';
 import { useCompanionStore } from '../../stores/companionStore';
 import { usePregnancyModeStore } from '../../stores/pregnancyModeStore';
 import { useAchievementStore } from '../../stores/achievementStore';
@@ -54,6 +56,17 @@ export function HomeDashboardScreen() {
   const lunaInitialized = useRef(false);
   const eventCleanupRef = useRef<(() => void) | null>(null);
   const { show: showBubble } = useSpeechBubble();
+
+  // Inject a cycle-phase reader into the dialogue engine (luna2 phase5 §2).
+  // Reads the current phase at dialogue-pick time via a ref so it stays fresh
+  // without reaching into the cycle module's store from the companion layer.
+  const phaseKeyRef = useRef<CyclePhase | undefined>(hasCycleData ? phaseKey : undefined);
+  phaseKeyRef.current = hasCycleData ? phaseKey : undefined;
+
+  useEffect(() => {
+    dialogueEngine.setCyclePhaseSource(() => phaseKeyRef.current);
+    return () => dialogueEngine.setCyclePhaseSource(null);
+  }, []);
   const showPopup = useAchievementStore((s) => s.showPopup);
   const dismissPopup = useAchievementStore((s) => s.dismissPopup);
   const currentPopup = useAchievementStore((s) => s.currentPopup);
@@ -358,6 +371,13 @@ export function HomeDashboardScreen() {
           pregnancyMode={pregnancyMode}
           week={pregWeek}
           trimester={pregWeek <= 13 ? 1 : pregWeek <= 26 ? 2 : 3}
+          currentPhase={phaseLabel}
+          phaseKey={hasCycleData ? phaseKey : null}
+          nextPeriodDays={nextPeriodDays}
+          predictedStartDate={calData?.predictions?.predicted_next_period_start ?? null}
+          predictedEndDate={calData?.predictions?.predicted_period_end ?? null}
+          predictedCycleLength={predictedCycleLength}
+          hasCycleData={hasCycleData}
         />
       )}
       {lunaEnabled && <AchievementPopup achievement={currentPopup} onDismiss={dismissPopup} />}

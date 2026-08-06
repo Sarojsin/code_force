@@ -14,7 +14,9 @@ import { usePregnancyModeStore } from '../../stores/pregnancyModeStore';
 import { uninstallLuna } from '../../services/assetDownloader';
 import { useDiaryAssetStore } from '../../stores/diaryAssetStore';
 import { uninstallDiaryAssets } from '../../services/diaryAssetDownloader';
-import { LunaSprite } from '../../services/companion';
+import { useAnimationEngine, voiceService } from '../../services/companion';
+import { Luna3D } from '../../services/companion/3d/Luna3D';
+import Slider from '@react-native-community/slider';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface SettingRowProps {
@@ -93,6 +95,50 @@ function SettingsSection({ title, children }: { title: string; children: React.R
   );
 }
 
+function SpeechSliderRow({
+  label,
+  value,
+  minimum,
+  maximum,
+  step,
+  formatValue,
+  onChange,
+  accessibilityLabel,
+}: {
+  label: string;
+  value: number;
+  minimum: number;
+  maximum: number;
+  step: number;
+  formatValue?: (v: number) => string;
+  onChange: (v: number) => void;
+  accessibilityLabel: string;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.settingRow, { borderBottomColor: theme.colors.border, minHeight: theme.minTouchTarget }]}>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Txt variant="body">{label}</Txt>
+        <Slider
+          style={{ marginTop: 4, marginRight: 12, height: 36 }}
+          minimumValue={minimum}
+          maximumValue={maximum}
+          step={step}
+          value={value}
+          onValueChange={onChange}
+          minimumTrackTintColor={theme.colors.primary}
+          maximumTrackTintColor={theme.colors.border}
+          thumbTintColor={theme.colors.primary}
+          accessibilityLabel={accessibilityLabel}
+        />
+      </View>
+      <Txt variant="caption" color="muted" style={{ marginRight: 16 }}>
+        {formatValue ? formatValue(value) : String(value)}
+      </Txt>
+    </View>
+  );
+}
+
 export function SettingsScreen() {
   const theme = useTheme();
   const navigation = useNavigation<any>();
@@ -102,6 +148,9 @@ export function SettingsScreen() {
   const companionHidden = useCompanionStore((s) => s.isHidden);
   const companionReduceAnimations = useCompanionStore((s) => s.reduceAnimations);
   const companionMuteSounds = useCompanionStore((s) => s.muteSounds);
+  const companionSpeakEnabled = useCompanionStore((s) => s.speakEnabled);
+  const companionSpeechRate = useCompanionStore((s) => s.speechRate);
+  const companionSpeechPitch = useCompanionStore((s) => s.speechPitch);
   const companionLevel = useCompanionStore((s) => s.level);
   const companionTitle = useCompanionStore((s) => s.levelTitle);
   const companionXp = useCompanionStore((s) => s.xp);
@@ -110,6 +159,7 @@ export function SettingsScreen() {
   const diaryHydrated = useDiaryAssetStore((s) => s.isHydrated);
   const companionHydrated = useCompanionStore((s) => s.isHydrated);
   const installStatus = useCompanionStore((s) => s.installStatus);
+  const { currentAnim } = useAnimationEngine();
   const assetsVersion = useCompanionStore((s) => s.assetsVersion);
 
   const handleLunaToggle = (key: 'isHidden' | 'reduceAnimations' | 'muteSounds') => async (value: boolean) => {
@@ -128,6 +178,15 @@ export function SettingsScreen() {
         logger.info('Luna muteSounds:', value);
         break;
     }
+  };
+
+  const handleLunaSpeakToggle = async (value: boolean) => {
+    await voiceService.setEnabled(value);
+    logger.info('Luna speaks:', value);
+  };
+
+  const handleTestVoice = () => {
+    void voiceService.speak("Hi, I'm Luna!");
   };
 
   const handleLunaUninstall = () => {
@@ -274,7 +333,12 @@ export function SettingsScreen() {
               </View>
               {!companionHidden && (
                 <View style={{ alignItems: 'center', paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.border }}>
-                  <LunaSprite size={60} />
+                  <Luna3D
+                    size={60}
+                    currentAnim={currentAnim}
+                    installed={installStatus === 'ready'}
+                    reduceAnimations={companionReduceAnimations}
+                  />
                   <Txt variant="caption" color="muted" style={{ marginTop: 4 }}>
                     {companionReduceAnimations ? 'Static mode' : 'Animations enabled'}
                   </Txt>
@@ -307,6 +371,38 @@ export function SettingsScreen() {
               <SettingRow label="Hide Companion" description="Luna disappears from the dashboard" value={companionHidden} onToggle={handleLunaToggle('isHidden')} accessibilityLabel="Toggle hide Luna companion" />
               <SettingRow label="Reduce Animations" description="Static cat only (no movement)" value={companionReduceAnimations} onToggle={handleLunaToggle('reduceAnimations')} accessibilityLabel="Toggle reduce Luna animations" />
               <SettingRow label="Mute Sounds" description="Disable meows and purrs" value={companionMuteSounds} onToggle={handleLunaToggle('muteSounds')} accessibilityLabel="Toggle mute Luna sounds" />
+              <SettingRow label="Luna Speaks" description="Read dialogue aloud (device voice)" value={companionSpeakEnabled} onToggle={handleLunaSpeakToggle} accessibilityLabel="Toggle Luna speaking" />
+              {companionSpeakEnabled && (
+                <>
+                  <SpeechSliderRow
+                    label="Speaking Rate"
+                    value={companionSpeechRate}
+                    minimum={0.5}
+                    maximum={2}
+                    step={0.05}
+                    formatValue={(v) => `${Math.round(v * 100)}%`}
+                    onChange={(v) => useCompanionStore.getState().setSpeechPref({ rate: v })}
+                    accessibilityLabel="Adjust Luna speaking rate"
+                  />
+                  <SpeechSliderRow
+                    label="Voice Pitch"
+                    value={companionSpeechPitch}
+                    minimum={0.5}
+                    maximum={2}
+                    step={0.05}
+                    formatValue={(v) => `${Math.round(v * 100)}%`}
+                    onChange={(v) => useCompanionStore.getState().setSpeechPref({ pitch: v })}
+                    accessibilityLabel="Adjust Luna voice pitch"
+                  />
+                  <SettingRow
+                    label="Test Voice"
+                    description="Hear the current voice, rate and pitch"
+                    showDisclosure
+                    onPress={handleTestVoice}
+                    accessibilityLabel="Test Luna voice"
+                  />
+                </>
+              )}
             </>
           )}
         </SettingsSection>

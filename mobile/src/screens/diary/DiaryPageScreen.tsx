@@ -1,12 +1,22 @@
 import { View, Text, TouchableOpacity, ScrollView, Image, StyleSheet } from 'react-native';
+import { useEffect, useRef } from 'react';
 import { ResizeMode, Video } from 'expo-av';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDiaryPage } from '../../services/queries/diary';
+import { emitDiaryOpened } from '../../services/diary/diaryEvents';
 
 export function DiaryPageScreen({ route, navigation }: any) {
   const { diaryId, pageId } = route.params;
   const { top } = useSafeAreaInsets();
   const { data: page } = useDiaryPage(diaryId, pageId);
+  const openedRef = useRef(false);
+
+  useEffect(() => {
+    if (page && !openedRef.current) {
+      openedRef.current = true;
+      emitDiaryOpened({ diaryId, pageId });
+    }
+  }, [page, diaryId, pageId]);
 
   if (!page) return null;
 

@@ -1,23 +1,29 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { View, Pressable, StyleSheet, Dimensions, AppState } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withSequence, withDelay, withRepeat, Easing } from 'react-native-reanimated';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, withRepeat, Easing, useReducedMotion } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useCompanionStore } from '../../stores/companionStore';
-import { useAnimationEngine, LunaSprite } from '../../services/companion';
-import type { AnimationState } from '../../services/companion';
+import { useAnimationEngine, memoryService, dialogueEngine, voiceService } from '../../services/companion';
+import { Luna3D } from '../../services/companion/3d/Luna3D';
 import { useSpeechBubble } from '../../services/companion/EventEngine';
 import { Text, Loader } from '../../components/ui';
 import { useTheme } from '../../theme';
-import { useNavigation } from '@react-navigation/native';
 import { getLunaContext, LunaScreen } from '../../services/companion/lunaContext';
+import { getFallbackTip, type HealthTipCategory } from '../../services/healthTips';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const LUNA_SIZE = 60;
+const LUNA_SIZE = 96;
 const BUBBLE_WIDTH = 210;
-const PET_COOLDOWN_MS = 5000;
-const HEART_EMOJIS = ['\u{1F495}', '\u{2764}\u{FE0F}', '\u{1F497}', '\u{1F496}', '\u{1F43E}'];
+
+const PHASE_TIP_CATEGORY: Record<string, HealthTipCategory> = {
+  menstrual: 'food',
+  follicular: 'exercise',
+  ovulation: 'water',
+  luteal: 'sleep',
+};
 
 function AnimAvatar() {
   return (
@@ -39,6 +45,12 @@ export interface LunaOverlayProps {
   lunaEnabled?: boolean;
   pregnancyMode?: boolean;
   currentPhase?: string;
+  phaseKey?: 'menstrual' | 'follicular' | 'ovulation' | 'luteal' | 'fertile' | null;
+  nextPeriodDays?: number | null;
+  predictedStartDate?: string | null;
+  predictedEndDate?: string | null;
+  predictedCycleLength?: number | null;
+  hasCycleData?: boolean;
   mood?: string | null;
   energy?: number;
   wellnessTab?: string;
@@ -52,6 +64,12 @@ export function LunaOverlay({
   lunaEnabled: lunaEnabledProp = true,
   pregnancyMode: pregnancyModeProp = false,
   currentPhase,
+  phaseKey = null,
+  nextPeriodDays = null,
+  predictedStartDate = null,
+  predictedEndDate = null,
+  predictedCycleLength = null,
+  hasCycleData = false,
   mood,
   energy,
   wellnessTab,
@@ -60,6 +78,7 @@ export function LunaOverlay({
   babySize,
 }: LunaOverlayProps) {
   const theme = useTheme();
+  const systemReducedMotion = useReducedMotion();
 
   const isHidden = useCompanionStore((s) => s.isHidden);
   const reduceAnimations = useCompanionStore((s) => s.reduceAnimations);
@@ -68,20 +87,31 @@ export function LunaOverlay({
   const xpToNext = useCompanionStore((s) => s.xpToNext);
   const installStatus = useCompanionStore((s) => s.installStatus);
 
-  const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
+  // Dock above the bottom tab bar + home-indicator safe area so Luna never hides
+  // under the navigation bar.
+  const dockBottom = (insets?.bottom ?? 0) + (tabBarHeight ?? 0) + 18;
 
-  const { play, animatedStyle, isAnimating, scale, opacity } = useAnimationEngine();
+  const { play, animatedStyle, isAnimating, scale, opacity, currentAnim } = useAnimationEngine();
   const { current: speech, show: showBubble } = useSpeechBubble();
+  const talking = useSharedValue(false);
 
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const savedTranslateX = useSharedValue(0);
-  const savedTranslateY = useSharedValue(0);
+  useEffect(() => {
+    const unsubscribe = voiceService.onSpeaking((speaking) => {
+      talking.value = speaking;
+    });
+    return unsubscribe;
+  }, [talking]);
 
-  const [showTapFeedback, setShowTapFeedback] = useState(false);
-  const [petCount, setPetCount] = useState(0);
+  useEffect(() => {
+    if (isHidden) {
+      voiceService.stop();
+    }
+  }, [isHidden]);
+
   const [expanded, setExpanded] = useState(false);
-  const hearts = useSharedValue(0);
+  const [healthTip, setHealthTip] = useState<string | null>(null);
   const walkX = useSharedValue(0);
 
   const context = useMemo(() => getLunaContext(screen, {
@@ -106,7 +136,7 @@ export function LunaOverlay({
     } else {
       walkX.value = 0;
     }
-  }, [context.animation]);
+  }, [context.animation, walkX]);
 
   const floatAnim = useAnimatedStyle(() => {
     if (reduceAnimations) return {};
@@ -117,21 +147,42 @@ export function LunaOverlay({
       case 'bounce':
         return { transform: [{ translateY: withSequence(withTiming(-14, { duration: 450 }), withTiming(0, { duration: 450 })) }] };
       default:
-        return { transform: [{ translateY: withRepeat(withSequence(withTiming(-6, { duration: 2000 }), withTiming(0, { duration: 2000 })), -1, true) }] };
+        return { transform: [{ translateY: withRepeat(withSequence(withTiming(-3, { duration: 2000 }), withTiming(0, { duration: 2000 })), -1, true) }] };
     }
   }, [context.animation, reduceAnimations]);
 
-  const heartStyle = useAnimatedStyle(() => ({
-    opacity: hearts.value,
-    transform: [
-      { translateY: -hearts.value * 20 },
-      { scale: 1 + hearts.value * 0.5 },
-    ],
-  }));
-
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const turnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const idleStage = useRef(0);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    if (turnTimer.current) clearTimeout(turnTimer.current);
+    idleStage.current = 0;
+    if (idleTimer.current) clearInterval(idleTimer.current);
+    if (!reduceAnimations) {
+      play('idle_blink');
+    }
+    inactivityTimer.current = setTimeout(() => {
+      if (!reduceAnimations) {
+        play('sleep');
+      }
+    }, 35000);
+    // After a stretch of true inactivity, turn Luna around to show her back —
+    // an "alive" cue that she's been watching you go.
+    turnTimer.current = setTimeout(() => {
+      if (
+        !reduceAnimations &&
+        !isAnimating('sleep') &&
+        !isAnimating('show_back') &&
+        !isAnimating('wave') &&
+        !isAnimating('happy')
+      ) {
+        play('show_back');
+      }
+    }, 32000);
+  }, [reduceAnimations, play, isAnimating]);
 
   const wakeUp = useCallback(() => {
     if (isAnimating('sleep') || useCompanionStore.getState().memory.lastPetTime) {
@@ -145,21 +196,7 @@ export function LunaOverlay({
       }
     }
     resetInactivityTimer();
-  }, [reduceAnimations, scale, opacity, showBubble]);
-
-  const resetInactivityTimer = useCallback(() => {
-    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
-    idleStage.current = 0;
-    if (idleTimer.current) clearInterval(idleTimer.current);
-    if (!reduceAnimations) {
-      play('idle_blink');
-    }
-    inactivityTimer.current = setTimeout(() => {
-      if (!reduceAnimations) {
-        play('sleep');
-      }
-    }, 35000);
-  }, [reduceAnimations, play]);
+  }, [reduceAnimations, scale, opacity, showBubble, isAnimating, resetInactivityTimer]);
 
   const startIdleCycle = useCallback(() => {
     if (reduceAnimations) return;
@@ -216,6 +253,7 @@ export function LunaOverlay({
     resetInactivityTimer();
     return () => {
       if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      if (turnTimer.current) clearTimeout(turnTimer.current);
     };
   }, [resetInactivityTimer]);
 
@@ -223,10 +261,35 @@ export function LunaOverlay({
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         resetInactivityTimer();
+      } else if (state === 'background') {
+        voiceService.stop();
       }
     });
     return () => sub.remove();
   }, [resetInactivityTimer]);
+
+  // Hydrate on-device memory on mount + foreground so dialogue is memory-aware
+  useEffect(() => {
+    let cancelled = false;
+    const hydrate = () => {
+      const userId = useCompanionStore.getState().userId;
+      if (!userId) return;
+      memoryService
+        .hydrateMemory(userId)
+        .then((snapshot) => {
+          if (!cancelled) dialogueEngine.setMemoryContext(snapshot);
+        })
+        .catch(() => {});
+    };
+    hydrate();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') hydrate();
+    });
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (speech) {
@@ -239,70 +302,28 @@ export function LunaOverlay({
         play('idle');
       }
     }
-  }, [speech?.id]);
+  }, [speech, reduceAnimations, play, resetInactivityTimer]);
 
   const handleTap = useCallback(() => {
     if (isHidden) return;
-
-    setExpanded((v) => !v);
+    setExpanded((v) => {
+      const next = !v;
+      if (next && !hasCycleData) {
+        setHealthTip(pickHealthTip(phaseKey));
+      }
+      return next;
+    });
     wakeUp();
-
     if (!reduceAnimations) {
-      const petAnimations: AnimationState[] = ['pet', 'wave', 'happy'];
-      const animIndex = petCount % petAnimations.length;
-      play(petAnimations[animIndex]);
-      setPetCount((c) => c + 1);
+      play('wave');
     }
-
-    setShowTapFeedback(true);
-    hearts.value = withSequence(
-      withTiming(1, { duration: 200, easing: Easing.out(Easing.back(2)) }),
-      withDelay(400, withTiming(0, { duration: 200 }))
-    );
-    setTimeout(() => setShowTapFeedback(false), 800);
-
-    const now = Date.now();
-    const lastPet = (useCompanionStore.getState().memory.lastPetTime as number) ?? 0;
-    if (now - lastPet > PET_COOLDOWN_MS) {
-      useCompanionStore.getState().updateMemory('lastPetTime', now);
-      useCompanionStore.getState().addXP(1);
-      useCompanionStore.getState().addCoins(1);
-    }
-
-    const { dialogueEngine: de } = require('../../services/companion/DialogueEngine');
-    showBubble(de.get('petted'), 'pet', 3000);
-
     resetInactivityTimer();
-  }, [isHidden, reduceAnimations, petCount, play, showBubble, resetInactivityTimer, wakeUp, hearts]);
-
-  const panGesture = Gesture.Pan()
-    .onStart(() => {
-      savedTranslateX.value = translateX.value;
-      savedTranslateY.value = translateY.value;
-    })
-    .onUpdate((e) => {
-      translateX.value = savedTranslateX.value + e.translationX;
-      translateY.value = savedTranslateY.value + e.translationY;
-    })
-    .onEnd(() => {
-      translateX.value = withSpring(Math.round(translateX.value / 10) * 10);
-      translateY.value = withSpring(Math.round(translateY.value / 10) * 10);
-    })
-    .minDistance(10);
-
-  const dragStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-    ],
-  }));
+  }, [isHidden, hasCycleData, phaseKey, reduceAnimations, play, resetInactivityTimer, wakeUp]);
 
   const xpProgress = useMemo(() => {
     if (xpToNext <= 0) return 1;
     return Math.min(xp / xpToNext, 1);
   }, [xp, xpToNext]);
-
-  const heartEmoji = HEART_EMOJIS[petCount % HEART_EMOJIS.length];
 
   if (isHidden) return null;
 
@@ -311,7 +332,7 @@ export function LunaOverlay({
       return (
         <View style={styles.downloadPlaceholder}>
           <Loader size="small" />
-          <Text variant="caption" color="muted" align="center" style={{ marginTop: 4 }}>
+          <Text variant="caption" color="muted" align="center" style={styles.downloadStatus}>
             {installStatus === 'downloading' ? 'Downloading...' : 'Extracting...'}
           </Text>
         </View>
@@ -323,15 +344,15 @@ export function LunaOverlay({
           <View style={styles.expandedBubble}>
             <BlurView intensity={20} tint="light" style={styles.bubbleBlur} />
             <View style={styles.bubbleContent}>
-              <View style={styles.bubbleHeader}>
-                <AnimAvatar />
-                <Text style={styles.bubbleTitle}>LUNA</Text>
-              </View>
-              <Text style={styles.bubbleMessage}>{context.message}</Text>
-              {context.actionLabel && (
-                <Pressable onPress={() => setExpanded(false)}>
-                  <Text style={styles.bubbleAction}>{context.actionLabel} {'\u2192'}</Text>
-                </Pressable>
+              {hasCycleData ? (
+                <NextPeriodPanel
+                  days={nextPeriodDays}
+                  startDate={predictedStartDate}
+                  endDate={predictedEndDate}
+                  cycleLength={predictedCycleLength}
+                />
+              ) : (
+                <HealthTipFallback tip={healthTip ?? ''} />
               )}
             </View>
             <Pressable
@@ -349,24 +370,25 @@ export function LunaOverlay({
 
         {!expanded && speech && <SpeechBubble text={speech.text} />}
 
-        {showTapFeedback && (
-          <Animated.View style={[styles.tapFeedback, heartStyle]}>
-            <Text style={styles.heartText}>{heartEmoji}</Text>
-          </Animated.View>
-        )}
-
         <Pressable
           onPress={handleTap}
-          onLongPress={() => navigation.navigate('HealthHub')}
-          delayLongPress={600}
-          accessibilityLabel="Luna the companion cat. Tap to toggle bubble, long press for Health Hub."
+          accessibilityLabel="Luna the companion cat. Tap for your next-period forecast or a health tip."
           accessibilityRole="imagebutton"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Animated.View style={[animatedStyle, floatAnim]}>
-            <LunaSprite size={reduceAnimations ? LUNA_SIZE - 8 : LUNA_SIZE} animatedStyle={animatedStyle} />
+            <Luna3D
+              size={reduceAnimations ? LUNA_SIZE - 8 : LUNA_SIZE}
+              currentAnim={currentAnim}
+              installed={installStatus === 'ready'}
+              reducedMotion={systemReducedMotion}
+              reduceAnimations={reduceAnimations}
+              talking={talking}
+            />
           </Animated.View>
         </Pressable>
+
+        <View style={styles.groundShadow} />
 
         {!expanded && (
           <>
@@ -374,7 +396,7 @@ export function LunaOverlay({
               <View style={[styles.xpFill, { width: `${xpProgress * 100}%` as any, backgroundColor: theme.colors.primary }]} />
             </View>
             <View style={[styles.levelBadge, { backgroundColor: theme.colors.primary }]}>
-              <Text style={{ color: theme.colors.textInverse, fontSize: 9, fontWeight: '700' }}>
+              <Text style={styles.levelBadgeText}>
                 {'Lv.'}{level}
               </Text>
             </View>
@@ -385,11 +407,76 @@ export function LunaOverlay({
   })();
 
   return (
-    <GestureDetector gesture={panGesture}>
-      <Animated.View style={[styles.container, dragStyle]}>
-        {innerContent}
-      </Animated.View>
-    </GestureDetector>
+    <Animated.View style={[styles.container, { bottom: dockBottom }]}>
+      {innerContent}
+    </Animated.View>
+  );
+}
+
+function pickHealthTip(phaseKey: string | null | undefined): string {
+  const category = phaseKey ? PHASE_TIP_CATEGORY[phaseKey] : undefined;
+  return (
+    getFallbackTip(category ?? 'general') ??
+    getFallbackTip('general') ??
+    'Small consistent steps lead to big health changes.'
+  );
+}
+
+function formatDateLabel(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function NextPeriodPanel({
+  days,
+  startDate,
+  endDate,
+  cycleLength,
+}: {
+  days: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  cycleLength: number | null;
+}) {
+  let statusText = 'coming up';
+  if (days !== null) {
+    if (days <= 0) {
+      statusText = days === 0 ? 'due today' : 'started';
+    } else {
+      statusText = `in ${days} day${days === 1 ? '' : 's'}`;
+    }
+  }
+  return (
+    <>
+      <View style={styles.bubbleHeader}>
+        <AnimAvatar />
+        <Text style={styles.bubbleTitle}>LUNA</Text>
+      </View>
+      <Text style={styles.periodBig}>Next period {statusText}</Text>
+      {startDate != null && (
+        <Text style={styles.bubbleMessage}>
+          Expected {formatDateLabel(startDate)}
+          {endDate ? ` \u2013 ${formatDateLabel(endDate)}` : ''}
+        </Text>
+      )}
+      {cycleLength != null && <Text style={styles.bubbleMessage}>Cycle avg: {cycleLength} days</Text>}
+    </>
+  );
+}
+
+function HealthTipFallback({ tip }: { tip: string }) {
+  return (
+    <>
+      <View style={styles.bubbleHeader}>
+        <AnimAvatar />
+        <Text style={styles.bubbleTitle}>LUNA</Text>
+        <View style={styles.tipBadge}>
+          <Text style={styles.tipBadgeText}>HEALTH TIP</Text>
+        </View>
+      </View>
+      <Text style={styles.bubbleMessage}>{tip}</Text>
+    </>
   );
 }
 
@@ -407,7 +494,6 @@ function SpeechBubble({ text }: { text: string }) {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 96,
     right: 14,
     alignItems: 'center',
     zIndex: 1000,
@@ -417,6 +503,9 @@ const styles = StyleSheet.create({
     height: LUNA_SIZE + 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  downloadStatus: {
+    marginTop: 4,
   },
   avatarRing: {
     width: 28,
@@ -514,12 +603,6 @@ const styles = StyleSheet.create({
     color: '#6B4D5A',
     marginBottom: 4,
   },
-  bubbleAction: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FF6B8A',
-    marginTop: 4,
-  },
   dismissBtn: {
     position: 'absolute',
     top: 8,
@@ -546,13 +629,36 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '45deg' }],
     borderBottomRightRadius: 3,
   },
-  tapFeedback: {
-    position: 'absolute',
-    top: -20,
-    alignSelf: 'center',
+  periodBig: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#2D1B26',
+    marginBottom: 6,
   },
-  heartText: {
-    fontSize: 20,
+  tipBadge: {
+    backgroundColor: 'rgba(255,107,138,0.14)',
+    borderRadius: 100,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  tipBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    color: '#FF6B8A',
+  },
+  levelBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  groundShadow: {
+    width: LUNA_SIZE * 0.62,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'rgba(0,0,0,0.12)',
+    marginTop: -8,
   },
   xpBar: {
     width: LUNA_SIZE - 12,
