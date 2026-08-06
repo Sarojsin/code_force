@@ -13,6 +13,7 @@ import { useAuthStore } from 'src/stores/authStore';
 import { useOfflineStore } from 'src/stores/offlineStore';
 import { useEndDateStore } from 'src/stores/endDateStore';
 import { isNetworkError } from 'src/services/sync';
+import { eventBus } from 'src/services/eventBus';
 import { scheduleEndDateNotification } from 'src/services/endDateNotifications';
 import { calculateCyclePhases, applyPhaseToDays, toLocalDateStr, parseISODateLocal, extendPeriodBlock } from 'src/utils';
 import { generateId } from 'src/utils';
@@ -468,9 +469,19 @@ export function useUpsertDay() {
   return useMutation({
     mutationFn: ({ logDate, data }: { logDate: string; data: DayUpsertPayload }) =>
       cycleService.upsertDay(logDate, data),
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       upsertCycleDay(result as unknown as Record<string, unknown>);
       qc.invalidateQueries({ queryKey: keys.days });
+
+      const uid = useAuthStore.getState().user?.id;
+      if (uid) {
+        eventBus.emit('day_logged', {
+          userId: uid,
+          logDate: variables.logDate,
+          mood: variables.data.mood ?? null,
+          moodIntensity: variables.data.mood_intensity ?? null,
+        });
+      }
 
       // BRIDGE: The backend wrote to mood_logs via day_logged event.
       // Invalidate ALL wellness caches so the entire tab refreshes holistically.

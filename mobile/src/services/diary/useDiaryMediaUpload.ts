@@ -6,6 +6,7 @@ import { diaryLocal } from '../localDb';
 import { useNetworkStatus } from '../sync/useNetworkStatus';
 import { generateId } from 'src/utils/uuid';
 import { logger } from 'src/utils';
+import { emitDiaryPhotoAdded, emitDiaryMediaSynced } from './diaryEvents';
 
 interface PendingUpload {
   mediaId: string;
@@ -37,6 +38,10 @@ export function useDiaryMediaUpload() {
       upload_status: 'local',
       is_active: true,
     } as any);
+
+    if (mimeType.startsWith('image')) {
+      emitDiaryPhotoAdded({ mediaId, mimeType });
+    }
 
     queueRef.current.push({ mediaId, localPath, mimeType });
     processQueue();
@@ -70,6 +75,7 @@ export function useDiaryMediaUpload() {
           s3_key: key,
         });
         await diaryLocal.media.markUploaded(media.id, key);
+        emitDiaryMediaSynced({ mediaId: item.mediaId, s3Key: key });
         logger.info('DiaryMediaUpload: success', { mediaId: item.mediaId, key });
         qc.invalidateQueries({ queryKey: ['diary_media'] });
       } else {

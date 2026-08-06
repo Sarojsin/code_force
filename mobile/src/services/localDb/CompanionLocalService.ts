@@ -13,6 +13,16 @@ export function calculateLevel(xp: number): number {
   return 1;
 }
 
+export const RELATIONSHIP_THRESHOLDS = [100, 500, 2000, 10000, 50000];
+
+export function calculateRelationshipLevel(xp: number): number {
+  let level = 1;
+  for (const threshold of RELATIONSHIP_THRESHOLDS) {
+    if (xp >= threshold) level += 1;
+  }
+  return level;
+}
+
 export class CompanionLocalService {
   async getMetadata(userId: string): Promise<CompanionMetadata | null> {
     try {
@@ -50,20 +60,43 @@ export class CompanionLocalService {
       const current = await this.getMetadata(userId);
       const newXp = (current?.xp ?? 0) + amount;
       const newLevel = calculateLevel(newXp);
+      const newRelationshipLevel = calculateRelationshipLevel(newXp);
       await db
         .insert(companionMetadata)
         .values({
           user_id: userId,
           xp: newXp,
           level: newLevel,
+          relationship_level: newRelationshipLevel,
           updated_at: new Date().toISOString(),
         } as NewCompanionMetadata)
         .onConflictDoUpdate({
           target: companionMetadata.user_id,
-          set: { xp: newXp, level: newLevel, updated_at: new Date().toISOString() },
+          set: {
+            xp: newXp,
+            level: newLevel,
+            relationship_level: newRelationshipLevel,
+            updated_at: new Date().toISOString(),
+          },
         });
     } catch (error) {
       this.handleError('addXP', error);
+    }
+  }
+
+  async updateLastSeen(userId: string): Promise<void> {
+    try {
+      const db = getDb();
+      await db
+        .update(companionMetadata)
+        .set({
+          last_seen_at: Date.now(),
+          last_active_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .where(eq(companionMetadata.user_id, userId));
+    } catch (error) {
+      this.handleError('updateLastSeen', error);
     }
   }
 

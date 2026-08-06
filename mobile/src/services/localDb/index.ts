@@ -18,7 +18,7 @@ import { DiaryMediaLocalService } from './DiaryMediaLocalService';
 import { DiarySearchLocalService } from './DiarySearchLocalService';
 import { DiarySyncService } from './DiarySyncService';
 
-export { CompanionLocalService, companionLocalService, calculateLevel } from './CompanionLocalService';
+export { CompanionLocalService, companionLocalService, calculateLevel, calculateRelationshipLevel, RELATIONSHIP_THRESHOLDS } from './CompanionLocalService';
 export { HealthMetricsLocalService, healthMetricsLocalService } from './HealthMetricsLocalService';
 export { DiaryLocalService } from './DiaryLocalService';
 export { DiaryPageLocalService } from './DiaryPageLocalService';

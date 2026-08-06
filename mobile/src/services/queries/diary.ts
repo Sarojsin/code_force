@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { diaryService } from '../api/diary';
+import { emitDiaryPageCreated } from '../diary/diaryEvents';
 
 export function useDiaries() {
   return useQuery({
@@ -50,8 +51,13 @@ export function useCreatePage() {
   return useMutation({
     mutationFn: (payload: { diary_id: string; page_date: string }) =>
       diaryService.createPage(payload.diary_id, { page_date: payload.page_date }),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
       qc.invalidateQueries({ queryKey: ['diary_pages', variables.diary_id] });
+      emitDiaryPageCreated({
+        diaryId: variables.diary_id,
+        pageId: data?.id,
+        page_date: variables.page_date,
+      });
     },
   });
 }

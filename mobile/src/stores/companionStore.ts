@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { companionLocalService, calculateLevel } from '../services/localDb';
+import { companionLocalService, calculateLevel, calculateRelationshipLevel } from '../services/localDb';
 export { calculateLevel } from '../services/localDb';
+export { calculateRelationshipLevel, RELATIONSHIP_THRESHOLDS } from '../services/localDb';
 
 export const LEVEL_TITLES: Record<number, string> = {
   1: 'Kitten',
@@ -39,6 +40,12 @@ export const XP_REWARDS = {
   daily_login: 2,
   health_streak: 20,
   health_milestone: 50,
+  diary_page_created: 12,
+  diary_photo_added: 5,
+  diary_page_saved: 5,
+  diary_opened: 2,
+  diary_media_synced: 8,
+  day_logged: 4,
 } as const;
 
 export const COIN_REWARDS = {
@@ -54,16 +61,43 @@ export const COIN_REWARDS = {
   daily_login: 1,
   health_streak: 5,
   health_milestone: 10,
+  diary_page_created: 2,
+  diary_photo_added: 1,
+  diary_page_saved: 1,
+  diary_media_synced: 2,
+  day_logged: 1,
 } as const;
+
+/** Opt-in TTS prefs, persisted in `companion_metadata.memory.speech`. */
+export interface SpeechPrefs {
+  enabled: boolean;
+  voiceId: string | null;
+  rate: number;
+  pitch: number;
+}
+
+export const DEFAULT_SPEECH_PREFS: SpeechPrefs = {
+  enabled: false,
+  voiceId: null,
+  rate: 1,
+  pitch: 1,
+};
 
 interface CompanionState {
   userId: string | null;
   xp: number;
   coins: number;
   level: number;
+  relationshipLevel: number;
+  lastSeenAt: number | null;
   currentOutfitId: string | null;
   ownedOutfits: string[];
   memory: Record<string, unknown>;
+
+  speakEnabled: boolean;
+  speechVoiceId: string | null;
+  speechRate: number;
+  speechPitch: number;
 
   isHidden: boolean;
   reduceAnimations: boolean;
@@ -83,11 +117,13 @@ interface CompanionState {
   spendCoins: (amount: number) => Promise<boolean>;
   setOutfit: (outfitId: string | null) => Promise<void>;
   updateMemory: (key: string, value: unknown) => Promise<void>;
+  setSpeechPref: (partial: Partial<SpeechPrefs>) => Promise<void>;
   setHidden: (hidden: boolean) => Promise<void>;
   setReduceAnimations: (reduce: boolean) => Promise<void>;
   setMuteSounds: (mute: boolean) => Promise<void>;
   setInstallStatus: (status: string) => void;
   setAssetsVersion: (version: string | null) => void;
+  setLastSeen: (ts: number) => void;
   reset: () => void;
 }
 
@@ -96,9 +132,15 @@ export const useCompanionStore = create<CompanionState>((set, get) => ({
   xp: 0,
   coins: 0,
   level: 1,
+  relationshipLevel: 1,
+  lastSeenAt: null,
   currentOutfitId: null,
   ownedOutfits: [],
   memory: {},
+  speakEnabled: false,
+  speechVoiceId: null,
+  speechRate: 1,
+  speechPitch: 1,
   isHidden: false,
   reduceAnimations: false,
   muteSounds: false,
@@ -113,14 +155,21 @@ export const useCompanionStore = create<CompanionState>((set, get) => ({
     try {
       const meta = await companionLocalService.getMetadata(userId);
       if (meta) {
+        const speech = (meta.memory as { speech?: Partial<SpeechPrefs> })?.speech ?? {};
         set({
           userId: meta.user_id,
           xp: meta.xp,
           coins: meta.coins,
           level: meta.level,
+          relationshipLevel: meta.relationship_level,
+          lastSeenAt: meta.last_seen_at,
           currentOutfitId: meta.current_outfit_id,
           ownedOutfits: meta.owned_outfits ?? [],
           memory: (meta.memory as Record<string, unknown>) ?? {},
+          speakEnabled: speech.enabled ?? false,
+          speechVoiceId: speech.voiceId ?? null,
+          speechRate: speech.rate ?? 1,
+          speechPitch: speech.pitch ?? 1,
           isHidden: meta.is_hidden,
           reduceAnimations: meta.reduce_animations,
           muteSounds: meta.mute_sounds,
@@ -138,6 +187,7 @@ export const useCompanionStore = create<CompanionState>((set, get) => ({
           xp: 0,
           coins: 0,
           level: 1,
+          relationship_level: 1,
           current_outfit_id: null,
           owned_outfits: [],
           memory: {},
@@ -154,9 +204,15 @@ export const useCompanionStore = create<CompanionState>((set, get) => ({
           xp: 0,
           coins: 0,
           level: 1,
+          relationshipLevel: 1,
+          lastSeenAt: null,
           currentOutfitId: null,
           ownedOutfits: [],
           memory: {},
+          speakEnabled: false,
+          speechVoiceId: null,
+          speechRate: 1,
+          speechPitch: 1,
           isHidden: false,
           reduceAnimations: false,
           muteSounds: false,
@@ -179,10 +235,12 @@ export const useCompanionStore = create<CompanionState>((set, get) => ({
     if (!userId) return;
     const newXp = xp + amount;
     const newLevel = calculateLevel(newXp);
+    const newRelationshipLevel = calculateRelationshipLevel(newXp);
     await companionLocalService.addXP(userId, amount);
     set({
       xp: newXp,
       level: newLevel,
+      relationshipLevel: newRelationshipLevel,
       levelTitle: getLevelTitle(newLevel),
       xpToNext: xpToNextLevel(newLevel),
       lastActiveAt: new Date().toISOString(),
@@ -232,6 +290,30 @@ export const useCompanionStore = create<CompanionState>((set, get) => ({
     set({ memory: updated });
   },
 
+  setSpeechPref: async (partial: Partial<SpeechPrefs>) => {
+    const { userId, speakEnabled, speechVoiceId, speechRate, speechPitch, memory } = get();
+    if (!userId) return;
+    const next: SpeechPrefs = {
+      enabled: partial.enabled ?? speakEnabled,
+      voiceId: partial.voiceId !== undefined ? partial.voiceId : speechVoiceId,
+      rate: partial.rate ?? speechRate,
+      pitch: partial.pitch ?? speechPitch,
+    };
+    const updated = { ...memory, speech: next };
+    await companionLocalService.upsertMetadata({
+      user_id: userId,
+      memory: updated,
+      updated_at: new Date().toISOString(),
+    } as any);
+    set({
+      memory: updated,
+      speakEnabled: next.enabled,
+      speechVoiceId: next.voiceId,
+      speechRate: next.rate,
+      speechPitch: next.pitch,
+    });
+  },
+
   setHidden: async (hidden: boolean) => {
     const { userId } = get();
     if (!userId) return;
@@ -261,15 +343,25 @@ export const useCompanionStore = create<CompanionState>((set, get) => ({
     set({ assetsVersion: version });
   },
 
+  setLastSeen: (ts: number) => {
+    set({ lastSeenAt: ts });
+  },
+
   reset: () => {
     set({
       userId: null,
       xp: 0,
       coins: 0,
       level: 1,
+      relationshipLevel: 1,
+      lastSeenAt: null,
       currentOutfitId: null,
       ownedOutfits: [],
       memory: {},
+      speakEnabled: false,
+      speechVoiceId: null,
+      speechRate: 1,
+      speechPitch: 1,
       isHidden: false,
       reduceAnimations: false,
       muteSounds: false,
