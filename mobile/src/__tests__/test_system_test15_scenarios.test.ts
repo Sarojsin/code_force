@@ -404,6 +404,10 @@ describe('Scenario 49: Desync / Timestamp Conflict', () => {
 
     await act(async () => { await syncAll(); });
 
+    // hydrateFromServerData is scheduled via requestIdleIdle (50ms fallback
+    // timeout in the test env) — flush it before asserting.
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 60)); });
+
     expect(mockHydrate).toHaveBeenCalledWith('journal/update', serverData);
   });
 
