@@ -229,9 +229,9 @@ def init_module(app, event_bus) -> None:
 
     @app.on_event("startup")
     async def seed_tips_on_startup():
-        from app.core.database import async_session_maker
+        from app.core.database import AsyncSessionLocal
 
-        async with async_session_maker() as session:
+        async with AsyncSessionLocal() as session:
             await seed_health_tips(session)
 
     # ---- Bridge: cycle module emits `day_logged` on DayDetailSheet save ----
@@ -249,11 +249,11 @@ def init_module(app, event_bus) -> None:
         from datetime import date
         from uuid import UUID
 
-        from app.core.database import async_session_maker
+        from app.core.database import AsyncSessionLocal
         from app.modules.wellness.services import upsert_mood_for_date
 
         try:
-            async with async_session_maker() as session:
+            async with AsyncSessionLocal() as session:
                 parsed_date = date.fromisoformat(log_date)
                 await upsert_mood_for_date(
                     session,
