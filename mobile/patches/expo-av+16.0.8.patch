@@ -26,3 +26,497 @@ index 6b5f52a..59a12d6 100644
 -          ReactAndroid::reactnativejni
 -  )
 -endif()
+diff --git a/node_modules/expo-av/android/src/main/java/expo/modules/av/ViewUtils.kt b/node_modules/expo-av/android/src/main/java/expo/modules/av/ViewUtils.kt
+index d18b58a..ef48e5e 100644
+--- a/node_modules/expo-av/android/src/main/java/expo/modules/av/ViewUtils.kt
++++ b/node_modules/expo-av/android/src/main/java/expo/modules/av/ViewUtils.kt
+@@ -8,7 +8,6 @@ import expo.modules.av.video.VideoView
+ import expo.modules.av.video.VideoViewWrapper
+ import expo.modules.core.ModuleRegistry
+ import expo.modules.core.Promise
+-import expo.modules.core.interfaces.services.UIManager
+ 
+ object ViewUtils {
+   interface VideoViewCallback {
+@@ -18,7 +17,8 @@ object ViewUtils {
+   @UiThread
+   private fun tryRunWithVideoViewOnUiThread(moduleRegistry: ModuleRegistry, viewTag: Int, callback: VideoViewCallback, promise: Promise) {
+     try {
+-      val videoWrapperView = moduleRegistry.getModule(UIManager::class.java).resolveView(viewTag) as VideoViewWrapper?
++      val appContext = moduleRegistry.appContext
++      val videoWrapperView = appContext?.findView<VideoViewWrapper>(viewTag)
+       val videoView = videoWrapperView?.videoViewInstance
+       if (videoView != null) {
+         callback.runWithVideoView(videoView)
+@@ -49,7 +49,8 @@ object ViewUtils {
+   @UiThread
+   private fun tryRunWithVideoViewOnUiThread(moduleRegistry: ModuleRegistry, viewTag: Int, callback: VideoViewCallback, promise: expo.modules.kotlin.Promise) {
+     try {
+-      val videoWrapperView = moduleRegistry.getModule(UIManager::class.java).resolveView(viewTag) as VideoViewWrapper?
++      val appContext = moduleRegistry.appContext
++      val videoWrapperView = appContext?.findView<VideoViewWrapper>(viewTag)
+       val videoView = videoWrapperView?.videoViewInstance
+       if (videoView != null) {
+         callback.runWithVideoView(videoView)
+diff --git a/node_modules/expo-av/android/src/main/java/expo/modules/av/video/FullscreenVideoPlayer.java b/node_modules/expo-av/android/src/main/java/expo/modules/av/video/FullscreenVideoPlayer.java
+index ec4c842..3e30e4b 100644
+--- a/node_modules/expo-av/android/src/main/java/expo/modules/av/video/FullscreenVideoPlayer.java
++++ b/node_modules/expo-av/android/src/main/java/expo/modules/av/video/FullscreenVideoPlayer.java
+@@ -10,8 +10,6 @@ import android.widget.FrameLayout;
+ 
+ import java.lang.ref.WeakReference;
+ 
+-import expo.modules.core.ModuleRegistry;
+-import expo.modules.core.interfaces.services.KeepAwakeManager;
+ import expo.modules.av.player.PlayerData;
+ import expo.modules.kotlin.AppContext;
+ 
+@@ -33,16 +31,8 @@ public class FullscreenVideoPlayer extends Dialog {
+           boolean isPlaying =
+               fullscreenVideoPlayer.mVideoView.getStatus().containsKey(PlayerData.STATUS_IS_PLAYING_KEY_PATH)
+                   && fullscreenVideoPlayer.mVideoView.getStatus().getBoolean(PlayerData.STATUS_IS_PLAYING_KEY_PATH);
+-          AppContext appContext = fullscreenVideoPlayer.mAppContext.get();
+-          ModuleRegistry moduleRegistry = appContext != null ? appContext.getLegacyModuleRegistry() : null;
+-          if (moduleRegistry != null) {
+-            KeepAwakeManager keepAwakeManager = moduleRegistry.getModule(KeepAwakeManager.class);
+-            boolean keepAwakeIsActivated = keepAwakeManager != null && keepAwakeManager.isActivated();
+-            if (isPlaying || keepAwakeIsActivated) {
+-              window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+-            } else {
+-              window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+-            }
++          if (isPlaying) {
++            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+           }
+         }
+         fullscreenVideoPlayer.mKeepScreenOnHandler.postDelayed(this, UPDATE_KEEP_SCREEN_ON_FLAG_MS);
+diff --git a/node_modules/expo-av/expo-module.config.json b/node_modules/expo-av/expo-module.config.json
+index 6313da6..6659d96 100644
+--- a/node_modules/expo-av/expo-module.config.json
++++ b/node_modules/expo-av/expo-module.config.json
+@@ -4,12 +4,6 @@
+     "modules": ["VideoViewModule"]
+   },
+   "android": {
+-    "modules": ["expo.modules.av.video.VideoViewModule", "expo.modules.av.AVModule"],
+-    "publication": {
+-      "groupId": "host.exp.exponent",
+-      "artifactId": "expo.modules.av",
+-      "version": "16.0.8",
+-      "repository": "local-maven-repo"
+-    }
++    "modules": ["expo.modules.av.video.VideoViewModule", "expo.modules.av.AVModule"]
+   }
+ }
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar
+deleted file mode 100644
+index 0d12038..0000000
+Binary files a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar and /dev/null differ
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar.md5 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar.md5
+deleted file mode 100644
+index 1c657b5..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar.md5
++++ /dev/null
+@@ -1 +0,0 @@
+-d7881eeb90fedb38f4a03d71135ba173
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar.sha1 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar.sha1
+deleted file mode 100644
+index 43ad6af..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar.sha1
++++ /dev/null
+@@ -1 +0,0 @@
+-589c44d807c4ca3df01bfe1f81be82e026b572c8
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar.sha256 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar.sha256
+deleted file mode 100644
+index b704ce7..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar.sha256
++++ /dev/null
+@@ -1 +0,0 @@
+-91e24c69bd7e044eaf3ebee51c58f543b5f7f3340b01c387b73f31aab1841616
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar.sha512 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar.sha512
+deleted file mode 100644
+index 75ed16d..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8-sources.jar.sha512
++++ /dev/null
+@@ -1 +0,0 @@
+-5a9efd16a2765beb449746e0db391431d85acb119fad8713ace9076c79159a36e989ad8de0642c907c906c01fa4ee204b5cd03b1f4bbec5e8e080960c0988f8b
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar
+deleted file mode 100644
+index 9c8cd78..0000000
+Binary files a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar and /dev/null differ
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar.md5 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar.md5
+deleted file mode 100644
+index 9e6c4b6..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar.md5
++++ /dev/null
+@@ -1 +0,0 @@
+-fb5571aca4e8f8f1e17da922461fe54c
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar.sha1 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar.sha1
+deleted file mode 100644
+index d6bc936..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar.sha1
++++ /dev/null
+@@ -1 +0,0 @@
+-654072666e8db9ca2e58861a99b9be7dee44f26e
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar.sha256 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar.sha256
+deleted file mode 100644
+index a61f585..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar.sha256
++++ /dev/null
+@@ -1 +0,0 @@
+-9caceffd8abd26c7f2cb95b8fb20b274e4c6d1d6ab39c0ae6b2b6a76f40426e9
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar.sha512 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar.sha512
+deleted file mode 100644
+index 74b8063..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.aar.sha512
++++ /dev/null
+@@ -1 +0,0 @@
+-817968623b9f93b53408fb0f7fe6509939f9ae00eb14300609facd7214151fc87845d8df8a30b6ff471ca4a386440305db4afac88cd0cd1122beb1a9923c3910
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module
+deleted file mode 100644
+index bb88397..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module
++++ /dev/null
+@@ -1,149 +0,0 @@
+-{
+-  "formatVersion": "1.1",
+-  "component": {
+-    "group": "host.exp.exponent",
+-    "module": "expo.modules.av",
+-    "version": "16.0.8",
+-    "attributes": {
+-      "org.gradle.status": "release"
+-    }
+-  },
+-  "createdBy": {
+-    "gradle": {
+-      "version": "8.14.3"
+-    }
+-  },
+-  "variants": [
+-    {
+-      "name": "releaseVariantReleaseApiPublication",
+-      "attributes": {
+-        "org.gradle.category": "library",
+-        "org.gradle.dependency.bundling": "external",
+-        "org.gradle.libraryelements": "aar",
+-        "org.gradle.usage": "java-api"
+-      },
+-      "dependencies": [
+-        {
+-          "group": "com.google.android.exoplayer",
+-          "module": "exoplayer",
+-          "version": {
+-            "requires": "2.18.1"
+-          }
+-        },
+-        {
+-          "group": "com.google.android.exoplayer",
+-          "module": "extension-okhttp",
+-          "version": {
+-            "requires": "2.18.1"
+-          }
+-        },
+-        {
+-          "group": "com.squareup.okhttp3",
+-          "module": "okhttp",
+-          "version": {
+-            "requires": "3.14.9"
+-          }
+-        },
+-        {
+-          "group": "com.squareup.okhttp3",
+-          "module": "okhttp-urlconnection",
+-          "version": {
+-            "requires": "3.14.9"
+-          }
+-        }
+-      ],
+-      "files": [
+-        {
+-          "name": "expo.modules.av-16.0.8.aar",
+-          "url": "expo.modules.av-16.0.8.aar",
+-          "size": 326999,
+-          "sha512": "817968623b9f93b53408fb0f7fe6509939f9ae00eb14300609facd7214151fc87845d8df8a30b6ff471ca4a386440305db4afac88cd0cd1122beb1a9923c3910",
+-          "sha256": "9caceffd8abd26c7f2cb95b8fb20b274e4c6d1d6ab39c0ae6b2b6a76f40426e9",
+-          "sha1": "654072666e8db9ca2e58861a99b9be7dee44f26e",
+-          "md5": "fb5571aca4e8f8f1e17da922461fe54c"
+-        }
+-      ]
+-    },
+-    {
+-      "name": "releaseVariantReleaseRuntimePublication",
+-      "attributes": {
+-        "org.gradle.category": "library",
+-        "org.gradle.dependency.bundling": "external",
+-        "org.gradle.libraryelements": "aar",
+-        "org.gradle.usage": "java-runtime"
+-      },
+-      "dependencies": [
+-        {
+-          "group": "org.jetbrains.kotlin",
+-          "module": "kotlin-stdlib-jdk7",
+-          "version": {
+-            "requires": "2.1.20"
+-          }
+-        },
+-        {
+-          "group": "com.facebook.react",
+-          "module": "react-android"
+-        },
+-        {
+-          "group": "com.google.android.exoplayer",
+-          "module": "exoplayer",
+-          "version": {
+-            "requires": "2.18.1"
+-          }
+-        },
+-        {
+-          "group": "com.google.android.exoplayer",
+-          "module": "extension-okhttp",
+-          "version": {
+-            "requires": "2.18.1"
+-          }
+-        },
+-        {
+-          "group": "com.squareup.okhttp3",
+-          "module": "okhttp",
+-          "version": {
+-            "requires": "3.14.9"
+-          }
+-        },
+-        {
+-          "group": "com.squareup.okhttp3",
+-          "module": "okhttp-urlconnection",
+-          "version": {
+-            "requires": "3.14.9"
+-          }
+-        }
+-      ],
+-      "files": [
+-        {
+-          "name": "expo.modules.av-16.0.8.aar",
+-          "url": "expo.modules.av-16.0.8.aar",
+-          "size": 326999,
+-          "sha512": "817968623b9f93b53408fb0f7fe6509939f9ae00eb14300609facd7214151fc87845d8df8a30b6ff471ca4a386440305db4afac88cd0cd1122beb1a9923c3910",
+-          "sha256": "9caceffd8abd26c7f2cb95b8fb20b274e4c6d1d6ab39c0ae6b2b6a76f40426e9",
+-          "sha1": "654072666e8db9ca2e58861a99b9be7dee44f26e",
+-          "md5": "fb5571aca4e8f8f1e17da922461fe54c"
+-        }
+-      ]
+-    },
+-    {
+-      "name": "releaseVariantReleaseSourcePublication",
+-      "attributes": {
+-        "org.gradle.category": "documentation",
+-        "org.gradle.dependency.bundling": "external",
+-        "org.gradle.docstype": "sources",
+-        "org.gradle.usage": "java-runtime"
+-      },
+-      "files": [
+-        {
+-          "name": "expo.modules.av-16.0.8-sources.jar",
+-          "url": "expo.modules.av-16.0.8-sources.jar",
+-          "size": 48640,
+-          "sha512": "5a9efd16a2765beb449746e0db391431d85acb119fad8713ace9076c79159a36e989ad8de0642c907c906c01fa4ee204b5cd03b1f4bbec5e8e080960c0988f8b",
+-          "sha256": "91e24c69bd7e044eaf3ebee51c58f543b5f7f3340b01c387b73f31aab1841616",
+-          "sha1": "589c44d807c4ca3df01bfe1f81be82e026b572c8",
+-          "md5": "d7881eeb90fedb38f4a03d71135ba173"
+-        }
+-      ]
+-    }
+-  ]
+-}
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module.md5 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module.md5
+deleted file mode 100644
+index 48f2e08..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module.md5
++++ /dev/null
+@@ -1 +0,0 @@
+-fb2ae22dcd1102c63509c9718272596c
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module.sha1 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module.sha1
+deleted file mode 100644
+index b8bfa8b..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module.sha1
++++ /dev/null
+@@ -1 +0,0 @@
+-bf2c3ba9fc054995fe9a6c9c638dc2521c02f283
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module.sha256 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module.sha256
+deleted file mode 100644
+index de0d2ab..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module.sha256
++++ /dev/null
+@@ -1 +0,0 @@
+-bec800f1d5fd4db2c3db426a9b6772bc95c7966ee1b9a6f026514e7cccae5a25
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module.sha512 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module.sha512
+deleted file mode 100644
+index 900e87b..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.module.sha512
++++ /dev/null
+@@ -1 +0,0 @@
+-27faa89306449598a172336bb12d39fa9a0ec530a02a535acf018a4120795e0d1cbe8aaaa5e13386450e0d87c9e3527e07d7186dbb7f683ad86b8f24dd901b3d
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom
+deleted file mode 100644
+index d01544e..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom
++++ /dev/null
+@@ -1,64 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+-  <!-- This module was also published with a richer model, Gradle metadata,  -->
+-  <!-- which should be used instead. Do not delete the following line which  -->
+-  <!-- is to indicate to Gradle or any Gradle module metadata file consumer  -->
+-  <!-- that they should prefer consuming it instead. -->
+-  <!-- do_not_remove: published-with-gradle-metadata -->
+-  <modelVersion>4.0.0</modelVersion>
+-  <groupId>host.exp.exponent</groupId>
+-  <artifactId>expo.modules.av</artifactId>
+-  <version>16.0.8</version>
+-  <packaging>aar</packaging>
+-  <name>expo.modules.av</name>
+-  <url>https://github.com/expo/expo</url>
+-  <licenses>
+-    <license>
+-      <name>MIT License</name>
+-      <url>https://github.com/expo/expo/blob/main/LICENSE</url>
+-    </license>
+-  </licenses>
+-  <scm>
+-    <connection>https://github.com/expo/expo.git</connection>
+-    <developerConnection>https://github.com/expo/expo.git</developerConnection>
+-    <url>https://github.com/expo/expo</url>
+-  </scm>
+-  <dependencies>
+-    <dependency>
+-      <groupId>com.google.android.exoplayer</groupId>
+-      <artifactId>exoplayer</artifactId>
+-      <version>2.18.1</version>
+-      <scope>compile</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>com.google.android.exoplayer</groupId>
+-      <artifactId>extension-okhttp</artifactId>
+-      <version>2.18.1</version>
+-      <scope>compile</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>com.squareup.okhttp3</groupId>
+-      <artifactId>okhttp</artifactId>
+-      <version>3.14.9</version>
+-      <scope>compile</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>com.squareup.okhttp3</groupId>
+-      <artifactId>okhttp-urlconnection</artifactId>
+-      <version>3.14.9</version>
+-      <scope>compile</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.jetbrains.kotlin</groupId>
+-      <artifactId>kotlin-stdlib-jdk7</artifactId>
+-      <version>2.1.20</version>
+-      <scope>runtime</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>com.facebook.react</groupId>
+-      <artifactId>react-android</artifactId>
+-      <scope>runtime</scope>
+-    </dependency>
+-  </dependencies>
+-</project>
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom.md5 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom.md5
+deleted file mode 100644
+index 1b4ac36..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom.md5
++++ /dev/null
+@@ -1 +0,0 @@
+-0862a61e26acfc923224175f7dd99861
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom.sha1 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom.sha1
+deleted file mode 100644
+index 979a971..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom.sha1
++++ /dev/null
+@@ -1 +0,0 @@
+-317c101774f208d05524993c4b59dc87bd81d38c
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom.sha256 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom.sha256
+deleted file mode 100644
+index 7ffb1c7..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom.sha256
++++ /dev/null
+@@ -1 +0,0 @@
+-da51cf6b73e8792ccccce379dcdef4a0ada99addfa8f1279b2e4212b57de143e
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom.sha512 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom.sha512
+deleted file mode 100644
+index 7e52298..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/16.0.8/expo.modules.av-16.0.8.pom.sha512
++++ /dev/null
+@@ -1 +0,0 @@
+-965682fd78cd5d38846fe7171c32e8a026421d976251b95836bb2e9a0d5dfdaf97aee8b02886f502bfe980839012e0bcf45ca819b26e7eb722e8513aa72549dd
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml
+deleted file mode 100644
+index 1575a0c..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml
++++ /dev/null
+@@ -1,13 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<metadata>
+-  <groupId>host.exp.exponent</groupId>
+-  <artifactId>expo.modules.av</artifactId>
+-  <versioning>
+-    <latest>16.0.8</latest>
+-    <release>16.0.8</release>
+-    <versions>
+-      <version>16.0.8</version>
+-    </versions>
+-    <lastUpdated>20251205064611</lastUpdated>
+-  </versioning>
+-</metadata>
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml.md5 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml.md5
+deleted file mode 100644
+index d11dc90..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml.md5
++++ /dev/null
+@@ -1 +0,0 @@
+-871c027483516e0a481b686441794ea7
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml.sha1 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml.sha1
+deleted file mode 100644
+index 4922f59..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml.sha1
++++ /dev/null
+@@ -1 +0,0 @@
+-f5ec5431cc7a5848ef223c9ab60c78670f62198d
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml.sha256 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml.sha256
+deleted file mode 100644
+index 94ee7b7..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml.sha256
++++ /dev/null
+@@ -1 +0,0 @@
+-9240a6c826fc99f02238154f7b59f29633eefb0573ec66f2eb77414c30c36da2
+\ No newline at end of file
+diff --git a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml.sha512 b/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml.sha512
+deleted file mode 100644
+index a377bd4..0000000
+--- a/node_modules/expo-av/local-maven-repo/host/exp/exponent/expo.modules.av/maven-metadata.xml.sha512
++++ /dev/null
+@@ -1 +0,0 @@
+-bc1ac8defeb2b22c181b923f3606a2e5da1a59f8f2901bda28d81aec3b96f4613f5e0c2c9800c4b4820336b3c710a93168f89bfe20e34bf619c5d440e4ad9b5b
+\ No newline at end of file

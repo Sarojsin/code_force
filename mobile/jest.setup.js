@@ -1,7 +1,76 @@
 // jest.setup.js - runs before the test framework is installed
-jest.mock('expo-crypto', () => ({
-  randomUUID: jest.fn(() => '00000000-0000-4000-8000-000000000000'),
-}));
+
+// expo-crypto mock. `randomUUID` stays deterministic; the AES-GCM surface
+// (luna2phase2 §1.3 value encryption) is a reversible test double so
+// encrypted-value round-trips run in-memory.
+jest.mock('expo-crypto', () => {
+  const enc = (s) => Buffer.from(s, 'utf8').toString('base64');
+  const dec = (b) => Buffer.from(b, 'base64').toString('utf8');
+
+  class MockEncryptionKey {
+    size = 256;
+    static async generate() {
+      return new MockEncryptionKey();
+    }
+    static async import() {
+      return new MockEncryptionKey();
+    }
+    async bytes() {
+      return new Uint8Array(32).fill(7);
+    }
+    async encoded() {
+      return Buffer.from(new Uint8Array(32).fill(7)).toString('base64');
+    }
+  }
+
+  class MockSealedData {
+    static fromCombined(combined) {
+      return new MockSealedData(combined);
+    }
+    constructor(combinedB64) {
+      this._combined = combinedB64;
+      this.combinedSize = combinedB64.length;
+      this.ivSize = 12;
+      this.tagSize = 16;
+    }
+    async combined(encoding = 'bytes') {
+      if (encoding === 'base64') return this._combined;
+      const payload = dec(this._combined).replace(/^SEALED\./, '');
+      return new Uint8Array(Buffer.from(payload, 'base64'));
+    }
+    async iv(encoding = 'bytes') {
+      const b = new Uint8Array(12);
+      return encoding === 'base64' ? Buffer.from(b).toString('base64') : b;
+    }
+    async tag(encoding = 'bytes') {
+      const b = new Uint8Array(16);
+      return encoding === 'base64' ? Buffer.from(b).toString('base64') : b;
+    }
+    async ciphertext(options = {}) {
+      return this.combined(options.encoding ?? 'bytes');
+    }
+  }
+
+  return {
+    randomUUID: jest.fn(() => '00000000-0000-4000-8000-000000000000'),
+    getRandomBytes: (n) => new Uint8Array(n),
+    getRandomBytesAsync: async (n) => new Uint8Array(n),
+    getRandomValues: (arr) => arr,
+    digest: async () => new ArrayBuffer(32),
+    digestStringAsync: async (_algorithm, data, _options) =>
+      Buffer.from(String(data)).toString('hex'),
+    AESKeySize: { AES128: 128, AES192: 192, AES256: 256 },
+    AESEncryptionKey: MockEncryptionKey,
+    AESSealedData: MockSealedData,
+    aesEncryptAsync: async (plaintextB64) =>
+      new MockSealedData(enc('SEALED.' + plaintextB64)),
+    aesDecryptAsync: async (sealed, _key, options = {}) => {
+      const payload = dec(sealed._combined).replace(/^SEALED\./, '');
+      if (options.output === 'base64') return payload;
+      return new Uint8Array(Buffer.from(payload, 'base64'));
+    },
+  };
+});
 
 jest.mock('expo', () => ({
   isRunningInExpoGo: jest.fn(() => true),
@@ -107,5 +176,18 @@ jest.mock('expo-sqlite', () => {
 
   return {
     openDatabaseAsync: jest.fn((name) => Promise.resolve(makeClient(name))),
+  };
+});
+
+// expo-speech mock (luna2phase3 TTS). speak/stop/getAvailableVoicesAsync are
+// jest.fn so tests can assert calls and fire the utterance callbacks manually.
+jest.mock('expo-speech', () => {
+  const VoiceQuality = { Default: 'Default', Enhanced: 'Enhanced' };
+  return {
+    speak: jest.fn(() => {}),
+    stop: jest.fn(),
+    getAvailableVoicesAsync: jest.fn(async () => []),
+    isSpeakingAsync: jest.fn(async () => false),
+    VoiceQuality,
   };
 });
