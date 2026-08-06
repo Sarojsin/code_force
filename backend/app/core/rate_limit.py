@@ -11,7 +11,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from app.core.redis_client import RedisClient, get_redis_client
+from app.core.redis_client import RedisClient
 
 
 class RateLimiter:
@@ -43,11 +43,12 @@ class RateLimiter:
         if count > limit:
             retry_after = window_seconds
             raise RateLimitError(
-                f"Rate limit exceeded: {count}/{limit} in {window_seconds}s. Retry in {retry_after}s."
+                f"Rate limit exceeded: {count}/{limit} in {window_seconds}s. Retry in {retry_after}s.",
+                retry_after=window_seconds,
             )
 
 
-def get_rate_limiter(redis: RedisClient = Depends(get_redis_client)) -> RateLimiter:
+def get_rate_limiter(redis: RedisClient) -> RateLimiter:
     """FastAPI dependency: provides a RateLimiter backed by the shared Redis client."""
     return RateLimiter(redis)
 

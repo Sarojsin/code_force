@@ -57,6 +57,10 @@ class RateLimitError(SheCareError):
     code = "RATE_LIMIT_EXCEEDED"
     http_status = status.HTTP_429_TOO_MANY_REQUESTS
 
+    def __init__(self, details: str | None = None, *, retry_after: int = 60) -> None:
+        super().__init__(details)
+        self.retry_after = retry_after
+
 
 def _envelope(error_code: str, details: str | None, request_id: str) -> dict[str, object]:
     return {
@@ -74,9 +78,13 @@ async def shecare_exception_handler(request: Request, exc: SheCareError) -> JSON
         "api.shecare_error",
         extra={"code": exc.code, "details": exc.details, "path": request.url.path},
     )
+    headers: dict[str, str] = {}
+    if isinstance(exc, RateLimitError):
+        headers["Retry-After"] = str(exc.retry_after)
     return JSONResponse(
         status_code=exc.http_status,
         content=_envelope(exc.code, exc.details, request_id),
+        headers=headers or None,
     )
 
 
