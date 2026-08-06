@@ -31,8 +31,18 @@ jest.mock('src/stores/authStore', () => ({
 }));
 jest.mock('src/services/localDb', () => ({
   localDb: {
-    journal: { getRecent: jest.fn().mockResolvedValue([]), upsertMany: jest.fn() },
-    mood: { getByDateRange: jest.fn().mockResolvedValue([]), upsertMany: jest.fn() },
+    journal: {
+      getRecent: jest.fn().mockResolvedValue([]),
+      getById: jest.fn().mockResolvedValue(null),
+      upsert: jest.fn().mockResolvedValue(undefined),
+      upsertMany: jest.fn(),
+    },
+    mood: {
+      getByDateRange: jest.fn().mockResolvedValue([]),
+      getById: jest.fn().mockResolvedValue(null),
+      upsert: jest.fn().mockResolvedValue(undefined),
+      upsertMany: jest.fn(),
+    },
   },
 }));
 
