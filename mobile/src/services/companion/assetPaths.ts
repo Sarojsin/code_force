@@ -5,6 +5,8 @@ export const SPRITESHEET_PNG = COMPANION_DIR + 'spritesheet.png';
 export const SPRITESHEET_JSON = COMPANION_DIR + 'spritesheet.json';
 export const DIALOGUES_FILE = COMPANION_DIR + 'dialogues.json';
 export const SOUNDS_DIR = COMPANION_DIR + 'sounds/';
+export const MODELS_DIR = COMPANION_DIR + 'models/';
+export const CAT_GLB_PATH = MODELS_DIR + 'cat.glb';
 
 export async function areAssetsInstalled(): Promise<boolean> {
   try {

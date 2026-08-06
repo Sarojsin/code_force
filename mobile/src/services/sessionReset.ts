@@ -169,6 +169,15 @@ export async function resetAppForLogout(): Promise<void> {
     // 2. Encrypted storage keys.
     await Promise.allSettled(ENCRYPTED_KEYS.map((k) => EncryptedStorage.removeItem(k)));
 
+    // 2b. Luna sync queue (per-user key — see sessionReset golden rule).
+    try {
+      const { clearLunaSync } = await import('src/services/companion/lunaSyncClient');
+      const uid = useAuthStore.getState().user?.id;
+      if (uid) await clearLunaSync(uid);
+    } catch {
+      // suppress — queue cleared on next app start if import fails
+    }
+
     // 3. AsyncStorage keys.
     await Promise.allSettled(ASYNC_KEYS.map((k) => AsyncStorage.removeItem(k)));
 

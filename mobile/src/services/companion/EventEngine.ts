@@ -2,8 +2,10 @@ import { useEffect, useCallback, useState, useRef } from 'react';
 import { eventBus } from '../eventBus';
 import { useCompanionStore, XP_REWARDS, COIN_REWARDS } from '../../stores/companionStore';
 import { dialogueEngine } from './DialogueEngine';
+import { voiceService } from './voiceService';
 import { achievementEngine } from './AchievementEngine';
 import { createEmotionEngine } from './EmotionEngine';
+import { initMemoryService, memoryService } from './memoryService';
 import type { Achievement } from './AchievementEngine';
 import type { AnimationState } from './AnimationEngine';
 
@@ -79,6 +81,36 @@ const EVENT_REACTIONS: Record<string, Reaction> = {
     animation: 'sad',
     durationMs: 3500,
   },
+  diary_page_created: {
+    dialogContext: 'diary_page_created',
+    animation: 'happy',
+    durationMs: 3500,
+  },
+  diary_photo_added: {
+    dialogContext: 'diary_photo_added',
+    animation: 'wave',
+    durationMs: 3000,
+  },
+  diary_page_saved: {
+    dialogContext: 'diary_page_saved',
+    animation: 'idle',
+    durationMs: 3000,
+  },
+  diary_opened: {
+    dialogContext: 'diary_opened',
+    animation: 'idle',
+    durationMs: 3000,
+  },
+  diary_media_synced: {
+    dialogContext: 'diary_media_synced',
+    animation: 'happy',
+    durationMs: 3000,
+  },
+  day_logged: {
+    dialogContext: 'day_logged',
+    animation: 'happy',
+    durationMs: 3000,
+  },
 };
 
 const MOOD_ANIMATIONS: Record<string, AnimationState> = {
@@ -92,9 +124,21 @@ const MOOD_ANIMATIONS: Record<string, AnimationState> = {
 export function useSpeechBubble() {
   const [current, setCurrent] = useState<SpeechBubbleEvent | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const speechIdRef = useRef<string | null>(null);
+
+  const clearTimer = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
 
   const show = useCallback((text: string, animation: AnimationState, durationMs: number) => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    clearTimer();
+    if (speechIdRef.current) {
+      voiceService.stop();
+      speechIdRef.current = null;
+    }
 
     const bubble: SpeechBubbleEvent = {
       id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -106,21 +150,60 @@ export function useSpeechBubble() {
 
     setCurrent(bubble);
 
-    timeoutRef.current = setTimeout(() => {
-      setCurrent(null);
-    }, durationMs);
-  }, []);
+    if (voiceService.isEnabled()) {
+      speechIdRef.current = bubble.id;
+      void voiceService
+        .speak(text, {
+          onDone: () => {
+            if (speechIdRef.current === bubble.id) {
+              speechIdRef.current = null;
+              setCurrent(null);
+            }
+          },
+          onStopped: () => {
+            if (speechIdRef.current === bubble.id) {
+              speechIdRef.current = null;
+              setCurrent(null);
+            }
+          },
+        })
+        .catch(() => {
+          if (speechIdRef.current === bubble.id) {
+            speechIdRef.current = null;
+            setCurrent(null);
+          }
+        });
+      timeoutRef.current = setTimeout(() => {
+        if (speechIdRef.current === bubble.id) {
+          speechIdRef.current = null;
+          setCurrent(null);
+        }
+      }, Math.max(durationMs, 15000));
+    } else {
+      timeoutRef.current = setTimeout(() => {
+        setCurrent(null);
+      }, durationMs);
+    }
+  }, [clearTimer]);
 
   const dismiss = useCallback(() => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    clearTimer();
+    if (speechIdRef.current) {
+      voiceService.stop();
+      speechIdRef.current = null;
+    }
     setCurrent(null);
-  }, []);
+  }, [clearTimer]);
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      clearTimer();
+      if (speechIdRef.current) {
+        voiceService.stop();
+        speechIdRef.current = null;
+      }
     };
-  }, []);
+  }, [clearTimer]);
 
   return { current, show, dismiss };
 }
@@ -230,10 +313,23 @@ export function initEventEngine(
       return;
     }
     lastForegroundTime = now;
-    const welcomeText = dialogueEngine.getWelcomeBack();
-    showBubble(welcomeText, 'wave', 3000);
+    const showWelcome = () => showBubble(dialogueEngine.getWelcomeBack(), 'wave', 3000);
+    if (store.userId) {
+      memoryService
+        .hydrateMemory(store.userId)
+        .then((snapshot) => {
+          dialogueEngine.setMemoryContext(snapshot);
+          showWelcome();
+        })
+        .catch(() => showWelcome());
+    } else {
+      showWelcome();
+    }
   });
   unsubscribers.push(welcomeUnsub);
+
+  const memoryCleanup = initMemoryService();
+  unsubscribers.push(memoryCleanup);
 
   return () => {
     unsubscribers.forEach((unsub) => unsub());

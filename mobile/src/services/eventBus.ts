@@ -24,6 +24,14 @@ type EventMap = {
   diary_assets_installed: { userId: string; version: string };
   diary_assets_uninstalled: { userId: string };
 
+  diary_page_created: { userId: string; diaryId: string; pageId: string; page_date: string };
+  diary_photo_added: { userId: string; mediaId: string; mimeType?: string };
+  diary_page_saved: { userId: string; diaryId: string; pageId: string };
+  diary_opened: { userId: string; diaryId: string; pageId: string };
+  diary_media_synced: { userId: string; mediaId: string; s3Key?: string };
+
+  day_logged: { userId: string; logDate: string; mood?: string | null; moodIntensity?: number | null };
+
   app_foregrounded: {};
   app_backgrounded: {};
   onboarding_completed: { userId: string };

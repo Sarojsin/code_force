@@ -13,7 +13,7 @@ import { logger } from '../utils';
 import { API_BASE_URL, API_ROOT } from '../constants/config';
 
 const COMPANION_DIR = (FileSystem.documentDirectory ?? '') + 'companion/';
-const DOWNLOAD_PATH = (FileSystem.cacheDirectory ?? '') + 'luna_assets_v1.zip';
+const DOWNLOAD_PATH = (FileSystem.cacheDirectory ?? '') + 'luna_assets_v2.zip';
 
 let downloadInProgress = false;
 
@@ -35,7 +35,7 @@ async function checkNetwork(): Promise<boolean> {
     return new Promise((resolve) => {
       Alert.alert(
         'Download over cellular?',
-        'Luna assets are about 4.5 MB. Download over Wi-Fi to save data?',
+        'Luna assets are about 2.6 MB. Download over Wi-Fi to save data?',
         [
           { text: 'Wi-Fi only', onPress: () => resolve(false), style: 'cancel' },
           { text: 'Download anyway', onPress: () => resolve(true) },

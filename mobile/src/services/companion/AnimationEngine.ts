@@ -20,7 +20,8 @@ export type AnimationState =
   | 'wave'
   | 'celebrate'
   | 'pet'
-  | 'hidden';
+  | 'hidden'
+  | 'show_back';
 
 export interface FrameConfig {
   frames: number;
@@ -41,11 +42,13 @@ export const ANIMATION_FRAMES: Record<AnimationState, FrameConfig> = {
   celebrate:  { frames: 6, speed: 120, loop: false },
   pet:        { frames: 3, speed: 180, loop: false },
   hidden:     { frames: 1, speed: 0, loop: false },
+  show_back:  { frames: 1, speed: 3600, loop: false },
 };
 
 const ANIMATION_PRIORITY: Record<AnimationState, number> = {
   idle: 0,
   idle_blink: 0,
+  show_back: 1,
   sleep: 1,
   sad: 2,
   pet: 3,
@@ -183,6 +186,18 @@ export function useAnimationEngine() {
           withTiming(1.05, { duration: 200 })
         );
         break;
+
+      case 'show_back': {
+        // Turn around to face away (show the cat's back), hold briefly, then
+        // turn back to face forward. The whole sequence resets to idle via
+        // getAnimationDuration()'s post-animation timeout.
+        rotation.value = withSequence(
+          withTiming(Math.PI, { duration: 700, easing: Easing.inOut(Easing.quad) }),
+          withTiming(Math.PI, { duration: 2200 }),
+          withTiming(0, { duration: 700, easing: Easing.inOut(Easing.quad) })
+        );
+        break;
+      }
 
       case 'hidden':
         opacity.value = withTiming(0, { duration: 200 });
