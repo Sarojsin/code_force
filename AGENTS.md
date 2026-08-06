@@ -321,9 +321,21 @@ If any checkbox is unchecked, fix it before opening the PR.
 - Without this, JNI library loading fails silently at runtime on some devices.
 
 ### 6.2 expo-av source build
-- Remove the `publication` block from `expo-av/expo-module.config.json` to force source build (avoid prebuilt AAR with wrong JSI ABI).
-- Patch `expo-av/android/CMakeLists.txt` — ensure `ReactAndroid::jsi` is linked in the correct ABI branch (RN 0.86 uses `reactnative`, not `reactnativejni`).
-- Both patches are tracked via `patches/expo-av+16.0.8.patch`.
+- **Root cause (proven by ELF analysis):** the `publication` block in
+  `expo-av/expo-module.config.json` makes the build consume a **prebuilt AAR**
+  compiled against OLD JSI headers. Its `libexpo-av.so` references
+  `asObject(fb::jsi::Runtime&)`, but RN 0.86's `libjsi.so` only exports
+  `asObject(IRuntime&)` → `dlopen` fails at `AVManager.<clinit>`.
+- **The fix is the source build**, not the CMakeLists change: remove the
+  `publication` block from `expo-av/expo-module.config.json` so Gradle compiles
+  expo-av against the app's own RN JSI headers. `libjsi.so` DOES ship in the
+  APK and the source-built `libexpo-av.so` is ABI-consistent.
+- `patches/expo-av+16.0.8.patch` captures ALL changes: config `publication`
+  removal, `local-maven-repo/` AAR deletion, `CMakeLists.txt` link fix, and
+  `ViewUtils.kt` / `FullscreenVideoPlayer.java` SDK 57 API migrations.
+- The patch must be **regenerated with `npx patch-package expo-av`** whenever a
+  new manual node_modules edit is made — a manual edit NOT captured in the
+  patch is silently lost on `npm ci` (this was the actual EAS failure).
 
 ### 6.3 Fresh build after `npm ci`
 After `npm ci`, re-apply patches with `npx patch-package` before Android build.

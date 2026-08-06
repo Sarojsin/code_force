@@ -551,3 +551,106 @@ On `304 Not Modified` → use cached data.
 - Refresh tokens use rotation with reuse detection — presenting an old token after rotation burns **all** sessions
 - Journal content and medical notes are encrypted at rest (per-user key via `core.encryption`)
 - Mobile stores tokens in `react-native-encrypted-storage`, never plain AsyncStorage
+
+---
+
+## 12. Luna State Sync (Phase 4 — aggregate only)
+
+> Cross-device continuity for Luna's **aggregate** companion state. Privacy
+> boundary (AGENTS.md §3.8): ONLY aggregate state crosses the wire — NEVER
+> journal content, dialogue history, or raw health data. Source of truth:
+> `luna2/luna2phase4_plan.md`.
+
+### 12.1 `GET /api/v1/luna/state`
+
+Auth: `Authorization: Bearer <access_token>`.
+
+Returns the caller's aggregate state (creates a default row on first access).
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "xp": 1234,
+  "level": 5,
+  "coins": 88,
+  "relationship_level": 3,
+  "mood_trend": {
+    "trend": "improving",
+    "samples": [
+      { "date": "2026-08-06", "mood": "happy", "intensity": 4, "source": "day_logged", "created_at": "2026-08-06T18:00:00Z" }
+    ],
+    "updated_at": "2026-08-06T18:00:00Z"
+  },
+  "preferences": { "speechEnabled": true, "speechRate": 1.2, "muteSounds": false },
+  "achievements": [ { "id": "sleep_streak_7", "unlocked_at": "2026-08-01T00:00:00Z" } ],
+  "habit_patterns": { "sleep_avg_hour": 23.1, "top_log_types": ["sleep", "water"] },
+  "created_at": "2026-08-01T00:00:00Z",
+  "updated_at": "2026-08-06T18:00:00Z"
+}
+```
+
+**Headers:**
+- `ETag` — strong SHA-256 ETag. Mobile sends `If-None-Match` for cheap
+  revalidation; on `304 Not Modified` reuse the cached aggregate.
+
+**Errors:** `401` (unauth), `429` + `Retry-After` (rate limit).
+
+### 12.2 `PUT /api/v1/luna/state`
+
+Auth: `Authorization: Bearer <access_token>`.
+
+Body = partial `LunaStateUpdate` — all fields optional. **LWW merge** per
+field: each write carries `client_updated_at`; the newest timestamp wins per
+field; fields not sent stay untouched.
+
+**Request body:**
+```json
+{
+  "xp": 1244,
+  "coins": 90,
+  "preferences": { "speechEnabled": true, "speechRate": 1.2 },
+  "client_updated_at": "2026-08-06T18:00:00Z"
+}
+```
+
+**Field semantics:**
+- `mood_trend` — `trend` is **server-computed** from the typed `samples`
+  (client-supplied `trend` is overwritten). `samples` are capped at **30**
+  (append → sort by `date` → trim newest 30). Sample shape is typed:
+  `{ date, mood, intensity (1..5), source, created_at }` with `mood` ∈
+  `happy|sad|anxious|angry|neutral` and `source` ∈
+  `day_logged|manual|journal_analysis`. Invalid samples → 422.
+- `preferences` — object, capped at **50 keys**.
+- `achievements` — array capped at **100** items.
+- `habit_patterns` — object capped at **100 keys**; `top_log_types` capped at
+  **20**.
+
+**Headers:**
+- `Idempotency-Key` (optional) — dedupe replayed offline writes; server PUT is
+  LWW-idempotent by `client_updated_at` regardless.
+- `ETag` on response.
+
+**Errors:**
+- `422` — oversized or invalid payload (upload over the cap fails loudly,
+  never silently truncates).
+- `429` + `Retry-After` — rate limit exceeded.
+
+### 12.3 `day_logged` event bridge
+
+The backend subscribes to `day_logged` and appends a `MoodSample` with
+`source: "day_logged"` into `mood_trend.samples`, recomputing `trend` — keeps
+the aggregate fresh even when the mobile client never PUTs.
+
+### 12.4 Mobile behavior (summary)
+
+- Reads go through React Query: `useLunaState()` (queryKey
+  `[...getLunaKeys(userId).state]`, `staleTime: 5 * 60 * 1000`); `.all` prefix
+  invalidated after a successful PUT.
+- Offline writes queue in EncryptedStorage (cap **500**, UUID `idempotency_key`,
+  FIFO replay, oldest dropped + Sentry warning on overflow).
+- Launch/reconnect: `syncLunaState(userId)` replays the queue → pushes the
+  local aggregate → reconciles the server row back into `companion_metadata`
+  when `server.updated_at > local`.
+- Sign-out clears the local queue + cache but **never** deletes the server-side
+  `luna_state` row.
