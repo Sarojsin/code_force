@@ -39,7 +39,7 @@ export function getLunaContext(
         };
       }
       return {
-        animation: 'walk-right',
+        animation: 'idle',
         message: opts.currentPhase
           ? `You're in the ${opts.currentPhase} phase \u{1F33C}`
           : 'Track your cycle to see phase insights \u{1F338}',

@@ -3,7 +3,9 @@ import { VOLATILITY_THRESHOLD } from '../../constants/companion';
 export type Mood = 'happy' | 'sad' | 'anxious' | 'angry' | 'neutral';
 export type MoodTrend = 'improving' | 'declining' | 'stable' | 'volatile';
 
-const MOOD_SCORES: Record<Mood, number> = {
+export const MOODS: Mood[] = ['happy', 'sad', 'anxious', 'angry', 'neutral'];
+
+export const MOOD_SCORES: Record<Mood, number> = {
   happy: 10,
   neutral: 5,
   sad: 2,
