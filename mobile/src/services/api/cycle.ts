@@ -128,6 +128,7 @@ export interface DailyDay {
   notes?: string | null;
   symptoms: DaySymptomLog[];
   medications: DayMedicationLog[];
+  recommendations_completed?: string[];
   created_at: string;
   updated_at: string;
   client_updated_at?: string | null;
@@ -145,6 +146,7 @@ export interface DayUpsertPayload {
   notes?: string | null;
   symptoms?: DaySymptomIn[];
   medications?: DayMedicationIn[];
+  recommendations_completed?: string[];
 }
 
 export interface SymptomMaster {
@@ -152,6 +154,7 @@ export interface SymptomMaster {
   name: string;
   category: string;
   icon?: string | null;
+  icon_kind?: 'custom' | 'lucide' | null;
   display_order: number;
 }
 

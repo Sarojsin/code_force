@@ -615,6 +615,9 @@ export const cycleDays = sqliteTable(
     notes: text('notes'),
     symptoms: jsonCol<CycleDaySymptomRow>('symptoms').notNull().default(sql`'[]'`),
     medications: jsonCol<CycleDayMedicationRow>('medications').notNull().default(sql`'[]'`),
+    recommendations_completed: jsonCol<string[]>('recommendations_completed')
+      .notNull()
+      .default(sql`'[]'`),
     created_at: isoDatetime('created_at'),
     updated_at: isoDatetime('updated_at'),
     is_active: booleanCol('is_active').notNull().default(true),
@@ -639,6 +642,7 @@ export const symptoms = sqliteTable('symptoms', {
   name: text('name').notNull(),
   category: text('category').notNull(),
   icon: text('icon'),
+  icon_kind: text('icon_kind'),
   display_order: integer('display_order').notNull().default(0),
   synced_at: isoDatetime('synced_at'),
 });

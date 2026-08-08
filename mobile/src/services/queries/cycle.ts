@@ -514,6 +514,7 @@ export function useUpsertDay() {
             dose: m.dose ?? null,
             taken_at: m.taken_at ?? null,
           })),
+          recommendations_completed: variables.data.recommendations_completed ?? [],
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           _optimistic: true,

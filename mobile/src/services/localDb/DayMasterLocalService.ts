@@ -19,6 +19,7 @@ export interface BundledSymptom {
   name: string;
   category: string;
   icon?: string | null;
+  icon_kind?: 'custom' | 'lucide' | null;
   display_order: number;
 }
 
@@ -71,6 +72,7 @@ export class DayMasterLocalService {
               name: s.name,
               category: s.category,
               icon: s.icon ?? null,
+              icon_kind: s.icon_kind ?? null,
               display_order: s.display_order,
               synced_at: new Date().toISOString(),
             })),
@@ -105,6 +107,7 @@ export class DayMasterLocalService {
         name: s.name,
         category: s.category,
         icon: s.icon ?? null,
+        icon_kind: (s.icon_kind as 'custom' | 'lucide' | undefined) ?? null,
         display_order: s.display_order,
       }));
     } catch (error) {
