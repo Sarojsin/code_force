@@ -6,7 +6,11 @@ let nativeDb: SQLiteDatabase | null = null;
 let openPromise: Promise<SQLiteDatabase> | null = null;
 let operationQueue: Promise<unknown> = Promise.resolve();
 
-function runExclusive<T>(task: () => Promise<T>): Promise<T> {
+/** Serialized task runner for SQLite operations. All raw native-db access
+ *  (including Drizzle ORM via remoteCallback) is funneled through this queue
+ *  to prevent concurrent-write lock conflicts. Exposed so non-Drizzle callers
+ *  (e.g., pruneLocalDb) can also participate in the serialization. */
+export function runExclusive<T>(task: () => Promise<T>): Promise<T> {
   const next = operationQueue.then(task, task);
   operationQueue = next.catch(() => undefined);
   return next;

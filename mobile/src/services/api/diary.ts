@@ -7,7 +7,7 @@ function unwrap<T>(payload: unknown): T {
   return payload as T;
 }
 
-const BASE = '/api/v1/diary';
+const BASE = '/diary';
 
 export const diaryService = {
   async getDiaries(): Promise<any[]> {

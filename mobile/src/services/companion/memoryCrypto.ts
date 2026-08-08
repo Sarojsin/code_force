@@ -68,7 +68,7 @@ class MemoryCrypto {
     return (await sealed.combined('base64')) as string;
   }
 
-  async decrypt(userId: string, combinedB64: string): Promise<string | null> {
+  async decrypt(userId: string, combinedB64: string, silent = false): Promise<string | null> {
     try {
       const key = await this.getOrCreateKey(userId);
       const sealed = AESSealedData.fromCombined(combinedB64);
@@ -77,7 +77,9 @@ class MemoryCrypto {
       })) as string;
       return new TextDecoder().decode(base64ToBytes(decrypted));
     } catch (error) {
-      logger.warn('MemoryCrypto.decrypt failed — value treated as unreadable', error);
+      if (!silent) {
+        logger.warn('MemoryCrypto.decrypt failed — value treated as unreadable', error);
+      }
       return null;
     }
   }

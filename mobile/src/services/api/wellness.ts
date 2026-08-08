@@ -1,5 +1,4 @@
 import { api } from './client';
-import { ModelVersionResponse } from 'src/services/ml/wellnessTypes';
 
 export interface JournalEntry {
   id: string;
@@ -152,15 +151,4 @@ export const wellnessService = {
     return unwrap(resp.data);
   },
 
-  async getModelVersion(): Promise<ModelVersionResponse> {
-    const resp = await api.get('/api/v1/models/wellness-classifier/version');
-    return unwrap(resp.data);
-  },
-
-  async downloadModel(version: string): Promise<ArrayBuffer> {
-    const resp = await api.get(`/api/v1/models/wellness-classifier/${version}.onnx`, {
-      responseType: 'arraybuffer',
-    });
-    return resp.data as ArrayBuffer;
-  },
 };

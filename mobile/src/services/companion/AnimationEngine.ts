@@ -1,12 +1,14 @@
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   useSharedValue,
   useAnimatedStyle,
+  useAnimatedReaction,
   withTiming,
   withSequence,
   withRepeat,
   Easing,
   cancelAnimation,
+  runOnJS,
 } from 'react-native-reanimated';
 import { eventBus } from '../eventBus';
 
@@ -21,7 +23,8 @@ export type AnimationState =
   | 'celebrate'
   | 'pet'
   | 'hidden'
-  | 'show_back';
+  | 'show_back'
+  | 'flip';
 
 export interface FrameConfig {
   frames: number;
@@ -43,6 +46,7 @@ export const ANIMATION_FRAMES: Record<AnimationState, FrameConfig> = {
   pet:        { frames: 3, speed: 180, loop: false },
   hidden:     { frames: 1, speed: 0, loop: false },
   show_back:  { frames: 1, speed: 3600, loop: false },
+  flip:       { frames: 1, speed: 2200, loop: false },
 };
 
 const ANIMATION_PRIORITY: Record<AnimationState, number> = {
@@ -50,6 +54,7 @@ const ANIMATION_PRIORITY: Record<AnimationState, number> = {
   idle_blink: 0,
   show_back: 1,
   sleep: 1,
+  flip: 1,
   sad: 2,
   pet: 3,
   wave: 4,
@@ -67,13 +72,39 @@ function getAnimationDuration(state: AnimationState): number {
 
 export function useAnimationEngine() {
   const currentAnim = useSharedValue<AnimationState>('idle');
+  const [currentAnimState, setCurrentAnimState] = useState<AnimationState>('idle');
+  // Sync the worklet shared value into React state so isAnimating() can read
+  // it without touching `.value` during render (Reanimated 4 strict mode).
+  // runOnJS bridges the UI-thread reaction to the JS-thread state setter.
+  useAnimatedReaction(
+    () => currentAnim.value,
+    (state) => {
+      'worklet';
+      runOnJS(setCurrentAnimState)(state);
+    },
+  );
+  // Mirror currentAnimState into a ref so isAnimating stays stable (same fn
+  // reference across renders). Without this, isAnimating captures the state
+  // closure and gets recreated on every animation-state change, which resets
+  // the idle timer cascade in startIdleCycle — the idle cycle never progresses.
+  const animStateRef = useRef(currentAnimState);
+  animStateRef.current = currentAnimState;
+  // Stable function reference: reads the latest state via the ref so it never
+  // changes across renders. Without this, startIdleCycle's useCallback deps
+  // change on every render → the effect restarts the interval → idleStage
+  // resets to 0 and the flip at stage 4/9 is never reached.
+  const isAnimating = useCallback(
+    (state: AnimationState) => animStateRef.current === state,
+    [],
+  );
   const priority = useSharedValue(0);
 
-  const scale = useSharedValue(1);
+   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
   const translateY = useSharedValue(0);
   const translateX = useSharedValue(0);
   const rotation = useSharedValue(0);
+  const rotationX = useSharedValue(0);
 
   const play = useCallback((state: AnimationState) => {
     const newPriority = ANIMATION_PRIORITY[state];
@@ -87,10 +118,11 @@ export function useAnimationEngine() {
     eventBus.emit('luna_animation_changed', { state });
     priority.value = newPriority;
 
-    cancelAnimation(scale);
-    cancelAnimation(translateY);
-    cancelAnimation(translateX);
-    cancelAnimation(rotation);
+     cancelAnimation(scale);
+     cancelAnimation(translateY);
+     cancelAnimation(translateX);
+     cancelAnimation(rotation);
+     cancelAnimation(rotationX);
 
     switch (state) {
       case 'idle':
@@ -100,6 +132,7 @@ export function useAnimationEngine() {
         translateY.value = withTiming(0, { duration: 200 });
         translateX.value = withTiming(0, { duration: 200 });
         rotation.value = withTiming(0, { duration: 200 });
+        rotationX.value = withTiming(0, { duration: 200 });
         break;
 
       case 'happy':
@@ -188,13 +221,44 @@ export function useAnimationEngine() {
         break;
 
       case 'show_back': {
-        // Turn around to face away (show the cat's back), hold briefly, then
-        // turn back to face forward. The whole sequence resets to idle via
-        // getAnimationDuration()'s post-animation timeout.
+        // Turn around on the Y (vertical) axis to face away — show the cat's
+        // back — then turn back to face forward. A subtle step-bob on scale
+        // suggests paw placement while turning. The whole sequence resets to
+        // idle via getAnimationDuration()'s post-animation timeout.
         rotation.value = withSequence(
-          withTiming(Math.PI, { duration: 700, easing: Easing.inOut(Easing.quad) }),
-          withTiming(Math.PI, { duration: 2200 }),
-          withTiming(0, { duration: 700, easing: Easing.inOut(Easing.quad) })
+          withTiming(Math.PI, { duration: 800, easing: Easing.inOut(Easing.quad) }),
+          withTiming(Math.PI, { duration: 1800 }),
+          withTiming(0, { duration: 800, easing: Easing.inOut(Easing.quad) })
+        );
+        scale.value = withSequence(
+          withTiming(0.97, { duration: 300, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1.02, { duration: 300, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1, { duration: 300, easing: Easing.inOut(Easing.quad) }),
+          withTiming(0.97, { duration: 300, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1.02, { duration: 300, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1, { duration: 300, easing: Easing.inOut(Easing.quad) }),
+          withTiming(0.97, { duration: 300, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1, { duration: 300, easing: Easing.inOut(Easing.quad) })
+        );
+        break;
+      }
+
+      case 'flip': {
+        // Backflip: rotate on the X (pitch) axis for a full somersault while
+        // jumping. Combined with translateY for the arc and scale for squash
+        // /stretch on takeoff and landing.
+        rotationX.value = withSequence(
+          withTiming(Math.PI * 2, { duration: 1000, easing: Easing.linear }),
+        );
+        translateY.value = withSequence(
+          withTiming(-30, { duration: 400, easing: Easing.out(Easing.cubic) }),
+          withTiming(0, { duration: 600, easing: Easing.in(Easing.cubic) })
+        );
+        scale.value = withSequence(
+          withTiming(0.95, { duration: 200 }),
+          withTiming(1.05, { duration: 200 }),
+          withTiming(0.95, { duration: 200 }),
+          withTiming(1, { duration: 400 })
         );
         break;
       }
@@ -213,24 +277,25 @@ export function useAnimationEngine() {
         }
       }, duration + 200);
     }
-  }, [currentAnim, priority, scale, opacity, translateY, translateX, rotation]);
+  }, [currentAnim, priority, scale, opacity, translateY, translateX, rotation, rotationX]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
       { scale: scale.value },
       { translateY: translateY.value },
       { translateX: translateX.value },
-      { rotate: `${rotation.value}rad` },
     ],
     opacity: opacity.value,
   }));
 
-  return {
-    currentAnim,
-    play,
-    animatedStyle,
-    isAnimating: (state: AnimationState) => currentAnim.value === state,
-    scale,
-    opacity,
-  };
+   return {
+     currentAnim,
+     play,
+     animatedStyle,
+     isAnimating,
+     scale,
+     opacity,
+     rotation,
+     rotationX,
+   };
 }
