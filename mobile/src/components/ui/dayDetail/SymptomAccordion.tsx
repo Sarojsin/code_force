@@ -3,20 +3,28 @@ import { StyleSheet, View, Pressable, ScrollView } from 'react-native';
 import { useTheme } from 'src/theme';
 import { Text } from '../Text';
 import type { SymptomMaster } from 'src/services/api';
+import { SymptomIcon } from '../symptomIcons/SymptomIcon';
 
-const CATEGORIES = ['pain', 'body', 'mood', 'energy', 'reproductive'] as const;
+const CATEGORIES = ['pain', 'digestive', 'skin', 'general'] as const;
 
 const CATEGORY_LABELS: Record<string, string> = {
-  pain: '🔥 Pain',
-  body: '🩺 Body',
-  mood: '🎭 Mood',
-  energy: '⚡ Energy',
-  reproductive: '🩸 Reproductive',
+  pain: 'Pain',
+  digestive: 'Digestive',
+  skin: 'Skin',
+  general: 'General',
+};
+
+const SEVERITY_LABEL: Record<number, string> = {
+  1: 'light',
+  3: 'moderate',
+  5: 'severe',
 };
 
 interface SymptomAccordionProps {
   masterSymptoms: SymptomMaster[];
   selected: string[];
+  /** Symptom name → severity 1/3/5 (default 3 when selected). */
+  severities?: Record<string, number>;
   onToggle: (name: string) => void;
 }
 
@@ -24,12 +32,14 @@ function CategoryRow({
   label,
   symptoms,
   selected,
+  severities,
   onToggle,
   theme,
 }: {
   label: string;
   symptoms: SymptomMaster[];
   selected: string[];
+  severities: Record<string, number>;
   onToggle: (name: string) => void;
   theme: ReturnType<typeof useTheme>;
 }) {
@@ -55,6 +65,7 @@ function CategoryRow({
       >
         {symptoms.map((s) => {
           const isSel = selected.includes(s.name);
+          const severity = severities[s.name] ?? 3;
           return (
             <Pressable
               key={s.name}
@@ -62,6 +73,10 @@ function CategoryRow({
               accessibilityRole="checkbox"
               accessibilityState={{ checked: isSel }}
               accessibilityLabel={s.name}
+              accessibilityValue={
+                isSel ? { now: severity, min: 1, max: 5 } : undefined
+              }
+              accessibilityHint={isSel ? `Tap to change severity (${SEVERITY_LABEL[severity]})` : 'Tap to log this symptom'}
               style={[
                 styles.chip,
                 {
@@ -71,10 +86,23 @@ function CategoryRow({
                 },
               ]}
             >
-              <Text style={{ fontSize: 14 }}>{s.icon}</Text>
+              <SymptomIcon name={s.name} size={14} color={isSel ? '#FFFFFF' : theme.colors.textStrong} emoji={s.icon} />
               <Text style={[styles.chipLabel, { color: isSel ? '#FFFFFF' : theme.colors.textStrong }]}>
                 {s.name}
               </Text>
+              {isSel && (
+                <View style={styles.severityDots} accessibilityElementsHidden>
+                  {[1, 3, 5].map((level) => (
+                    <View
+                      key={level}
+                      style={[
+                        styles.dot,
+                        { backgroundColor: severity >= level ? '#FFFFFF' : 'rgba(255,255,255,0.35)' },
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
             </Pressable>
           );
         })}
@@ -83,7 +111,12 @@ function CategoryRow({
   );
 }
 
-export function SymptomAccordion({ masterSymptoms, selected, onToggle }: SymptomAccordionProps) {
+export function SymptomAccordion({
+  masterSymptoms,
+  selected,
+  severities = {},
+  onToggle,
+}: SymptomAccordionProps) {
   const theme = useTheme();
   return (
     <View style={styles.container} accessibilityLabel="Symptom categories">
@@ -96,6 +129,7 @@ export function SymptomAccordion({ masterSymptoms, selected, onToggle }: Symptom
             label={CATEGORY_LABELS[cat] ?? cat}
             symptoms={catSymptoms}
             selected={selected}
+            severities={severities}
             onToggle={onToggle}
             theme={theme}
           />
@@ -114,4 +148,6 @@ const styles = StyleSheet.create({
   chipScroll: { gap: 8, paddingVertical: 2 },
   chip: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8, gap: 6 },
   chipLabel: { fontSize: 12, fontWeight: '600' },
+  severityDots: { flexDirection: 'row', gap: 2, marginLeft: 2 },
+  dot: { width: 4, height: 4, borderRadius: 2 },
 });

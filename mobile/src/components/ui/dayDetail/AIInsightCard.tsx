@@ -2,27 +2,45 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from 'src/theme';
+import type { SafetyTier } from 'src/utils/symptomSafety';
 import { Text } from '../Text';
 
 interface AIInsightCardProps {
-  insight: string | null;
+  /** Safety tier — only `maintenance` / `motivation` render a card this PR. */
+  tier: SafetyTier;
+  /** Motivational copy from `dayInsights` (null for `seek_care` / `recommendation`). */
+  text: string | null;
 }
 
-export function AIInsightCard({ insight }: AIInsightCardProps) {
+const TIER_HEADER: Partial<Record<SafetyTier, string>> = {
+  maintenance: 'Keep tracking',
+  motivation: 'You today',
+};
+
+export function AIInsightCard({ tier, text }: AIInsightCardProps) {
   const theme = useTheme();
-  if (!insight) return null;
+  if (!text) return null;
+  const header = TIER_HEADER[tier] ?? 'AI Insight';
   return (
     <LinearGradient
-      colors={[theme.colors.accentMuted, theme.colors.accentLight]}
+      colors={
+        tier === 'motivation'
+          ? [theme.colors.accentMuted, theme.colors.accentLight]
+          : [theme.colors.primaryMuted, theme.colors.primaryLight]
+      }
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.card, { borderRadius: theme.radius.cardLg }]}
     >
       <View style={styles.header}>
-        <Text style={{ fontSize: 18 }}>✨</Text>
-        <Text variant="body" style={{ fontWeight: '700', color: theme.colors.accent }}>AI Insight</Text>
+        <Text style={{ fontSize: 18 }}>{tier === 'motivation' ? '✨' : '📈'}</Text>
+        <Text variant="body" style={{ fontWeight: '700', color: theme.colors.textStrong }}>
+          {header}
+        </Text>
       </View>
-      <Text variant="bodySmall" color="secondary" style={{ marginTop: 6 }}>{insight}</Text>
+      <Text variant="bodySmall" color="secondary" style={{ marginTop: 6 }}>
+        {text}
+      </Text>
     </LinearGradient>
   );
 }

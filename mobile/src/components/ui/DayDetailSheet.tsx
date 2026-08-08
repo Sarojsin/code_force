@@ -15,13 +15,16 @@ import { EnergySegmented } from './dayDetail/EnergySegmented';
 import { MedicationSection } from './dayDetail/MedicationSection';
 import { NotesSection } from './dayDetail/NotesSection';
 import { AIInsightCard } from './dayDetail/AIInsightCard';
+import { RecommendationCarousel } from './dayDetail/RecommendationCarousel';
 import { SleepWheelPicker } from './dayDetail/SleepWheelPicker';
 import { WaterChips } from './dayDetail/WaterChips';
 
 import { useSymptoms, useMedications, useUpsertDay } from 'src/services/queries/cycle';
 import { toLocalDateStr } from 'src/utils/date';
 import { computeCycleDay, derivePhaseForDate } from 'src/utils/cyclePhases';
-import { getInsightForDay } from 'src/utils/dayInsights';
+import { getDayInsight } from 'src/utils/dayInsights';
+import { getRecommendations } from 'src/utils/expertRecommendations';
+import { logger } from 'src/utils/logger';
 import type { DayPhase } from 'src/utils/cyclePhases';
 import type { DailyDay } from 'src/services/api';
 
@@ -45,9 +48,13 @@ export interface DayObservation {
   waterGlasses: number;
   flowLevel: string | null;
   symptoms: string[];
+  /** Symptom name → severity 1/3/5 (default 3 when selected). */
+  symptomSeverities: Record<string, number>;
   medications: string[];
   medicationDoses: Record<string, string>;
   notes: string;
+  /** Recommendation ids the user has marked done. */
+  recommendationsCompleted: string[];
 }
 
 const INITIAL: DayObservation = {
@@ -59,9 +66,11 @@ const INITIAL: DayObservation = {
   waterGlasses: 0,
   flowLevel: null,
   symptoms: [],
+  symptomSeverities: {},
   medications: [],
   medicationDoses: {},
   notes: '',
+  recommendationsCompleted: [],
 };
 
 function buildInitialObs(data: DailyDay | null | undefined, coveringSymptoms: string[] | undefined): DayObservation {
@@ -77,11 +86,15 @@ function buildInitialObs(data: DailyDay | null | undefined, coveringSymptoms: st
     waterGlasses: data.water_glasses ?? 0,
     flowLevel: data.flow_level ?? null,
     symptoms: data.symptoms?.map((s) => s.name) ?? coveringSymptoms ?? [],
+    symptomSeverities: Object.fromEntries(
+      data.symptoms?.filter((s) => s.severity != null).map((s) => [s.name, s.severity!]) ?? [],
+    ),
     medications: data.medications?.map((m) => m.name) ?? [],
     medicationDoses: Object.fromEntries(
       data.medications?.filter((m) => m.dose).map((m) => [m.name, m.dose!]) ?? [],
     ),
     notes: data.notes ?? '',
+    recommendationsCompleted: data.recommendations_completed ?? [],
   };
 }
 
@@ -137,18 +150,45 @@ export function DayDetailSheet({
     });
   }, []);
 
+  /** Cycle severity on tap: unselected → 3 → 5 → 1 → unselected (plan §6). */
   const toggleSymptom = useCallback((name: string) => {
     setObs((prev) => {
-      const next = prev.symptoms.includes(name)
-        ? prev.symptoms.filter((s) => s !== name)
-        : [...prev.symptoms, name];
       setHasInput(true);
-      return { ...prev, symptoms: next };
+      if (!prev.symptoms.includes(name)) {
+        return {
+          ...prev,
+          symptoms: [...prev.symptoms, name],
+          symptomSeverities: { ...prev.symptomSeverities, [name]: 3 },
+        };
+      }
+      const current = prev.symptomSeverities[name] ?? 3;
+      if (current === 5) {
+        const severities = { ...prev.symptomSeverities };
+        delete severities[name];
+        return {
+          ...prev,
+          symptoms: prev.symptoms.filter((s) => s !== name),
+          symptomSeverities: severities,
+        };
+      }
+      const bumped = current === 3 ? 5 : 3;
+      return {
+        ...prev,
+        symptomSeverities: { ...prev.symptomSeverities, [name]: bumped },
+      };
     });
   }, []);
 
   const removeSymptom = useCallback((name: string) => {
-    setObs((prev) => ({ ...prev, symptoms: prev.symptoms.filter((s) => s !== name) }));
+    setObs((prev) => {
+      const severities = { ...prev.symptomSeverities };
+      delete severities[name];
+      return {
+        ...prev,
+        symptoms: prev.symptoms.filter((s) => s !== name),
+        symptomSeverities: severities,
+      };
+    });
   }, []);
 
   const toggleMedication = useCallback((name: string) => {
@@ -165,7 +205,30 @@ export function DayDetailSheet({
     setObs((prev) => ({ ...prev, medicationDoses: { ...prev.medicationDoses, [name]: dose } }));
   }, []);
 
+  const toggleRecommendation = useCallback((id: string) => {
+    setObs((prev) => ({
+      ...prev,
+      recommendationsCompleted: prev.recommendationsCompleted.includes(id)
+        ? prev.recommendationsCompleted.filter((r) => r !== id)
+        : [...prev.recommendationsCompleted, id],
+    }));
+  }, []);
+
+  const recCards = useMemo(
+    () => getRecommendations({ phaseKey, painLevel: obs.painLevel, selectedSymptoms: obs.symptoms }),
+    [phaseKey, obs.painLevel, obs.symptoms],
+  );
+
   const handleDone = useCallback(() => {
+    const safety = getDayInsight(obs, phaseKey);
+    if (safety.tier === 'seek_care') {
+      // Reserved hook (plan §7): log only, no visual change this PR.
+      logger.warn('day_safety.seek_care', {
+        painLevel: obs.painLevel,
+        phaseKey,
+        symptoms: obs.symptoms,
+      });
+    }
     upsertDay.mutate(
       {
         logDate: logDateStr,
@@ -178,18 +241,22 @@ export function DayDetailSheet({
           water_glasses: obs.waterGlasses,
           flow_level: obs.flowLevel ?? undefined,
           notes: obs.notes,
-          symptoms: obs.symptoms.map((name) => ({ symptom: name, severity: 3 })),
+          symptoms: obs.symptoms.map((name) => ({
+            symptom: name,
+            severity: obs.symptomSeverities[name] ?? 3,
+          })),
           medications: obs.medications.map((name) => ({
             name,
             dose: obs.medicationDoses[name] || undefined,
           })),
+          recommendations_completed: obs.recommendationsCompleted,
         },
       },
       { onSuccess: () => onDone() },
     );
-  }, [obs, logDateStr, upsertDay, onDone]);
+  }, [obs, logDateStr, phaseKey, upsertDay, onDone]);
 
-  const insight = getInsightForDay(obs);
+  const insight = getDayInsight(obs, phaseKey);
 
   return (
     <BottomSheet visible={visible} onClose={onClose}>
@@ -264,6 +331,7 @@ export function DayDetailSheet({
           <SymptomAccordion
             masterSymptoms={masterSymptoms}
             selected={obs.symptoms}
+            severities={obs.symptomSeverities}
             onToggle={toggleSymptom}
           />
         </View>
@@ -287,7 +355,15 @@ export function DayDetailSheet({
           />
         </View>
 
-        <AIInsightCard insight={insight} />
+        {insight.tier === 'recommendation' && recCards.length > 0 ? (
+          <RecommendationCarousel
+            cards={recCards}
+            completed={obs.recommendationsCompleted}
+            onToggle={toggleRecommendation}
+          />
+        ) : (
+          <AIInsightCard tier={insight.tier} text={insight.motivation} />
+        )}
 
         <Button
           label="Done"
