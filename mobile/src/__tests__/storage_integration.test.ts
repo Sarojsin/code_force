@@ -10,6 +10,7 @@ import { pruneLocalDb } from '../services/localDb/pruneLocalDb';
 jest.mock('../db/connection', () => ({
   getDb: jest.fn(),
   getNativeDb: jest.fn(),
+  runExclusive: jest.fn(async (task: () => Promise<unknown>) => task()),
 }));
 
 jest.mock('@sentry/react-native', () => ({
