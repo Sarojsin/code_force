@@ -1,0 +1,1 @@
+ALTER TABLE `symptoms` ADD `icon_kind` text;

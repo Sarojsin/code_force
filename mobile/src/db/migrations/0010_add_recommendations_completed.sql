@@ -1,0 +1,1 @@
+ALTER TABLE `cycle_days` ADD `recommendations_completed` text DEFAULT '[]' NOT NULL;

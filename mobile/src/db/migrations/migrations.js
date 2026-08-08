@@ -11,6 +11,8 @@ import m0006 from './0006_fix_diary_tables.sql';
 import m0007 from './0007_add_diary_fts.sql';
 import m0008 from './0008_add_day_observations.sql';
 import m0009 from './0009_add_companion_memory.sql';
+import m0010 from './0010_add_recommendations_completed.sql';
+import m0011 from './0011_add_symptom_icon_kind.sql';
 
   export default {
     journal,
@@ -22,9 +24,11 @@ m0003,
 m0004,
 m0005,
 m0006,
-      m0007,
+m0007,
 m0008,
-      m0009
+m0009,
+m0010,
+m0011
     }
   }
   
