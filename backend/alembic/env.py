@@ -15,6 +15,7 @@ import app.modules.admin.models
 import app.modules.auth.models
 import app.modules.chat.models
 import app.modules.cycle.models
+import app.modules.diary.models
 import app.modules.family.models
 import app.modules.luna.models
 import app.modules.nurse_content.models

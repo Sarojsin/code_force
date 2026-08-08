@@ -38,6 +38,7 @@ class DiaryService:
         )
         self.db.add(diary)
         await self.db.flush()
+        await self.db.commit()
         return diary
 
     async def list_diaries(self, user_id: uuid.UUID) -> list[Diary]:
@@ -63,12 +64,14 @@ class DiaryService:
             if value is not None and hasattr(diary, key):
                 setattr(diary, key, value)
         await self.db.flush()
+        await self.db.commit()
         return diary
 
     async def delete_diary(self, diary_id: uuid.UUID, user_id: uuid.UUID) -> None:
         diary = await self.get_diary(diary_id, user_id)
         diary.is_active = False
         await self.db.flush()
+        await self.db.commit()
 
     # ─── Page CRUD ──────────────────────────────────────────────────────
 
@@ -97,6 +100,19 @@ class DiaryService:
 
         diary.page_count = (diary.page_count or 0) + 1
         await self.db.flush()
+        await self.db.commit()
+        return await self._reload_page(page.id)
+
+    async def _reload_page(self, page_id: uuid.UUID) -> DiaryPage:
+        """Re-fetch a page with `objects` eagerly loaded after a commit."""
+        result = await self.db.execute(
+            select(DiaryPage)
+            .options(selectinload(DiaryPage.objects))
+            .where(and_(DiaryPage.id == page_id, DiaryPage.is_active == True))
+        )
+        page = result.scalar_one_or_none()
+        if not page:
+            raise DiaryPageNotFoundError(f"Page {page_id} not found")
         return page
 
     async def list_pages(self, diary_id: uuid.UUID, user_id: uuid.UUID,
@@ -104,6 +120,7 @@ class DiaryService:
         await self.get_diary(diary_id, user_id)
         result = await self.db.execute(
             select(DiaryPage)
+            .options(selectinload(DiaryPage.objects))
             .where(and_(DiaryPage.diary_id == diary_id, DiaryPage.is_active == True))
             .order_by(DiaryPage.page_number.asc())
             .offset(offset).limit(limit)
@@ -130,7 +147,8 @@ class DiaryService:
                 setattr(page, key, value)
         page.version += 1
         await self.db.flush()
-        return page
+        await self.db.commit()
+        return await self._reload_page(page.id)
 
     async def delete_page(self, page_id: uuid.UUID, user_id: uuid.UUID) -> None:
         page = await self.get_page(page_id, user_id)
@@ -138,6 +156,7 @@ class DiaryService:
         diary = await self.get_diary(page.diary_id, user_id)
         diary.page_count = max(0, (diary.page_count or 0) - 1)
         await self.db.flush()
+        await self.db.commit()
 
     # ─── Object CRUD ────────────────────────────────────────────────────
 
@@ -147,6 +166,7 @@ class DiaryService:
         obj = DiaryPageObject(page_id=page_id, **obj_data)
         self.db.add(obj)
         await self.db.flush()
+        await self.db.commit()
         return obj
 
     async def update_object(self, obj_id: uuid.UUID, page_id: uuid.UUID,
@@ -165,6 +185,7 @@ class DiaryService:
             if value is not None and hasattr(obj, key):
                 setattr(obj, key, value)
         await self.db.flush()
+        await self.db.commit()
         return obj
 
     async def delete_object(self, obj_id: uuid.UUID, page_id: uuid.UUID,
@@ -181,6 +202,7 @@ class DiaryService:
             raise DiaryPageObjectNotFoundError(f"Object {obj_id} not found")
         obj.is_active = False
         await self.db.flush()
+        await self.db.commit()
 
     # ─── Operations ─────────────────────────────────────────────────────
 
@@ -204,9 +226,10 @@ class DiaryService:
                 await self._apply_delete_object(data)
             elif op_type == "ADD_OBJECT":
                 await self._apply_add_object(page_id, data)
-            page.version += 1
+        page.version += 1
         await self.db.flush()
-        return page
+        await self.db.commit()
+        return await self._reload_page(page.id)
 
     async def _apply_move(self, data: dict) -> None:
         obj_id = data.get("object_id")
@@ -266,6 +289,7 @@ class DiaryService:
         )
         self.db.add(media)
         await self.db.flush()
+        await self.db.commit()
         return media
 
     async def update_media(self, media_id: uuid.UUID, user_id: uuid.UUID,
@@ -283,6 +307,7 @@ class DiaryService:
             if value is not None and hasattr(media, key):
                 setattr(media, key, value)
         await self.db.flush()
+        await self.db.commit()
         return media
 
     async def get_media(self, media_id: uuid.UUID, user_id: uuid.UUID) -> DiaryMedia:
@@ -300,11 +325,12 @@ class DiaryService:
     async def delete_media(self, media_id: uuid.UUID, user_id: uuid.UUID) -> None:
         media = await self.get_media(media_id, user_id)
         if media.s3_key:
-            await self.s3.delete_file(media.s3_key)
+            self.s3.delete_object(bucket="shecare-diary-media", key=media.s3_key)
         if media.thumbnail_s3_key:
-            await self.s3.delete_file(media.thumbnail_s3_key)
+            self.s3.delete_object(bucket="shecare-diary-media", key=media.thumbnail_s3_key)
         media.is_active = False
         await self.db.flush()
+        await self.db.commit()
 
     # ─── Presigned Upload URL ───────────────────────────────────────────
 

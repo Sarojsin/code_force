@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.core.celery_app import celery_app
+from app.core.config import get_settings
 from app.integrations.s3_client import S3Client
 
 
@@ -19,16 +20,16 @@ def upload_diary_media(self, media_id: str, user_id: str, local_path: str, mime_
     Called by the mobile background sync after media is captured locally.
     """
     try:
-        s3 = S3Client()
+        s3 = S3Client(settings=get_settings().s3)
         bucket = "shecare-diary-media"
         s3_key = f"users/{user_id}/diary/{media_id}/{local_path.split('/')[-1]}"
 
         with open(local_path, "rb") as f:
-            s3.client.put_object(
-                Bucket=bucket,
-                Key=s3_key,
-                Body=f,
-                ContentType=mime_type,
+            s3.put_object(
+                bucket=bucket,
+                key=s3_key,
+                body=f,
+                content_type=mime_type,
             )
 
         return {"media_id": media_id, "s3_key": s3_key, "status": "synced"}

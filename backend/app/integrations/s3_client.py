@@ -70,6 +70,19 @@ class S3Client:
             logger.error("s3.presigned_download_failed", extra={"error": str(exc)})
             raise S3Error(str(exc)) from exc
 
+    def put_object(self, bucket: str, key: str, body: Any, content_type: str = "application/octet-stream") -> None:
+        try:
+            self._client.put_object(
+                Bucket=bucket,
+                Key=key,
+                Body=body,
+                ContentType=content_type,
+            )
+            logger.info("s3.uploaded", extra={"bucket": bucket, "key": key})
+        except ClientError as exc:
+            logger.error("s3.upload_failed", extra={"error": str(exc)})
+            raise S3Error(str(exc)) from exc
+
     def delete_object(self, bucket: str, key: str) -> None:
         try:
             self._client.delete_object(Bucket=bucket, Key=key)

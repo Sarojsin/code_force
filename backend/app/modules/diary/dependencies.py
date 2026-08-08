@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.integrations.s3_client import S3Client
 from app.modules.diary.services import DiaryService
@@ -15,7 +16,7 @@ from app.modules.diary.services import DiaryService
 async def get_diary_service(
     db: AsyncSession = Depends(get_db),
 ) -> DiaryService:
-    s3 = S3Client()
+    s3 = S3Client(settings=get_settings().s3)
     return DiaryService(db=db, s3=s3)
 
 
