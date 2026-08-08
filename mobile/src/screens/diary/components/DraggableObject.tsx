@@ -23,6 +23,7 @@ interface Props {
   obj: CanvasObject;
   isSelected: boolean;
   today: string;
+  mediaUri?: string;
   editingTextId: string | null;
   editTextContent: string;
   onSelect: (id: string) => void;
@@ -36,7 +37,7 @@ interface Props {
 }
 
 function DraggableObjectBase({
-  obj, isSelected, today,
+  obj, isSelected, today, mediaUri,
   editingTextId, editTextContent,
   onSelect, onDragStart, onDragMove, onDragRelease, onUpdate,
   onStartEdit, onEditChange, onEditBlur,
@@ -74,9 +75,11 @@ function DraggableObjectBase({
       case 'sticker':
         return <Text style={styles.sticker}>{obj.sticker_id ?? '🌸'}</Text>;
       case 'photo':
-        return <PolaroidFrame imageUri={obj.media_id ?? undefined} width={obj.width} rotation={obj.rotation} />;
+        return <PolaroidFrame imageUri={mediaUri} width={obj.width} rotation={obj.rotation} />;
       case 'image':
-        return <Image source={{ uri: obj.media_id ?? undefined }} style={styles.image} resizeMode="cover" />;
+        return mediaUri
+          ? <Image source={{ uri: mediaUri }} style={styles.image} resizeMode="cover" />
+          : <View style={styles.imagePlaceholder}><Text style={styles.imagePlaceholderText}>🖼</Text></View>;
       case 'video':
         return (
           <View style={styles.video}>
@@ -149,6 +152,12 @@ const styles = StyleSheet.create({
   sticker: { fontSize: 48 },
   unknown: { fontSize: 20, color: '#88726f' },
   image: { width: '100%', height: '100%', borderRadius: 4 },
+  imagePlaceholder: {
+    width: '100%', height: '100%', borderRadius: 4, borderWidth: 1,
+    borderStyle: 'dashed', borderColor: '#dbc1bd', backgroundColor: '#f5f4ec',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  imagePlaceholderText: { fontSize: 28 },
   video: {
     width: '100%', height: '100%', backgroundColor: '#1b1c17', borderRadius: 4,
     justifyContent: 'center', alignItems: 'center',

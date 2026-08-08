@@ -10,6 +10,11 @@ import type { AnimationState } from '../AnimationEngine';
 interface Luna3DProps {
   size: number;
   currentAnim: SharedValue<AnimationState>;
+  /** Y-axis rotation shared value from useAnimationEngine — applied to the
+   *  3D model root entity so the turn-around is visible in true 3D space. */
+  rotation: SharedValue<number>;
+  /** X-axis rotation shared value — drives the backflip animation. */
+  rotationX: SharedValue<number>;
   /** True when DLC is installed and 3D should be attempted. */
   installed: boolean;
   reducedMotion?: boolean;
@@ -26,6 +31,8 @@ interface Luna3DProps {
 export function Luna3D({
   size,
   currentAnim,
+  rotation,
+  rotationX,
   installed,
   reducedMotion = false,
   reduceAnimations = false,
@@ -77,15 +84,17 @@ export function Luna3D({
   return (
     <View style={{ width: size, height: size }}>
       {modelLoading && <CatSkeleton size={size} />}
-      <Luna3DErrorBoundary fallback={fallback}>
-        <TalkingCat
-          size={size}
-          currentAnim={currentAnim}
-          reducedMotion={reducedMotion}
-          reduceAnimations={reduceAnimations}
-          talking={talkingSV}
-          onModelLoaded={handleModelLoaded}
-        />
+         <Luna3DErrorBoundary fallback={fallback}>
+         <TalkingCat
+           size={size}
+           currentAnim={currentAnim}
+           rotation={rotation}
+           rotationX={rotationX}
+           reducedMotion={reducedMotion}
+           reduceAnimations={reduceAnimations}
+           talking={talkingSV}
+           onModelLoaded={handleModelLoaded}
+         />
       </Luna3DErrorBoundary>
     </View>
   );

@@ -27,6 +27,9 @@ interface ModelInfo {
   clipIndex: number;
   clipDuration: number;
   animationCount: number;
+  // Optional locomotion clip played during show_back for leg movement. -1 when absent.
+  turnClipIndex: number;
+  turnClipDuration: number;
   prev: Record<string, number>;
 }
 
@@ -55,6 +58,10 @@ const EMPTY_PREV: ModelInfo['prev'] = {
   earR: 0,
   eyeL: 0,
   eyeR: 0,
+  look: 0,
+  weightShift: 0,
+  yRotation: 0,
+  xRotation: 0,
   bodyScale: 1,
 };
 
@@ -62,6 +69,8 @@ const EMPTY_MODEL_INFO: ModelInfo = {
   clipIndex: -1,
   clipDuration: 1,
   animationCount: 0,
+  turnClipIndex: -1,
+  turnClipDuration: 1,
   prev: EMPTY_PREV,
 };
 
@@ -116,17 +125,38 @@ function applyPoseToEngine(
   bones: BoneEntities,
   poseSV: ISharedValue<LunaPose>,
   frame: FrameInfo,
+  anim: AnimationState,
+  yRotation: number,
+  xRotation: number,
 ): void {
   'worklet';
   if (animator == null) {
     return;
   }
   const info = modelInfoSV.value;
-  // Apply the base animation clip (if any) — but always apply the live
-  // micro-animation pose deltas below, so the cat breathes/blinks/twitches
-  // even when the model ships no animation clips.
-  if (info.clipIndex >= 0 && info.clipIndex < info.animationCount) {
+  // When turning to show her back, play the locomotion clip (if the model has
+  // one) so the legs move like a real cat turning. Otherwise the idle clip /
+  // micro-wiggles still apply. Always apply the pose deltas below so idle
+  // breathing/blinking/twitching stay alive.
+  if (anim === 'show_back' && info.turnClipIndex >= 0 && info.turnClipIndex < info.animationCount) {
+    animator.applyAnimation(info.turnClipIndex, frame.passedSeconds % info.turnClipDuration);
+  } else if (info.clipIndex >= 0 && info.clipIndex < info.animationCount) {
     animator.applyAnimation(info.clipIndex, frame.passedSeconds % info.clipDuration);
+  }
+  // Apply the Reanimated-driven Y-rotation to the model root entity in true
+  // 3D space. The parent Animated.View's rotateY doesn't reach the Filament
+  // surface (native render surface ignores parent View 3D transforms), so we
+  // apply it here via Filament's own transform manager instead.
+  if (bones.root != null && Math.abs(yRotation - info.prev.yRotation) > 0.0001) {
+    const delta = yRotation - info.prev.yRotation;
+    tm.setEntityRotation(bones.root, delta, AXIS_Y as [number, number, number], true);
+    info.prev.yRotation = yRotation;
+  }
+  // Apply X-rotation (backflip) to the root entity — same delta-based approach.
+  if (bones.root != null && Math.abs(xRotation - info.prev.xRotation) > 0.0001) {
+    const delta = xRotation - info.prev.xRotation;
+    tm.setEntityRotation(bones.root, delta, AXIS_X as [number, number, number], true);
+    info.prev.xRotation = xRotation;
   }
   const pose = poseSV.value;
   const prev = info.prev;
@@ -154,13 +184,17 @@ interface CatSceneProps {
   size: number;
   source: BufferSource;
   currentAnim: SharedValue<AnimationState>;
+  /** Y-axis rotation shared value — applied to root entity in the render worklet. */
+  rotation: SharedValue<number>;
+  /** X-axis rotation shared value — drives the backflip animation. */
+  rotationX: SharedValue<number>;
   reducedMotion: boolean;
   reduceAnimations: boolean;
   talking: SharedValue<boolean>;
   onModelLoaded?: () => void;
 }
 
-function CatScene({ size, source, currentAnim, reducedMotion, reduceAnimations, talking, onModelLoaded }: CatSceneProps) {
+function CatScene({ size, source, currentAnim, rotation, rotationX, reducedMotion, reduceAnimations, talking, onModelLoaded }: CatSceneProps) {
   const model = useModel(source);
   // useModel returns a fresh object on every render, which would recreate the
   // animator (and re-run our effect + setState) each render. Memoize on the
@@ -182,6 +216,10 @@ function CatScene({ size, source, currentAnim, reducedMotion, reduceAnimations, 
   // Bridge reanimated shared values into worklets-core (useSyncSharedValue).
   const animSV = useSyncSharedValue(currentAnim);
   const talkingSV = useSyncSharedValue(talking);
+  // Bridge the Y-rotation so the render worklet can apply it to the model root.
+  const rotationSV = useSyncSharedValue(rotation);
+  // Bridge the X-rotation for the flip/backflip animation.
+  const rotationXSV = useSyncSharedValue(rotationX);
 
   useEffect(() => {
     if (loadedModel.state !== 'loaded' || animator == null) {
@@ -200,8 +238,20 @@ function CatScene({ size, source, currentAnim, reducedMotion, reduceAnimations, 
           preferred = i;
         }
       }
-      clipIndex = preferred;
+       clipIndex = preferred;
       clipDuration = Math.max(animator.getAnimationDuration(preferred), 0.001);
+    }
+    // Detect a locomotion clip (walk/run/trot) to play with leg movement while
+    // Luna turns around to show her back. -1 when the model has none.
+    let turnClipIndex = -1;
+    let turnClipDuration = 1;
+    for (let i = 0; i < clipCount; i++) {
+      const name = animator.getAnimationName(i).toLowerCase();
+      if (name.includes('walk') || name.includes('run') || name.includes('trot') || name.includes('step')) {
+        turnClipIndex = i;
+        turnClipDuration = Math.max(animator.getAnimationDuration(i), 0.001);
+        break;
+      }
     }
     const nextBones: BoneEntities = {
       root: loadedModel.rootEntity,
@@ -234,6 +284,8 @@ function CatScene({ size, source, currentAnim, reducedMotion, reduceAnimations, 
       clipIndex,
       clipDuration,
       animationCount: clipCount,
+      turnClipIndex,
+      turnClipDuration,
       prev: EMPTY_PREV,
     };
     return () => {
@@ -256,9 +308,12 @@ function CatScene({ size, source, currentAnim, reducedMotion, reduceAnimations, 
         { root, head, tail, jaw, earL, earR, eyeL, eyeR },
         poseSV,
         frame,
+        animSV.value,
+        rotationSV.value,
+        rotationXSV.value,
       );
     },
-    [animator, transformManager, modelInfoSV, root, head, tail, jaw, earL, earR, eyeL, eyeR, poseSV, animSV, talkingSV, reducedMotion, reduceAnimations],
+    [animator, transformManager, modelInfoSV, root, head, tail, jaw, earL, earR, eyeL, eyeR, poseSV, animSV, talkingSV, rotationSV, rotationXSV, reducedMotion, reduceAnimations],
   );
 
   return (
@@ -273,6 +328,12 @@ export interface TalkingCatProps {
   size: number;
   /** Live animation state from useAnimationEngine(). */
   currentAnim: SharedValue<AnimationState>;
+  /** Y-axis rotation shared value from useAnimationEngine — applied to the
+   *  3D model root entity in the render workloop so the turn-around is visible
+   *  in true 3D space (parent View transforms don't reach the Filament surface). */
+  rotation: SharedValue<number>;
+  /** X-axis rotation shared value — drives the backflip animation. */
+  rotationX: SharedValue<number>;
   /** 3D model source. Defaults to the DLC filesystem path. */
   modelSource?: BufferSource;
   reducedMotion?: boolean;
@@ -286,6 +347,8 @@ export interface TalkingCatProps {
 export function TalkingCat({
   size,
   currentAnim,
+  rotation,
+  rotationX,
   modelSource,
   reducedMotion = false,
   reduceAnimations = false,
@@ -304,6 +367,8 @@ export function TalkingCat({
         size={size}
         source={source}
         currentAnim={currentAnim}
+        rotation={rotation}
+        rotationX={rotationX}
         reducedMotion={reducedMotion}
         reduceAnimations={reduceAnimations}
         talking={talkingSV}

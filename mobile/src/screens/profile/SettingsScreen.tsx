@@ -159,7 +159,7 @@ export function SettingsScreen() {
   const diaryHydrated = useDiaryAssetStore((s) => s.isHydrated);
   const companionHydrated = useCompanionStore((s) => s.isHydrated);
   const installStatus = useCompanionStore((s) => s.installStatus);
-  const { currentAnim } = useAnimationEngine();
+   const { currentAnim, rotation, rotationX } = useAnimationEngine();
   const assetsVersion = useCompanionStore((s) => s.assetsVersion);
 
   const handleLunaToggle = (key: 'isHidden' | 'reduceAnimations' | 'muteSounds') => async (value: boolean) => {
@@ -333,10 +333,12 @@ export function SettingsScreen() {
               </View>
               {!companionHidden && (
                 <View style={{ alignItems: 'center', paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.border }}>
-                  <Luna3D
-                    size={60}
-                    currentAnim={currentAnim}
-                    installed={installStatus === 'ready'}
+                   <Luna3D
+                     size={60}
+                     currentAnim={currentAnim}
+                     rotation={rotation}
+                     rotationX={rotationX}
+                     installed={installStatus === 'ready'}
                     reduceAnimations={companionReduceAnimations}
                   />
                   <Txt variant="caption" color="muted" style={{ marginTop: 4 }}>

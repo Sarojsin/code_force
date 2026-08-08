@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const LUNA_SIZE = 96;
+const LUNA_SIZE = 112;
 const BUBBLE_WIDTH = 210;
 
 const PHASE_TIP_CATEGORY: Record<string, HealthTipCategory> = {
@@ -93,7 +93,7 @@ export function LunaOverlay({
   // under the navigation bar.
   const dockBottom = (insets?.bottom ?? 0) + (tabBarHeight ?? 0) + 18;
 
-  const { play, animatedStyle, isAnimating, scale, opacity, currentAnim } = useAnimationEngine();
+  const { play, animatedStyle, isAnimating, scale, opacity, rotation, rotationX, currentAnim } = useAnimationEngine();
   const { current: speech, show: showBubble } = useSpeechBubble();
   const talking = useSharedValue(false);
 
@@ -176,6 +176,7 @@ export function LunaOverlay({
         !reduceAnimations &&
         !isAnimating('sleep') &&
         !isAnimating('show_back') &&
+        !isAnimating('flip') &&
         !isAnimating('wave') &&
         !isAnimating('happy')
       ) {
@@ -222,12 +223,34 @@ export function LunaOverlay({
             );
           }
           break;
-        case 8:
+        case 4:
+          // Playful surprise: 40% chance to do a backflip mid-idle.
+          if (
+            !isAnimating('sleep') &&
+            !isAnimating('show_back') &&
+            !isAnimating('flip') &&
+            Math.random() < 0.4
+          ) {
+            play('flip');
+          }
+          break;
+         case 8:
           if (!isAnimating('sleep')) {
             scale.value = withSequence(
               withTiming(1.08, { duration: 400 }),
               withTiming(1, { duration: 400 })
             );
+          }
+          break;
+        case 9:
+          // Backup flip chance before sleep.
+          if (
+            !isAnimating('sleep') &&
+            !isAnimating('show_back') &&
+            !isAnimating('flip') &&
+            Math.random() < 0.5
+          ) {
+            play('flip');
           }
           break;
         case 10:
@@ -380,6 +403,8 @@ export function LunaOverlay({
             <Luna3D
               size={reduceAnimations ? LUNA_SIZE - 8 : LUNA_SIZE}
               currentAnim={currentAnim}
+              rotation={rotation}
+              rotationX={rotationX}
               installed={installStatus === 'ready'}
               reducedMotion={systemReducedMotion}
               reduceAnimations={reduceAnimations}
@@ -595,12 +620,12 @@ const styles = StyleSheet.create({
   bubbleTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2D1B26',
+    color: '#DC2626',
   },
   bubbleMessage: {
-    fontSize: 12,
-    lineHeight: 19,
-    color: '#6B4D5A',
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#DC2626',
     marginBottom: 4,
   },
   dismissBtn: {
@@ -616,7 +641,7 @@ const styles = StyleSheet.create({
   },
   dismissX: {
     fontSize: 13,
-    color: '#6B4D5A',
+    color: '#DC2626',
     lineHeight: 14,
   },
   bubbleTail: {
@@ -630,9 +655,9 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 3,
   },
   periodBig: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#2D1B26',
+    color: '#DC2626',
     marginBottom: 6,
   },
   tipBadge: {
@@ -646,7 +671,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700',
     letterSpacing: 0.6,
-    color: '#FF6B8A',
+    color: '#DC2626',
   },
   levelBadgeText: {
     color: '#FFFFFF',
@@ -654,11 +679,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   groundShadow: {
-    width: LUNA_SIZE * 0.62,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: 'rgba(0,0,0,0.12)',
-    marginTop: -8,
+    width: LUNA_SIZE * 0.68,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.14)',
+    marginTop: -10,
   },
   xpBar: {
     width: LUNA_SIZE - 12,

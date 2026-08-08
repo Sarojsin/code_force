@@ -48,7 +48,7 @@ export function DiaryLibraryScreen({ navigation }: any) {
         numColumns={2}
         columnWrapperStyle={styles.row}
         renderItem={({ item }) => (
-          <DiaryCard diary={item} onPress={() => navigation.navigate('Diary', { diaryId: item.id })} />
+          <DiaryCard diary={item} onPress={() => navigation.navigate('DiaryScreen', { diaryId: item.id })} />
         )}
         ListHeaderComponent={
           <TouchableOpacity

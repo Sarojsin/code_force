@@ -7,6 +7,7 @@ import { generateId } from 'src/utils/uuid';
 import { diaryLocal } from '../../services/localDb';
 import { useDiary, useCreatePage } from '../../services/queries/diary';
 import { useDiaryMediaUpload } from '../../services/diary/useDiaryMediaUpload';
+import { resolveDiaryMediaUris } from '../../services/diary/diaryMediaUri';
 import { emitDiaryPageSaved } from '../../services/diary/diaryEvents';
 import { FloatingToolbar } from './components/FloatingToolbar';
 import { ObjectToolOverlay } from './components/ObjectToolOverlay';
@@ -26,6 +27,7 @@ export function DiaryEditorScreen({ route, navigation }: any) {
   const [pageId, setPageId] = useState<string | null>(null);
   const [pageVersion, setPageVersion] = useState(1);
   const [objects, setObjects] = useState<CanvasObject[]>([]);
+  const [mediaUris, setMediaUris] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toolbarOpen, setToolbarOpen] = useState(false);
   const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
@@ -73,6 +75,14 @@ export function DiaryEditorScreen({ route, navigation }: any) {
       await diaryLocal.object.upsert(obj as any);
     }
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveDiaryMediaUris(objects.map(o => o.media_id)).then(map => {
+      if (!cancelled) setMediaUris(map);
+    });
+    return () => { cancelled = true; };
+  }, [objects]);
 
   const addObject = useCallback(async (type: string) => {
     if (!pageId) return;
@@ -368,6 +378,7 @@ export function DiaryEditorScreen({ route, navigation }: any) {
               obj={obj}
               isSelected={selectedId === obj.id}
               today={today}
+              mediaUri={mediaUris[obj.media_id ?? '']}
               editingTextId={editingTextId}
               editTextContent={editTextContent}
               onSelect={setSelectedId}
