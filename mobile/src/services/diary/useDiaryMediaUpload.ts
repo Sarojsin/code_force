@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useQueryClient } from '@tanstack/react-query';
 import { diaryService } from '../api/diary';
 import { diaryLocal } from '../localDb';

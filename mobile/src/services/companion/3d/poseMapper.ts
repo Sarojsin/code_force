@@ -257,10 +257,30 @@ export function animationToPose(
     }
 
     case 'hidden': {
-      return emptyPose();
-    }
+       return emptyPose();
+     }
 
-    default:
+     case 'flip': {
+       // Mid-backflip: ears back, tail up, head tucked, slight excitement.
+       // The body X-rotation (backflip) is driven by the rotationX shared value
+       // applied to the root entity — this pose layer adds the facial/body
+       // micro-expressions for the moment.
+       return {
+         jaw: 0,
+         headTilt: reduced ? 0 : Math.sin(t * 8 * speed) * 0.1,
+         headNod: reduced ? 0 : Math.abs(Math.sin(t * 4 * speed)) * 0.2,
+         blink: 0,
+         breath: reduced ? 0 : (Math.sin(t * 5 * speed) + 1) * 0.06,
+         tail: 0.4,
+         ear: -0.4,
+         earTwitch: 0,
+         look: 0,
+         weightShift: reduced ? 0 : Math.sin(t * 6 * speed) * 0.05,
+         talking: false,
+       };
+     }
+
+     default:
       return animationToPose('idle', t, options);
     }
   })();

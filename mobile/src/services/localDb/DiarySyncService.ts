@@ -1,3 +1,4 @@
+import { api } from '../api/client';
 import { logger } from '../../utils';
 
 interface SyncOperation {
@@ -21,20 +22,9 @@ export class DiarySyncService {
     const ops = [...this.queue];
     this.queue = [];
     try {
-      const token = ''; // TODO: get from auth store
-      const response = await fetch(`/api/v1/diary/pages/${pageId}/operations`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ operations: ops }),
-      });
-      if (!response.ok) {
-        logger.error('DiarySyncService.flush failed', { status: response.status });
-        this.queue = [...ops, ...this.queue];
-        return false;
-      }
+      // Use the shared axios client: it carries the API baseURL (already
+      // includes /api/v1) and the Authorization header via its interceptor.
+      await api.post(`/diary/pages/${pageId}/operations`, { operations: ops });
       return true;
     } catch (error) {
       logger.error('DiarySyncService.flush error', error);

@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { diaryService } from '../api/diary';
+import { diaryLocal } from '../localDb';
 import { emitDiaryPageCreated } from '../diary/diaryEvents';
+import { logger } from 'src/utils';
 
 export function useDiaries() {
   return useQuery({
@@ -12,7 +15,25 @@ export function useDiaries() {
 export function useDiary(id: string) {
   return useQuery({
     queryKey: ['diary', id],
-    queryFn: () => diaryService.getDiary(id),
+    queryFn: async () => {
+      try {
+        return await diaryService.getDiary(id);
+      } catch (error) {
+        // Stale local diary that no longer exists on the server (e.g. created
+        // before the backend had diary tables, or deleted on another device).
+        // Drop the orphaned local row so the app can't keep navigating to it.
+        const status = (error as AxiosError)?.response?.status;
+        if (status === 404) {
+          logger.warn('Diary 404 on server — removing stale local diary', { diaryId: id });
+          try {
+            await diaryLocal.diary.hardDelete(id);
+          } catch {
+            // Local cleanup is best-effort.
+          }
+        }
+        throw error;
+      }
+    },
   });
 }
 

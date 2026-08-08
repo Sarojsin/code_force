@@ -199,7 +199,7 @@ class MemoryService {
     for (const row of habitRows) {
       const [prefix, type, day] = row.key.split('.');
       if (prefix !== 'habit' || !type || !day) continue;
-      const plain = await memoryCrypto.decrypt(userId, row.value);
+      const plain = await memoryCrypto.decrypt(userId, row.value, true);
       if (!plain) continue;
       try {
         const parsed = JSON.parse(plain) as { value?: number };
@@ -242,7 +242,7 @@ class MemoryService {
       .where(and(like(companionMemory.key, 'pref.pet.%'), gte(companionMemory.created_at, windowStart)));
     let petCount = 0;
     for (const row of petRows) {
-      const plain = await memoryCrypto.decrypt(userId, row.value);
+      const plain = await memoryCrypto.decrypt(userId, row.value, true);
       if (!plain) continue;
       try {
         const parsed = JSON.parse(plain) as { count?: number };
@@ -352,7 +352,7 @@ class MemoryService {
   private async readJson<T>(userId: string, key: string): Promise<T | null> {
     const row = await this.getRow(key);
     if (!row) return null;
-    const plain = await memoryCrypto.decrypt(userId, row.value);
+    const plain = await memoryCrypto.decrypt(userId, row.value, true);
     if (!plain) return null;
     try {
       return JSON.parse(plain) as T;
@@ -394,7 +394,7 @@ class MemoryService {
       .limit(2);
     const averages: number[] = [];
     for (const row of rows) {
-      const plain = await memoryCrypto.decrypt(userId, row.value);
+      const plain = await memoryCrypto.decrypt(userId, row.value, true);
       if (!plain) continue;
       try {
         const parsed = JSON.parse(plain) as { total: number; count: number };
