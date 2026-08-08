@@ -1189,6 +1189,7 @@ class CycleService:
             "sleep_minutes",
             "water_glasses",
             "flow_level",
+            "recommendations_completed",
         ):
             if field in dump:
                 setattr(day, field, dump[field])

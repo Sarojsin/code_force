@@ -60,7 +60,8 @@ async def test_create_content(svc: NurseContentService) -> None:
     data = ContentCreate(title="Breathing Basics", description="Learn to breathe", category="wellness")
     content = await svc.create_content(nurse_id, data)
     assert content.title == "Breathing Basics"
-    assert content.status == "pending"
+    assert content.status == "approved"
+    assert content.content_type == "article"
 
 
 @pytest.mark.asyncio
@@ -109,8 +110,13 @@ async def test_approve_content(svc: NurseContentService) -> None:
 
 @pytest.mark.asyncio
 async def test_list_pending(svc: NurseContentService) -> None:
-    await svc.create_content(nurse_id, ContentCreate(title="Pending 1", category="wellness"))
-    await svc.create_content(nurse_id, ContentCreate(title="Pending 2", category="nutrition"))
+    # Content is auto-approved by default; manually set to pending for this test.
+    c1 = await svc.create_content(nurse_id, ContentCreate(title="Pending 1", category="wellness"))
+    c1.status = "pending"
+    await svc.db.commit()
+    c2 = await svc.create_content(nurse_id, ContentCreate(title="Pending 2", category="nutrition"))
+    c2.status = "pending"
+    await svc.db.commit()
     pending = await svc.list_pending()
     assert len(pending) == 2
 

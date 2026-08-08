@@ -12,33 +12,43 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.cycle.models import Medication, Symptom
 
-# (name, category, icon, display_order)
+# (name, category, icon, display_order) — display_order is per-category (1..N).
+# MUST match alembic 0021 NEW_SEED and the mobile symptoms.json bundle exactly (§14.2).
 SYMPTOM_SEED: list[tuple[str, str, str, int]] = [
-    # Pain
-    ("Cramps", "pain", "🔥", 1),
-    ("Headache", "pain", "🤕", 2),
-    ("Backache", "pain", "🦴", 3),
-    ("Muscle aches", "pain", "💪", 4),
-    # Body
-    ("Bloating", "body", "🎈", 1),
-    ("Nausea", "body", "🤢", 2),
-    ("Breast tenderness", "body", "💗", 3),
-    ("Acne", "body", "🔴", 4),
-    ("Swelling", "body", "🧊", 5),
-    ("Hot flashes", "body", "🌡️", 6),
-    ("Dizziness", "body", "🌀", 7),
-    ("Diarrhea", "body", "💩", 8),
-    ("Constipation", "body", "🚫", 9),
-    # Mood
-    ("Mood swings", "mood", "🎭", 1),
-    ("Anxiety", "mood", "😟", 2),
-    ("Cravings", "mood", "🍫", 3),
-    ("Brain fog", "mood", "☁️", 4),
-    # Energy
-    ("Fatigue", "energy", "😴", 1),
-    ("Insomnia", "energy", "🌙", 2),
-    # Reproductive
-    ("Spotting", "reproductive", "🩸", 1),
+    # Pain & Discomfort
+    ("Abdominal Cramps", "pain", "🔥", 1),
+    ("Upper Stomach Pain", "pain", "🫁", 2),
+    ("Lower Back Pain", "pain", "🦴", 3),
+    ("Leg / Thigh Pain", "pain", "🦵", 4),
+    ("Joint Pain", "pain", "🔗", 5),
+    ("Muscle Aches", "pain", "💪", 6),
+    ("Headache", "pain", "🤕", 7),
+    ("Migraine", "pain", "😖", 8),
+    ("Breast Tenderness", "pain", "💗", 9),
+    ("Painful Sex", "pain", "🚫", 10),
+    # Digestive & Bloating
+    ("Bloating", "digestive", "🎈", 1),
+    ("Constipation", "digestive", "🚧", 2),
+    ("Diarrhea", "digestive", "💩", 3),
+    ("Nausea", "digestive", "🤢", 4),
+    ("Vomiting", "digestive", "🤮", 5),
+    ("Increased Appetite", "digestive", "🍽️", 6),
+    ("Food Cravings", "digestive", "🍫", 7),
+    # Skin & Appearance
+    ("Acne / Pimples", "skin", "🔴", 1),
+    ("Oily Skin", "skin", "✨", 2),
+    ("Greasy Hair", "skin", "💇", 3),
+    # General Physical
+    ("Fatigue", "general", "😴", 1),
+    ("Low Energy", "general", "🪫", 2),
+    ("Increased Discharge", "general", "💧", 3),
+    ("Fluid Retention", "general", "🧊", 4),
+    ("Weight Gain", "general", "⚖️", 5),
+    ("Hot Flashes", "general", "🌡️", 6),
+    ("Chills", "general", "🥶", 7),
+    ("Dizziness", "general", "🌀", 8),
+    ("Trouble Sleeping", "general", "🌙", 9),
+    ("Sleeping Too Much", "general", "😪", 10),
 ]
 
 # (name, category, display_order)
