@@ -165,6 +165,7 @@ class CycleDay(Base):
     water_glasses: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     flow_level: Mapped[str | None] = mapped_column(String(10), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)  # encrypted (service layer)
+    recommendations_completed: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
 
     day_symptoms: Mapped[list[DaySymptom]] = relationship(
         back_populates="day",

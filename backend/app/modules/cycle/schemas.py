@@ -207,6 +207,7 @@ class DayUpsert(BaseModel):
     notes: str | None = None
     symptoms: list[DaySymptomIn] = Field(default_factory=list)
     medications: list[DayMedicationIn] = Field(default_factory=list)
+    recommendations_completed: list[str] = Field(default_factory=list)
 
 
 class DaySymptomResponse(BaseModel):
@@ -243,6 +244,7 @@ class DayResponse(BaseModel):
     notes: str | None
     symptoms: list[DaySymptomResponse] = Field(default_factory=list)
     medications: list[DayMedicationResponse] = Field(default_factory=list)
+    recommendations_completed: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
     client_updated_at: datetime | None = None
@@ -266,6 +268,7 @@ class DayResponse(BaseModel):
             water_glasses=day.water_glasses,
             flow_level=day.flow_level,
             notes=day.notes,
+            recommendations_completed=day.recommendations_completed,
             symptoms=[
                 DaySymptomResponse(
                     id=ds.symptom_id,

@@ -61,6 +61,18 @@ class S3Settings(BaseSettings):
     region: str = "ap-south-1"
 
 
+class CloudinarySettings(BaseSettings):
+    cloud_name: str = ""
+    api_key: str = ""
+    api_secret: str = ""
+    upload_preset: str = ""
+
+
+class AdminSettings(BaseSettings):
+    email: str = "admin@shecare.app"
+    password: str = "Admin@123456"
+
+
 class HuggingFaceSettings(BaseSettings):
     api_token: str = ""
     sentiment_model: str = "distilbert-base-uncased-finetuned-sst-2-english"
@@ -113,6 +125,8 @@ class Settings(BaseSettings):
     fcm: FCMSettings = Field(default_factory=FCMSettings)
     stream: StreamSettings = Field(default_factory=StreamSettings)
     s3: S3Settings = Field(default_factory=S3Settings)
+    cloudinary: CloudinarySettings = Field(default_factory=CloudinarySettings)
+    admin: AdminSettings = Field(default_factory=AdminSettings)
     huggingface: HuggingFaceSettings = Field(default_factory=HuggingFaceSettings)
     encryption: EncryptionSettings = Field(default_factory=EncryptionSettings)
     safety: SafetySettings = Field(default_factory=SafetySettings)

@@ -79,6 +79,17 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     init_sentry(settings)
     logger.info("app.startup", extra={"version": app.version, "environment": settings.environment})
+
+    # Seed fixed accounts (single admin) — best-effort, never crashes startup.
+    try:
+        from app.core.database import AsyncSessionLocal
+        from app.seed import seed_admin
+
+        async with AsyncSessionLocal() as db:
+            await seed_admin(db)
+    except Exception:
+        logger.exception("seed.admin_failed")
+
     yield
     logger.info("app.shutdown")
     await close_redis()
