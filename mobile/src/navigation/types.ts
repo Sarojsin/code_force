@@ -60,6 +60,9 @@ export type ProfileStackParamList = {
   LinkedFamily: undefined;
   CompanionInstall: undefined;
   DiaryAssetInstall: undefined;
+  AdminDashboard: undefined;
+  UserManagement: undefined;
+  AdminContentManagement: undefined;
 };
 
 export type ChatStackParamList = {

@@ -1,22 +1,15 @@
 import type { PhaseRange } from 'src/utils/cyclePhases';
+import type { RecommendationAction, RecommendationCard, RecommendationContentRow } from './recommendations';
+import { PHASE_MATRIX, GENERAL_MATRIX, MOTIVATION_CARDS, COMFORT_CARDS } from './recommendations';
 
 /**
- * Expert recommendation engine (plan §8) — pure & unit-tested.
- * Phase-locked content matrix: Cramps / Fatigue / Bloating × 5 phases.
- * Returns max 3 actionable cards for the `recommendation` tier.
+ * Expert recommendation engine (Full eng plan3) — pure & unit-tested.
+ * Full symptom-keyed matrix: phase-locked rows per phase, a phase-agnostic
+ * general fallback, plus phase-locked motivation and comfort cards. Returns
+ * at most `MAX_CARDS` cards for the `recommendation` tier.
  */
 
-export type RecommendationAction = 'water' | 'breathing' | 'days-stretch' | 'mark-done' | null;
-
-export interface RecommendationCard {
-  /** Stable slug, e.g. "menstrual-heat". */
-  id: string;
-  icon: string;
-  title: string;
-  body: string;
-  cta?: string | null;
-  action?: RecommendationAction;
-}
+export type { RecommendationAction, RecommendationCard } from './recommendations';
 
 export interface RecommendationInput {
   phaseKey: PhaseRange['key'];
@@ -28,165 +21,170 @@ export interface RecommendationInput {
 
 export const MAX_CARDS = 3;
 
-/** Taxonomy names referenced by the content matrix. */
-const CRAMPS_NAMES = ['Abdominal Cramps', 'Cramps', 'Lower Back Pain'];
-const FATIGUE_NAMES = ['Fatigue', 'Low Energy'];
-const BLOATING_NAMES = ['Bloating'];
+/** Alias map — legacy names resolve to canonical master names (behavior fix
+ *  plan3 §3.2: Lower Back Pain is NO LONGER a cramps alias; it has its own row). */
+const ALIAS_MAP: Record<string, string> = {
+  Cramps: 'Abdominal Cramps',
+  'Low Energy': 'Fatigue',
+};
 
-/** Pain band for which the Cramps card is relevant (recommendation tier). */
+/** Icons per canon name. Symbols only — the carousel maps them to Lucide. */
+const ICON_BY_SYMPTOM: Record<string, string> = {
+  'Abdominal Cramps': '🔥',
+  'Lower Back Pain': '🦴',
+  Headache: '🤕',
+  Migraine: '😖',
+  'Breast Tenderness': '💗',
+  Bloating: '🎈',
+  Constipation: '🚧',
+  Diarrhea: '💩',
+  Nausea: '🤢',
+  Vomiting: '🤮',
+  'Increased Appetite': '🍽️',
+  'Food Cravings': '🍫',
+  'Acne / Pimples': '🔴',
+  'Oily Skin': '✨',
+  'Greasy Hair': '💇',
+  'Hair Thinning / Loss': '🪮',
+  'Excess Facial / Body Hair': '🌿',
+  'Dry / Itchy Skin': '🧴',
+  Fatigue: '😴',
+  'Low Energy': '🪫',
+  'Increased Discharge': '💧',
+  'Fluid Retention': '🧊',
+  'Weight Gain': '⚖️',
+  'Hot Flashes': '🌡️',
+  Chills: '🥶',
+  Dizziness: '🌀',
+  'Trouble Sleeping': '🌙',
+  'Sleeping Too Much': '😪',
+  'Night Sweats': '🌙',
+  'Heart Palpitations': '💓',
+  'Feeling Unwell / Weakness': '🥺',
+  'Frequent Urination / UTIs': '🚽',
+  'Vision Changes': '👁️',
+  'Mood Swings': '🎢',
+  Irritability: '😤',
+  'Anxiety / Nervousness': '😰',
+  'Depressed Mood / Sadness': '😔',
+  'Tearfulness / Crying Spells': '😢',
+  'Brain Fog': '🌫️',
+  'Difficulty Concentrating': '🎯',
+  'Feeling Overwhelmed': '🌊',
+  'Social Withdrawal': '🐢',
+  'Reduced Libido': '🦋',
+  'Severe Depression / Self-Harm': '🆘',
+  'Heavy / Prolonged Bleeding': '🩸',
+  'Irregular Cycles': '🔄',
+  'Bleeding / Spotting Between Periods': '🩹',
+  'Absent Period / Amenorrhea': '⭕',
+  'Painful Ovulation': '📌',
+  'PMS Symptoms': '🌩️',
+  'PMDD (Severe PMS)': '⛈️',
+  'Painful Urination': '🔥',
+};
+
+const FALLBACK_ICON = '💫';
+const DEFAULT_SEVERITY = 3;
+
+/** Pain band for the Cramps card (recommendation tier). */
 const CRAMPS_PAIN_MIN = 4;
 const CRAMPS_PAIN_MAX = 6;
 
-type PhaseKey = PhaseRange['key'];
+/** Severity threshold for the heavy-bleeding card (only shown when intense). */
+const HEAVY_BLEEDING_SEVERITY_MIN = 5;
 
-interface ContentRow {
-  cramps: Pick<RecommendationCard, 'title' | 'body' | 'cta' | 'action'>;
-  fatigue: Pick<RecommendationCard, 'title' | 'body' | 'cta' | 'action'>;
-  bloating: Pick<RecommendationCard, 'title' | 'body' | 'cta' | 'action'>;
-}
-
-const MATRIX: Record<PhaseKey, ContentRow> = {
-  menstrual: {
-    cramps: {
-      title: 'Heat + gentle stretch',
-      body: 'Place a heat pack or warm water bottle on your lower abdomen for 15–20 minutes. Combine with gentle Cat-Cow stretches.',
-      cta: 'Log water intake',
-      action: 'water',
-    },
-    fatigue: {
-      title: 'Rest + iron-rich foods',
-      body: 'Iron drops during your period. Lean protein, leafy greens or beans help your energy recover.',
-      cta: 'Just 5 minutes of sunlight',
-      action: 'mark-done',
-    },
-    bloating: {
-      title: 'Hydrate, limit salt',
-      body: 'Extra water plus a little less sodium eases menstrual bloating fast.',
-      cta: 'Log water intake',
-      action: 'water',
-    },
-  },
-  follicular: {
-    cramps: {
-      title: 'Stretch it out',
-      body: 'Gently stretch the hips and lower back for 10 minutes. Your follicular phase recovers well with movement.',
-      cta: 'Start a stretch',
-      action: 'days-stretch',
-    },
-    fatigue: {
-      title: 'Light cardio',
-      body: 'Low effort walking or cycling for 15–20 minutes lifts energy in the follicular window.',
-      cta: 'Take a short walk',
-      action: 'mark-done',
-    },
-    bloating: {
-      title: 'Increase fiber',
-      body: 'Oats, berries and green vegetables keep digestion steady during follicular.',
-      cta: 'Add a fiber snack',
-      action: 'mark-done',
-    },
-  },
-  fertile: {
-    cramps: {
-      title: 'Stretch it out',
-      body: 'Warm-up free stretching loosens tension; mid-fertile cramps respond to gentle yoga flow.',
-      cta: 'Start a stretch',
-      action: 'days-stretch',
-    },
-    fatigue: {
-      title: 'Light cardio',
-      body: 'Low-effort brisk walks or gentle bike rides fit the fertile window without draining you.',
-      cta: 'Take a short walk',
-      action: 'mark-done',
-    },
-    bloating: {
-      title: 'Drink more water',
-      body: 'Extra hydration around ovulation can soften bloating from rising hormones.',
-      cta: 'Log water intake',
-      action: 'water',
-    },
-  },
-  ovulation: {
-    cramps: {
-      title: 'Light yoga',
-      body: 'Slow, supported yoga poses quiet cramps without overloading an energetic phase.',
-      cta: 'Start a stretch',
-      action: 'days-stretch',
-    },
-    fatigue: {
-      title: 'HIIT or moderate strength',
-      body: 'Short intervals or light strength work are fine, but respect tiredness.',
-      cta: 'Meet your body where it is',
-      action: 'mark-done',
-    },
-    bloating: {
-      title: 'Drink more water',
-      body: 'Drink an extra glass between meals to ease ovulation bloating.',
-      cta: 'Log water intake',
-      action: 'water',
-    },
-  },
-  luteal: {
-    cramps: {
-      title: 'Magnesium + Omega-3',
-      body: 'Magnesium (banana, pumpkin seeds, leafy greens) and Omega-3 can soften luteal cramps.',
-      cta: 'Add a magnesium snack',
-      action: 'mark-done',
-    },
-    fatigue: {
-      title: 'Sleep hygiene',
-      body: 'Luteal energy dips with hormone changes; protect sleep and keep strength light.',
-      cta: 'Wind down early',
-      action: 'breathing',
-    },
-    bloating: {
-      title: 'Reduce carbs/sodium',
-      body: 'Cut bloat by banking sodium and refined carbs; favor small, frequent, fibrous meals.',
-      cta: 'Swap a high-salt snack',
-      action: 'mark-done',
-    },
-  },
+/** Severity-gated symptoms: card only emits above the given severity. */
+const SEVERITY_GATED: Record<string, number> = {
+  'Heavy / Prolonged Bleeding': HEAVY_BLEEDING_SEVERITY_MIN,
 };
 
-function hasAny(selected: string[], names: string[]): boolean {
-  return names.some((n) => selected.includes(n));
+const PHASE_KEYS = ['menstrual', 'follicular', 'fertile', 'ovulation', 'luteal'] as const;
+
+/** Legacy id slugs — keep persisted `recommendations_completed` ids stable. */
+const LEGACY_SLUGS: Record<string, string> = {
+  'Abdominal Cramps': 'cramps',
+  Fatigue: 'fatigue',
+  Bloating: 'bloating',
+};
+
+function slugFor(name: string): string {
+  return (
+    LEGACY_SLUGS[name] ??
+    name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+  );
+}
+
+function isSeverityGate(name: string, severity: number | undefined): boolean {
+  const min = SEVERITY_GATED[name];
+  if (min === undefined) return false;
+  return (severity ?? DEFAULT_SEVERITY) < min;
 }
 
 /**
- * Main entry: map a phase + observed symptoms to up to 3 cards.
- * Cards ordered cramps → fatigue → bloating (priority), stable slugs.
+ * Main entry: map a phase + observed symptoms to up to `MAX_CARDS` cards.
+ * Priority: phase-locked row → general fallback → none (skipped).
+ * Cramps card additionally requires pain ∈ [4,6]. Heavy bleeding requires
+ * severity ≥ 5. Dedupes by stable id and caps at MAX_CARDS.
  */
 export function getRecommendations(input: RecommendationInput): RecommendationCard[] {
-  const { phaseKey, painLevel, selectedSymptoms } = input;
-  const row = MATRIX[phaseKey];
+  const { phaseKey, painLevel, selectedSymptoms, severities } = input;
+
+  // Safety owns the ≥7 band; drop out quietly above the recommendation band.
+  if (painLevel >= 7) return [];
+
+  const noSymptoms = selectedSymptoms.length === 0 && painLevel < 2;
+  if (noSymptoms) {
+    const motivation = MOTIVATION_CARDS[phaseKey];
+    return [
+      {
+        id: `${phaseKey}-motivation`,
+        icon: '✨',
+        ...motivation,
+      },
+    ];
+  }
+
+  const phaseContent = PHASE_MATRIX[phaseKey] ?? {};
   const cards: RecommendationCard[] = [];
+  const seen = new Set<string>();
 
-  const hasCramps = hasAny(selectedSymptoms, CRAMPS_NAMES);
-  const painInWindow = painLevel >= CRAMPS_PAIN_MIN && painLevel <= CRAMPS_PAIN_MAX;
+  const push = (row: RecommendationContentRow, id: string, icon: string): void => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    cards.push({ id, icon, ...row });
+  };
 
-  if (hasCramps && painInWindow) {
-    cards.push({
-      id: `${phaseKey}-cramps`,
-      icon: '🔥',
-      ...row.cramps,
-    });
+  for (const raw of selectedSymptoms) {
+    if (cards.length >= MAX_CARDS) break;
+    const name = ALIAS_MAP[raw] ?? raw;
+    let row = phaseContent[name];
+    if (!row) row = GENERAL_MATRIX[name];
+    if (!row) continue;
+
+    if (isSeverityGate(name, severities?.[name])) continue;
+    if (
+      name === 'Abdominal Cramps' &&
+      (painLevel < CRAMPS_PAIN_MIN || painLevel > CRAMPS_PAIN_MAX)
+    ) {
+      continue;
+    }
+
+    const inPhase = phaseContent[name] !== undefined;
+    const id = inPhase ? `${phaseKey}-${slugFor(name)}` : `general-${slugFor(name)}`;
+    const icon = ICON_BY_SYMPTOM[name] ?? FALLBACK_ICON;
+    push(row, id, icon);
   }
 
-  if (hasAny(selectedSymptoms, FATIGUE_NAMES)) {
-    cards.push({
-      id: `${phaseKey}-fatigue`,
-      icon: '🌿',
-      ...row.fatigue,
-    });
-  }
-
-  if (hasAny(selectedSymptoms, BLOATING_NAMES)) {
-    cards.push({
-      id: `${phaseKey}-bloating`,
-      icon: '💧',
-      ...row.bloating,
-    });
+  // Pain ≥ 2 but nothing matched → gentle comfort card, phase-locked.
+  if (cards.length === 0 && painLevel >= 2) {
+    const comfort = COMFORT_CARDS[phaseKey];
+    push(comfort, `${phaseKey}-comfort`, '💫');
   }
 
   return cards.slice(0, MAX_CARDS);
 }
+
+/** Compatibility export — the 5 canonical phase keys in order. */
+export const RECOMMENDATION_PHASE_KEYS = PHASE_KEYS;
+export type RecommendationActionAlias = RecommendationAction;
