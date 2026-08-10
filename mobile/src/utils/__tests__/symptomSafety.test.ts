@@ -4,6 +4,7 @@ import {
   RULE_4_MESSAGE,
   SEEK_CARE_THRESHOLD,
   tierOf,
+  RED_FLAG_RULES,
 } from 'src/utils/symptomSafety';
 
 const base = {
@@ -81,6 +82,73 @@ describe('getSafetyForDay — lower tiers', () => {
       if (result.tier !== 'seek_care') {
         expect(result.flags).toEqual([]);
       }
+    }
+  });
+});
+
+describe('getSafetyForDay — red-flag symptoms (plan5 §3.1)', () => {
+  it('logs Heavy / Prolonged Bleeding at severity 5 as seek_care (pain 2 otherwise low)', () => {
+    const result = getSafetyForDay({
+      ...base,
+      selectedSymptomNames: ['Heavy / Prolonged Bleeding'],
+      severities: { 'Heavy / Prolonged Bleeding': 5 },
+    });
+    expect(result.tier).toBe('seek_care');
+    expect(result.flags.map((f) => f.ruleId)).toContain('rule-red-flag');
+  });
+
+  it('Vomiting below its threshold (3 < 5) stays recommendation, not alarm', () => {
+    const result = getSafetyForDay({
+      ...base,
+      selectedSymptomNames: ['Vomiting'],
+      severities: { Vomiting: 3 },
+    });
+    expect(result.tier).toBe('recommendation');
+  });
+
+  it('Absent Period at any severity >= 3 escalates to seek_care', () => {
+    const result = getSafetyForDay({
+      ...base,
+      selectedSymptomNames: ['Absent Period / Amenorrhea'],
+      severities: { 'Absent Period / Amenorrhea': 3 },
+    });
+    expect(result.tier).toBe('seek_care');
+  });
+
+  it('unknown symptom names do not throw and fall to default tiers', () => {
+    expect(() =>
+      getSafetyForDay({
+        ...base,
+        selectedSymptomNames: ['Totally Unknown Symptom'],
+        severities: { 'Totally Unknown Symptom': 5 },
+      }),
+    ).not.toThrow();
+    expect(getSafetyForDay({ ...base, selectedSymptomNames: ['Totally Unknown Symptom'] }).tier).toBe('motivation');
+  });
+
+  it('missing severities default to 1, so a bare red-flag name does not alarm', () => {
+    const result = getSafetyForDay({
+      ...base,
+      selectedSymptomNames: ['Heavy / Prolonged Bleeding'],
+    });
+    expect(result.tier).toBe('motivation');
+  });
+
+  it('RED_FLAG_RULES covers the plan table with the master-mapped names', () => {
+    for (const name of [
+      'Heavy / Prolonged Bleeding',
+      'Abdominal Cramps',
+      'Absent Period / Amenorrhea',
+      'Irregular Cycles',
+      'Vomiting',
+      'Dizziness',
+      'Vision Changes',
+      'Severe Depression / Self-Harm',
+      'Breast Tenderness',
+      'Increased Discharge',
+      'Frequent Urination / UTIs',
+    ]) {
+      expect(RED_FLAG_RULES[name]).toBeDefined();
     }
   });
 });

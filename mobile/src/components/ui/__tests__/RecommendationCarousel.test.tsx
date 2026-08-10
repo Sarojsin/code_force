@@ -40,7 +40,7 @@ jest.mock('react-native-reanimated', () => {
   };
 });
 
-function makeCard(overrides: Partial<RecommendationCard>): RecommendationCard {
+function makeCard(overrides?: Partial<RecommendationCard>): RecommendationCard {
   return {
     id: 'menstrual-cramps',
     icon: '🔥',
