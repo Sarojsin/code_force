@@ -98,6 +98,7 @@ export function getDayInsight(
     painLevel: obs.painLevel,
     phaseKey,
     selectedSymptomNames: obs.symptoms,
+    severities: obs.symptomSeverities,
     avgPeriodDays: null,
   });
 

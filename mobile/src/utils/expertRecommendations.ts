@@ -1,4 +1,5 @@
 import type { PhaseRange } from 'src/utils/cyclePhases';
+import type { CycleDay } from 'src/db/schema';
 import type { RecommendationAction, RecommendationCard, RecommendationContentRow } from './recommendations';
 import { PHASE_MATRIX, GENERAL_MATRIX, MOTIVATION_CARDS, COMFORT_CARDS } from './recommendations';
 
@@ -188,3 +189,31 @@ export function getRecommendations(input: RecommendationInput): RecommendationCa
 /** Compatibility export — the 5 canonical phase keys in order. */
 export const RECOMMENDATION_PHASE_KEYS = PHASE_KEYS;
 export type RecommendationActionAlias = RecommendationAction;
+
+/**
+ * Single defensive mapping layer (plan5 Note 4): converts a `CycleDay` row into
+ * engine input WITHOUT throwing on missing/null fields. Every read falls back to
+ * a safe empty value before reaching `getRecommendations`.
+ *
+ * Note: `CycleDay` has no `cyclePhaseKey` column — the phase comes from the
+ * caller's `CurrentCycleState.phaseKey` (absorbed divergence, plan5 §3.2).
+ */
+export function getRecommendationInputFromDay(
+  day: CycleDay | null | undefined,
+  phaseKey: PhaseRange['key'],
+): RecommendationInput {
+  const symptomRows = day?.symptoms ?? [];
+  const severities: Record<string, number> = {};
+  for (const row of symptomRows) {
+    if (row && typeof row.name === 'string') {
+      severities[row.name] = typeof row.severity === 'number' ? row.severity : 3;
+    }
+  }
+  const painLevel = typeof day?.pain_level === 'number' && day.pain_level >= 0 ? day.pain_level : 0;
+  return {
+    phaseKey,
+    painLevel,
+    selectedSymptoms: symptomRows.filter((r) => r && typeof r.name === 'string').map((r) => r.name),
+    severities,
+  };
+}
