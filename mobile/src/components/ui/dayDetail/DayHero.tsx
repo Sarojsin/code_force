@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
+import { Droplets, Sprout, Flower, Sun, MoonStar, type LucideProps } from 'lucide-react-native';
 import { useTheme } from 'src/theme';
 import { Text } from '../Text';
 import type { DayPhase } from 'src/utils/cyclePhases';
@@ -11,6 +12,23 @@ interface DayHeroProps {
   phase: DayPhase;
   cycleDay?: number;
   loggedToday?: boolean;
+}
+
+/** Local phase → Lucide map (plan §4). Leaves the shared emoji model untouched. */
+const PHASE_ICON_BY_LABEL: Record<string, React.FC<LucideProps>> = {
+  Menstrual: Droplets,
+  Follicular: Sprout,
+  Fertile: Flower,
+  Ovulation: Sun,
+  Luteal: MoonStar,
+};
+
+function PhaseIcon({ phase, color }: { phase: DayPhase; color: string }) {
+  const Icon = PHASE_ICON_BY_LABEL[phase.label];
+  if (Icon) {
+    return <Icon size={18} color={color} accessible={false} />;
+  }
+  return <Text style={styles.phaseEmoji}>{phase.emoji}</Text>;
 }
 
 export function DayHero({ date, phase, cycleDay, loggedToday }: DayHeroProps) {
@@ -26,7 +44,7 @@ export function DayHero({ date, phase, cycleDay, loggedToday }: DayHeroProps) {
         {format(date, 'EEEE, MMMM d')}
       </Text>
       <View style={styles.phaseRow}>
-        <Text style={styles.phaseEmoji}>{phase.emoji}</Text>
+        <PhaseIcon phase={phase} color="#FFFFFF" />
         <Text style={styles.phaseLabel}>{phase.label}</Text>
       </View>
       <Text style={styles.desc}>{phase.description}</Text>

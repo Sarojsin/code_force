@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Sparkles, TrendingUp } from 'lucide-react-native';
 import { useTheme } from 'src/theme';
 import type { SafetyTier } from 'src/utils/symptomSafety';
 import { Text } from '../Text';
@@ -33,7 +34,11 @@ export function AIInsightCard({ tier, text }: AIInsightCardProps) {
       style={[styles.card, { borderRadius: theme.radius.cardLg }]}
     >
       <View style={styles.header}>
-        <Text style={{ fontSize: 18 }}>{tier === 'motivation' ? '✨' : '📈'}</Text>
+        {tier === 'motivation' ? (
+          <Sparkles size={18} color={theme.colors.accent} accessible={false} />
+        ) : (
+          <TrendingUp size={18} color={theme.colors.accent} accessible={false} />
+        )}
         <Text variant="body" style={{ fontWeight: '700', color: theme.colors.textStrong }}>
           {header}
         </Text>

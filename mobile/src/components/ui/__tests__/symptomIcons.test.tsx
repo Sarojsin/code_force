@@ -58,6 +58,8 @@ const MASTER = [
   { id: 'constipation', name: 'Constipation', category: 'digestive', icon_kind: 'lucide', display_order: 2 },
   { id: 'acne', name: 'Acne / Pimples', category: 'skin', icon_kind: 'lucide', display_order: 1 },
   { id: 'fatigue', name: 'Fatigue', category: 'general', icon_kind: 'custom', display_order: 1 },
+  { id: 'mood-swings', name: 'Mood Swings', category: 'mood', icon_kind: 'lucide', display_order: 1 },
+  { id: 'heavy-bleeding', name: 'Heavy / Prolonged Bleeding', category: 'reproductive', icon_kind: 'custom', display_order: 1 },
 ] as const;
 
 describe('SymptomIcon', () => {
@@ -71,14 +73,14 @@ describe('SymptomIcon', () => {
   });
 });
 
-describe('SymptomAccordion 4-category taxonomy', () => {
-  it('renders the four symptom categories (pain/digestive/skin/general)', () => {
+describe('SymptomAccordion 6-category taxonomy', () => {
+  it('renders the six symptom categories (pain/digestive/skin/general/mood/reproductive)', () => {
     const screen = render(
       <ThemeProvider>
         <SymptomAccordion masterSymptoms={MASTER as any} selected={[]} onToggle={() => {}} />
       </ThemeProvider>,
     );
-    for (const label of ['Pain', 'Digestive', 'Skin', 'General']) {
+    for (const label of ['Pain', 'Digestive', 'Skin & Hair', 'General', 'Mood & Mind', 'Cycle & Hormones']) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
   });
@@ -92,6 +94,8 @@ describe('SymptomAccordion 4-category taxonomy', () => {
     expect(screen.getByText('Abdominal Cramps')).toBeTruthy();
     expect(screen.getByText('Constipation')).toBeTruthy();
     expect(screen.getByText('Fatigue')).toBeTruthy();
+    expect(screen.getByText('Mood Swings')).toBeTruthy();
+    expect(screen.getByText('Heavy / Prolonged Bleeding')).toBeTruthy();
   });
 });
 

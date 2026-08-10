@@ -1,5 +1,19 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, AccessibilityInfo } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
+import {
+  Droplets,
+  Sparkles,
+  Flame,
+  Zap,
+  MoonStar,
+  GlassWater,
+  HeartPulse,
+  Pill,
+  PenLine,
+  type LucideProps,
+} from 'lucide-react-native';
 import { useTheme } from 'src/theme';
 
 import { BottomSheet } from './BottomSheet';
@@ -24,6 +38,7 @@ import { toLocalDateStr } from 'src/utils/date';
 import { computeCycleDay, derivePhaseForDate } from 'src/utils/cyclePhases';
 import { getDayInsight } from 'src/utils/dayInsights';
 import { getRecommendations } from 'src/utils/expertRecommendations';
+import type { RecommendationCard } from 'src/utils/expertRecommendations';
 import { logger } from 'src/utils/logger';
 import type { DayPhase } from 'src/utils/cyclePhases';
 import type { DailyDay } from 'src/services/api';
@@ -98,11 +113,12 @@ function buildInitialObs(data: DailyDay | null | undefined, coveringSymptoms: st
   };
 }
 
-function SectionHeader({ icon, title, theme }: { icon: string; title: string; theme: ReturnType<typeof useTheme> }) {
+function SectionHeader({ icon, title, theme }: { icon: React.FC<LucideProps>; title: string; theme: ReturnType<typeof useTheme> }) {
+  const Icon = icon;
   return (
     <View style={styles.sectionRow}>
       <View style={[styles.sectionIconWrap, { backgroundColor: theme.colors.primaryDeep + '18', borderRadius: theme.radius.md }]}>
-        <Text style={{ fontSize: 16 }}>{icon}</Text>
+        <Icon size={16} color={theme.colors.primaryDeep} accessible={false} />
       </View>
       <Text variant="body" style={{ fontWeight: '600' }}>{title}</Text>
     </View>
@@ -120,6 +136,7 @@ export function DayDetailSheet({
   onDone,
 }: DayDetailSheetProps) {
   const theme = useTheme();
+  const navigation = useNavigation();
   const logDateStr = toLocalDateStr(date);
 
   const phaseKey = useMemo(() => derivePhaseForDate(encodedDays, logDateStr), [encodedDays, logDateStr]);
@@ -214,9 +231,51 @@ export function DayDetailSheet({
     }));
   }, []);
 
+  // Note 7: CTA toasts render in a portal and are invisible to screen readers.
+  // Announce the context change explicitly when a CTA toast appears.
+  const announceAndToast = useCallback((text1: string, text2?: string) => {
+    AccessibilityInfo.announceForAccessibility(text1);
+    Toast.show({ type: 'info', text1, text2 });
+  }, []);
+
+  const handleRecommendationAction = useCallback(
+    (action: NonNullable<RecommendationCard['action']>) => {
+      switch (action) {
+        case 'water':
+          // Note 6: cap at 12; tolerate null/undefined glasses as 0.
+          update({ waterGlasses: Math.min((obs.waterGlasses ?? 0) + 1, 12) });
+          announceAndToast('Water +1 logged for today');
+          break;
+        case 'breathing':
+          navigation.navigate('Main', { screen: 'Wellness', params: { screen: 'BreathingList' } });
+          break;
+        case 'days-stretch':
+        case 'walk':
+          // NOTE 3: no CompanionTab exists — informational toast this round.
+          announceAndToast('Take a gentle 10-minute walk when ready.');
+          break;
+        case 'journal':
+          navigation.navigate('Main', { screen: 'Wellness', params: { screen: 'JournalList' } });
+          break;
+        case 'doctor':
+          announceAndToast('Consider mentioning this at your next check-up.');
+          break;
+        default:
+          break;
+      }
+    },
+    [obs.waterGlasses, update, navigation, announceAndToast],
+  );
+
   const recCards = useMemo(
-    () => getRecommendations({ phaseKey, painLevel: obs.painLevel, selectedSymptoms: obs.symptoms }),
-    [phaseKey, obs.painLevel, obs.symptoms],
+    () =>
+      getRecommendations({
+        phaseKey,
+        painLevel: obs.painLevel,
+        selectedSymptoms: obs.symptoms,
+        severities: obs.symptomSeverities,
+      }),
+    [phaseKey, obs.painLevel, obs.symptoms, obs.symptomSeverities],
   );
 
   const handleDone = useCallback(() => {
@@ -269,7 +328,7 @@ export function DayDetailSheet({
 
         {isPeriodDay && (
           <View style={styles.section}>
-            <SectionHeader icon="🩸" title="Flow" theme={theme} />
+            <SectionHeader icon={Droplets} title="Flow" theme={theme} />
             <FlowSelector
               selected={obs.flowLevel}
               onSelect={(level) => update({ flowLevel: level })}
@@ -278,7 +337,7 @@ export function DayDetailSheet({
         )}
 
         <View style={styles.section}>
-          <SectionHeader icon="💫" title="How are you feeling?" theme={theme} />
+          <SectionHeader icon={Sparkles} title="How are you feeling?" theme={theme} />
           <MoodPicker
             selected={obs.mood}
             onSelect={(m) => update({ mood: m })}
@@ -287,7 +346,7 @@ export function DayDetailSheet({
         </View>
 
         <View style={styles.section}>
-          <SectionHeader icon="🌡️" title="Pain" theme={theme} />
+          <SectionHeader icon={Flame} title="Pain" theme={theme} />
           <PainSlider
             value={obs.painLevel}
             onChange={(v) => update({ painLevel: v })}
@@ -295,7 +354,7 @@ export function DayDetailSheet({
         </View>
 
         <View style={styles.section}>
-          <SectionHeader icon="⚡" title="Energy" theme={theme} />
+          <SectionHeader icon={Zap} title="Energy" theme={theme} />
           <EnergySegmented
             value={obs.energyLevel}
             onChange={(v) => update({ energyLevel: v })}
@@ -303,7 +362,7 @@ export function DayDetailSheet({
         </View>
 
         <View style={styles.section}>
-          <SectionHeader icon="🌙" title="Sleep" theme={theme} />
+          <SectionHeader icon={MoonStar} title="Sleep" theme={theme} />
           <SleepWheelPicker
             totalMinutes={obs.sleepMinutes}
             onChange={(v) => update({ sleepMinutes: v })}
@@ -311,7 +370,7 @@ export function DayDetailSheet({
         </View>
 
         <View style={styles.section}>
-          <SectionHeader icon="💧" title="Water" theme={theme} />
+          <SectionHeader icon={GlassWater} title="Water" theme={theme} />
           <WaterChips
             value={obs.waterGlasses}
             onChange={(v) => update({ waterGlasses: v })}
@@ -327,7 +386,7 @@ export function DayDetailSheet({
         )}
 
         <View style={styles.section}>
-          <SectionHeader icon="🤍" title="Symptoms" theme={theme} />
+          <SectionHeader icon={HeartPulse} title="Symptoms" theme={theme} />
           <SymptomAccordion
             masterSymptoms={masterSymptoms}
             selected={obs.symptoms}
@@ -337,7 +396,7 @@ export function DayDetailSheet({
         </View>
 
         <View style={styles.section}>
-          <SectionHeader icon="💊" title="Medications" theme={theme} />
+          <SectionHeader icon={Pill} title="Medications" theme={theme} />
           <MedicationSection
             masterMedications={masterMedications}
             selected={obs.medications}
@@ -348,7 +407,7 @@ export function DayDetailSheet({
         </View>
 
         <View style={styles.section}>
-          <SectionHeader icon="📝" title="Notes" theme={theme} />
+          <SectionHeader icon={PenLine} title="Notes" theme={theme} />
           <NotesSection
             value={obs.notes}
             onChange={(text) => update({ notes: text })}
@@ -360,6 +419,7 @@ export function DayDetailSheet({
             cards={recCards}
             completed={obs.recommendationsCompleted}
             onToggle={toggleRecommendation}
+            onAction={handleRecommendationAction}
           />
         ) : (
           <AIInsightCard tier={insight.tier} text={insight.motivation} />

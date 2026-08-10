@@ -1,12 +1,13 @@
 import React from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
+import { BatteryLow, BatteryMedium, BatteryFull } from 'lucide-react-native';
 import { useTheme } from 'src/theme';
 import { Text } from '../Text';
 
 const ENERGY_OPTIONS = [
-  { key: 1, label: 'Low', icon: '😴' },
-  { key: 2, label: 'Medium', icon: '😊' },
-  { key: 3, label: 'High', icon: '⚡' },
+  { key: 1, label: 'Low', icon: BatteryLow },
+  { key: 2, label: 'Medium', icon: BatteryMedium },
+  { key: 3, label: 'High', icon: BatteryFull },
 ] as const;
 
 interface EnergySegmentedProps {
@@ -20,6 +21,7 @@ export function EnergySegmented({ value, onChange }: EnergySegmentedProps) {
     <View style={styles.row} accessibilityLabel="Energy level" accessibilityRole="radiogroup">
       {ENERGY_OPTIONS.map((opt) => {
         const isSel = value === opt.key;
+        const Icon = opt.icon;
         return (
           <Pressable
             key={opt.key}
@@ -37,7 +39,7 @@ export function EnergySegmented({ value, onChange }: EnergySegmentedProps) {
               isSel && theme.shadow.chip,
             ]}
           >
-            <Text style={{ fontSize: 16 }}>{opt.icon}</Text>
+            <Icon size={16} color={isSel ? '#FFFFFF' : theme.colors.textStrong} accessible={false} />
             <Text style={[styles.label, { color: isSel ? '#FFFFFF' : theme.colors.textStrong }]}>
               {opt.label}
             </Text>

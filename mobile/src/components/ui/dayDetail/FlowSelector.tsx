@@ -1,18 +1,26 @@
 import React from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
+import { Droplet, Droplets } from 'lucide-react-native';
 import { useTheme } from 'src/theme';
 import { Text } from '../Text';
 
 const FLOW_OPTIONS = [
-  { key: 'spotting', label: 'Spotting', icon: '💧' },
-  { key: 'light', label: 'Light', icon: '🩸' },
-  { key: 'medium', label: 'Medium', icon: '🩸🩸' },
-  { key: 'heavy', label: 'Heavy', icon: '🩸🩸🩸' },
+  { key: 'spotting', label: 'Spotting', count: 1 },
+  { key: 'light', label: 'Light', count: 1 },
+  { key: 'medium', label: 'Medium', count: 2 },
+  { key: 'heavy', label: 'Heavy', count: 3 },
 ] as const;
 
 interface FlowSelectorProps {
   selected?: string | null;
   onSelect: (level: string) => void;
+}
+
+function FlowIcon({ count, color }: { count: number; color: string }) {
+  if (count >= 2) {
+    return <Droplets size={18} color={color} accessible={false} />;
+  }
+  return <Droplet size={18} color={color} accessible={false} />;
 }
 
 export function FlowSelector({ selected, onSelect }: FlowSelectorProps) {
@@ -38,7 +46,7 @@ export function FlowSelector({ selected, onSelect }: FlowSelectorProps) {
               isSel && theme.shadow.chip,
             ]}
           >
-            <Text style={{ fontSize: 18 }}>{opt.icon}</Text>
+            <FlowIcon count={opt.count} color={isSel ? '#FFFFFF' : theme.colors.textStrong} />
             <Text style={[styles.label, { color: isSel ? '#FFFFFF' : theme.colors.textStrong }]}>
               {opt.label}
             </Text>
