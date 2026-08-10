@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -44,7 +45,7 @@ class EducationalContent(Base):
     thumbnail_public_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     thumbnail_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Image gallery: [{url, public_id, caption, order}]
-    images: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True, default=list)
+    images: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True, default=list)
     category: Mapped[str] = mapped_column(String(50), index=True, nullable=False)
     tags: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="approved", nullable=False, index=True)

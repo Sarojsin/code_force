@@ -15,7 +15,7 @@ import pytest
 
 from app.modules.cycle.seed import SYMPTOM_SEED
 
-VALID_CATEGORIES = {"pain", "digestive", "skin", "general"}
+VALID_CATEGORIES = {"pain", "digestive", "skin", "general", "mood", "reproductive"}
 VALID_ICON_KINDS = {"custom", "lucide"}
 
 BACKEND_ROOT = Path(__file__).resolve().parents[4]

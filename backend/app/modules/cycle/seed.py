@@ -38,6 +38,9 @@ SYMPTOM_SEED: list[tuple[str, str, str, int]] = [
     ("Acne / Pimples", "skin", "🔴", 1),
     ("Oily Skin", "skin", "✨", 2),
     ("Greasy Hair", "skin", "💇", 3),
+    ("Hair Thinning / Loss", "skin", "🪮", 4),
+    ("Excess Facial / Body Hair", "skin", "🌿", 5),
+    ("Dry / Itchy Skin", "skin", "🧴", 6),
     # General Physical
     ("Fatigue", "general", "😴", 1),
     ("Low Energy", "general", "🪫", 2),
@@ -49,6 +52,32 @@ SYMPTOM_SEED: list[tuple[str, str, str, int]] = [
     ("Dizziness", "general", "🌀", 8),
     ("Trouble Sleeping", "general", "🌙", 9),
     ("Sleeping Too Much", "general", "😪", 10),
+    ("Night Sweats", "general", "🌙", 11),
+    ("Heart Palpitations", "general", "💓", 12),
+    ("Feeling Unwell / Weakness", "general", "🥺", 13),
+    ("Frequent Urination / UTIs", "general", "🚽", 14),
+    ("Vision Changes", "general", "👁️", 15),
+    # Mental & Emotional
+    ("Mood Swings", "mood", "🎢", 1),
+    ("Irritability", "mood", "😤", 2),
+    ("Anxiety / Nervousness", "mood", "😰", 3),
+    ("Depressed Mood / Sadness", "mood", "😔", 4),
+    ("Tearfulness / Crying Spells", "mood", "😢", 5),
+    ("Brain Fog", "mood", "🌫️", 6),
+    ("Difficulty Concentrating", "mood", "🎯", 7),
+    ("Feeling Overwhelmed", "mood", "🌊", 8),
+    ("Social Withdrawal", "mood", "🐢", 9),
+    ("Reduced Libido", "mood", "🦋", 10),
+    ("Severe Depression / Self-Harm", "mood", "🆘", 11),
+    # Menstrual & Hormonal
+    ("Heavy / Prolonged Bleeding", "reproductive", "🩸", 1),
+    ("Irregular Cycles", "reproductive", "🔄", 2),
+    ("Bleeding / Spotting Between Periods", "reproductive", "🩹", 3),
+    ("Absent Period / Amenorrhea", "reproductive", "⭕", 4),
+    ("Painful Ovulation", "reproductive", "📌", 5),
+    ("PMS Symptoms", "reproductive", "🌩️", 6),
+    ("PMDD (Severe PMS)", "reproductive", "⛈️", 7),
+    ("Painful Urination", "reproductive", "🔥", 8),
 ]
 
 # (name, category, display_order)

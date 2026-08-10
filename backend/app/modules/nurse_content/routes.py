@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
 
 from app.modules.admin.dependencies import require_admin
 from app.modules.auth.dependencies import CurrentUser
@@ -46,7 +46,10 @@ async def get_upload_url(
     svc: NurseContentServiceDep,
     resource_type: str = Query("image", pattern="^(image|video)$"),
 ) -> UploadUrlResponse:
-    payload = svc.cloudinary.signed_upload_payload(
+    cloudinary = svc.cloudinary
+    if cloudinary is None:
+        raise HTTPException(status_code=503, detail="Cloudinary is not configured")
+    payload = cloudinary.signed_upload_payload(
         resource_type=resource_type,
         folder="health_content",
         tags=[f"content-{current_user.id}"],
@@ -162,6 +165,6 @@ async def get_public_content(
     return ContentResponse.model_validate(content)
 
 
-def init_module(app, event_bus) -> None:
+def init_module(app: FastAPI, event_bus: object) -> None:
     app.include_router(router, prefix="/api/v1")
     app.include_router(public_router, prefix="/api/v1")

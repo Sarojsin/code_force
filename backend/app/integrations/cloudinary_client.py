@@ -7,12 +7,12 @@ rest of the codebase free of Cloudinary-specific types.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
-import cloudinary
-import cloudinary.api
-import cloudinary.uploader
-from cloudinary.utils import cloudinary_url
+import cloudinary  # type: ignore[import-untyped]
+import cloudinary.api  # type: ignore[import-untyped]
+import cloudinary.uploader  # type: ignore[import-untyped]
+from cloudinary.utils import cloudinary_url  # type: ignore[import-untyped]
 
 from app.core.config import CloudinarySettings
 
@@ -106,7 +106,7 @@ class CloudinaryClient:
             if format:
                 options["format"] = format
             url, _ = cloudinary_url(public_id, **options)
-            return url
+            return cast(str, url)
         except Exception as exc:  # noqa: BLE001
             logger.error("cloudinary.url_failed", extra={"error": str(exc), "public_id": public_id})
             raise CloudinaryError(str(exc)) from exc
