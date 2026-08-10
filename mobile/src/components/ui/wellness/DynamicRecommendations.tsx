@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Text as Txt } from 'src/components/ui';
@@ -8,6 +8,8 @@ import type { CurrentCycleState } from 'src/hooks/useCurrentCycleState';
 import type { WellnessInsights } from 'src/services/api/wellness';
 import type { CycleAnalytics, PredictionListResponse } from 'src/services/api/cycle';
 import type { HealthTipResponse } from 'src/services/api/wellness';
+import type { CycleDay } from 'src/db/schema';
+import { getRecommendations, getRecommendationInputFromDay } from 'src/utils/expertRecommendations';
 
 interface DynamicRecommendationsProps {
   cycleState: CurrentCycleState;
@@ -15,6 +17,8 @@ interface DynamicRecommendationsProps {
   analytics: CycleAnalytics | undefined;
   predictions: PredictionListResponse | undefined;
   healthTips: HealthTipResponse[];
+  /** Today's cycle day from local Db — drives the "For today" engine block. */
+  dayData?: CycleDay | null;
 }
 
 interface RecommendationItem {
@@ -25,12 +29,27 @@ interface RecommendationItem {
   actionable: boolean;
 }
 
-export function DynamicRecommendations({ cycleState, insights, analytics, predictions, healthTips }: DynamicRecommendationsProps) {
+export function DynamicRecommendations({ cycleState, insights, analytics, predictions, healthTips, dayData }: DynamicRecommendationsProps) {
   const theme = useTheme();
   const [completed, setCompleted] = useState<Set<string>>(new Set());
 
+  const engineCards = useCallback((): RecommendationItem[] => {
+    if (!dayData) return [];
+    const input = getRecommendationInputFromDay(dayData, cycleState.phaseKey);
+    return getRecommendations(input).map((card) => ({
+      id: card.id,
+      icon: card.icon,
+      text: card.title,
+      badge: 'Today',
+      actionable: true,
+    }));
+  }, [dayData, cycleState.phaseKey]);
+
   const recommendations = useCallback((): RecommendationItem[] => {
     const recs: RecommendationItem[] = [];
+
+    // "For today" — engine cards from today's cycle day (plan5 §3.2).
+    recs.push(...engineCards());
 
     // Phase-based recommendation from cycle analytics
     if (cycleState.hasCycleData && cycleState.phaseKey === 'luteal') {
@@ -90,9 +109,9 @@ export function DynamicRecommendations({ cycleState, insights, analytics, predic
     });
 
     return recs;
-  }, [cycleState, insights, analytics, predictions, healthTips]);
+  }, [cycleState, insights, analytics, predictions, healthTips, engineCards]);
 
-  const recs = recommendations();
+  const recs = useMemo(() => recommendations(), [recommendations]);
 
   const handleCheck = useCallback((id: string, actionable: boolean) => {
     if (!actionable) return;
