@@ -5,13 +5,15 @@ import { Text } from '../Text';
 import type { SymptomMaster } from 'src/services/api';
 import { SymptomIcon } from '../symptomIcons/SymptomIcon';
 
-const CATEGORIES = ['pain', 'digestive', 'skin', 'general'] as const;
+const CATEGORIES = ['pain', 'digestive', 'skin', 'general', 'mood', 'reproductive'] as const;
 
 const CATEGORY_LABELS: Record<string, string> = {
   pain: 'Pain',
   digestive: 'Digestive',
-  skin: 'Skin',
+  skin: 'Skin & Hair',
   general: 'General',
+  mood: 'Mood & Mind',
+  reproductive: 'Cycle & Hormones',
 };
 
 const SEVERITY_LABEL: Record<number, string> = {

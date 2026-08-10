@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
+import { GlassWater } from 'lucide-react-native';
 import { useTheme } from 'src/theme';
 import { Text } from '../Text';
 
@@ -38,7 +39,7 @@ export function WaterChips({ value, onChange }: WaterChipsProps) {
                 isSel && theme.shadow.chip,
               ]}
             >
-              <Text style={{ fontSize: 16 }}>💧</Text>
+              <GlassWater size={16} color={isSel ? '#FFFFFF' : theme.colors.textStrong} accessible={false} />
               <Text style={[styles.chipLabel, { color: isSel ? '#FFFFFF' : theme.colors.textStrong }]}>
                 {preset}
               </Text>
