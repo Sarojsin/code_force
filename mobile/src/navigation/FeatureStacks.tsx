@@ -22,6 +22,7 @@ import { MoodHistoryScreen } from 'src/screens/wellness/MoodHistoryScreen';
 import { BreathingListScreen } from 'src/screens/wellness/BreathingListScreen';
 import { InsightsScreen } from 'src/screens/wellness/InsightsScreen';
 import { VideoLibraryScreen } from 'src/screens/wellness/VideoLibraryScreen';
+import { ContentDetailScreen } from 'src/screens/wellness/ContentDetailScreen';
 import { PregnancyHomeScreen } from 'src/screens/pregnancy/PregnancyHomeScreen';
 import { PregnancyProfileScreen } from 'src/screens/pregnancy/PregnancyProfileScreen';
 import { PregnancyDailyLogScreen } from 'src/screens/pregnancy/PregnancyDailyLogScreen';
@@ -78,6 +79,7 @@ export function WellnessStack() {
       <WellnessNav.Screen name="BreathingList" component={BreathingListScreen} options={{ title: 'Breathing' }} />
       <WellnessNav.Screen name="Insights" component={InsightsScreen} options={{ title: 'Insights' }} />
       <WellnessNav.Screen name="Videos" component={VideoLibraryScreen} options={{ title: 'Health Library' }} />
+      <WellnessNav.Screen name="ContentDetail" component={ContentDetailScreen} options={{ title: 'Content' }} />
     </WellnessNav.Navigator>
   );
 }

@@ -139,7 +139,7 @@ function FatigueMoonIcon({ color }: CustomSvgProps) {
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
       <Path d="M17.5 3.5A9 9 0 1 0 20.5 16a7.2 7.2 0 0 1-3-12.5Z" fill={color} opacity={0.9} />
-      <Path d="M7.5 13.5c1c .5 2 .5 3 0M12 12.5c1c .5 2 .5 3 0" stroke="#fff" strokeWidth={1.4} strokeLinecap="round" />
+      <Path d="M7.5 13.5c1 .5 2 .5 3 0M12 12.5c1 .5 2 .5 3 0" stroke="#fff" strokeWidth={1.4} strokeLinecap="round" />
     </Svg>
   );
 }

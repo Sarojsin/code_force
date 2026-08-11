@@ -5,7 +5,8 @@ import { useTheme } from 'src/theme';
 import { HomeScreenRouter } from './screenRouters';
 import { MoodLogScreen } from 'src/screens/wellness/MoodLogScreen';
 import { CyclePredictionsScreen } from 'src/screens/cycle/CyclePredictionsScreen';
-import { VideoLibraryScreen } from 'src/screens/home/VideoLibraryScreen';
+import { VideoLibraryScreen } from 'src/screens/wellness/VideoLibraryScreen';
+import { ContentDetailScreen } from 'src/screens/wellness/ContentDetailScreen';
 import { AIChatScreen } from 'src/screens/chat/AIChatScreen';
 import { JournalListScreen } from 'src/screens/wellness/JournalListScreen';
 import { JournalEntryScreen } from 'src/screens/wellness/JournalEntryScreen';
@@ -46,6 +47,7 @@ export function HomeStack() {
       <Stack.Screen name="MoodHistory" component={MoodHistoryScreen} options={{ title: 'Mood History' }} />
       <Stack.Screen name="CyclePredictions" component={CyclePredictionsScreen} options={{ title: 'Predictions' }} />
       <Stack.Screen name="Videos" component={VideoLibraryScreen} options={{ title: 'Videos' }} />
+      <Stack.Screen name="ContentDetail" component={ContentDetailScreen} options={{ title: 'Content' }} />
       <Stack.Screen name="AIChat" component={AIChatScreen} options={{ title: 'AI Chat', headerShown: false }} />
       <Stack.Screen name="JournalList" component={JournalListScreen} options={{ title: 'Journal' }} />
       <Stack.Screen name="JournalEntry" component={JournalEntryScreen} options={{ title: 'Journal Entry' }} />
