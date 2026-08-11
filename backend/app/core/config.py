@@ -5,11 +5,20 @@ Secrets come from environment variables (see .env.example).
 Backend rules §5.
 """
 
+import os
 from functools import lru_cache
 from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Single source of truth for the model artifact directory (mlops_retrain_plan.md §3).
+# Resolves to <backend>/storage/models from app/core/config.py.
+MODEL_STORAGE_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "storage",
+    "models",
+)
 
 
 class DatabaseSettings(BaseSettings):
@@ -61,13 +70,6 @@ class S3Settings(BaseSettings):
     region: str = "ap-south-1"
 
 
-class CloudinarySettings(BaseSettings):
-    cloud_name: str = ""
-    api_key: str = ""
-    api_secret: str = ""
-    upload_preset: str = ""
-
-
 class AdminSettings(BaseSettings):
     email: str = "admin@shecare.app"
     password: str = "Admin@123456"
@@ -116,6 +118,10 @@ class Settings(BaseSettings):
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
     cors_origins: list[str] = Field(default_factory=lambda: ["*"])
+    # TrustedHost allow-list (admin_dashboard_plan.md §B — critical). Default ["*"]
+    # in dev; production deployments MUST set ALLOWED_HOSTS to the real host list
+    # (e.g. ["api.shecare.app", "admin.shecare.app"]) — see main.py.
+    allowed_hosts: list[str] = Field(default_factory=lambda: ["*"])
 
     # Sub-settings, populated from env with prefix, e.g. DATABASE__URL=...
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
@@ -125,7 +131,6 @@ class Settings(BaseSettings):
     fcm: FCMSettings = Field(default_factory=FCMSettings)
     stream: StreamSettings = Field(default_factory=StreamSettings)
     s3: S3Settings = Field(default_factory=S3Settings)
-    cloudinary: CloudinarySettings = Field(default_factory=CloudinarySettings)
     admin: AdminSettings = Field(default_factory=AdminSettings)
     huggingface: HuggingFaceSettings = Field(default_factory=HuggingFaceSettings)
     encryption: EncryptionSettings = Field(default_factory=EncryptionSettings)

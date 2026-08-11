@@ -8,6 +8,9 @@ Endpoints:
   POST   /api/v1/admin/system/broadcast
   GET    /api/v1/admin/contents/pending
   PUT    /api/v1/admin/contents/{content_id}/approve
+  PUT    /api/v1/admin/contents/{content_id}/reject
+  PUT    /api/v1/admin/contents/{content_id}/publish
+  PUT    /api/v1/admin/contents/{content_id}/unpublish
 """
 
 from __future__ import annotations
@@ -105,15 +108,15 @@ async def broadcast(
 )
 async def list_pending(
     svc: AdminServiceDep,
-    content_svc: AdminServiceDep,
+    content_svc: NurseContentServiceDep,
 ) -> list[ContentResponse]:
-    contents = await svc.get_pending_contents()
+    contents = await content_svc.list_pending()
     return [ContentResponse.model_validate(c) for c in contents]
 
 
 @router.put(
     "/contents/{content_id}/approve",
-    summary="Approve or reject educational content",
+    summary="Approve educational content (pending -> approved)",
 )
 async def approve_content(
     content_id: uuid.UUID,
@@ -122,6 +125,45 @@ async def approve_content(
 ) -> dict:
     await nurse_svc.approve_content(content_id, current_user.id)
     return {"message": "Content approved"}
+
+
+@router.put(
+    "/contents/{content_id}/reject",
+    summary="Reject educational content (pending -> rejected)",
+)
+async def reject_content(
+    content_id: uuid.UUID,
+    current_user: CurrentUser,
+    nurse_svc: NurseContentServiceDep,
+) -> dict:
+    await nurse_svc.reject_content(content_id, current_user.id)
+    return {"message": "Content rejected"}
+
+
+@router.put(
+    "/contents/{content_id}/publish",
+    summary="Re-publish educational content (unpublished -> approved)",
+)
+async def publish_content(
+    content_id: uuid.UUID,
+    current_user: CurrentUser,
+    nurse_svc: NurseContentServiceDep,
+) -> dict:
+    await nurse_svc.publish_content(content_id, current_user.id)
+    return {"message": "Content published"}
+
+
+@router.put(
+    "/contents/{content_id}/unpublish",
+    summary="Unpublish educational content (approved -> unpublished)",
+)
+async def unpublish_content(
+    content_id: uuid.UUID,
+    current_user: CurrentUser,
+    nurse_svc: NurseContentServiceDep,
+) -> dict:
+    await nurse_svc.unpublish_content(content_id, current_user.id)
+    return {"message": "Content unpublished"}
 
 
 def init_module(app, event_bus) -> None:

@@ -17,6 +17,7 @@ from datetime import date
 from fastapi import APIRouter, Header, HTTPException, Query, Response, status
 from fastapi.responses import FileResponse
 
+from app.integrations.prediction_engine import PROD_DIR
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.cycle.dependencies import CycleServiceDep
 from app.modules.cycle.exceptions import CycleConflictError
@@ -41,11 +42,6 @@ from app.modules.cycle.schemas import (
 )
 
 router = APIRouter(prefix="/cycle", tags=["cycle"])
-
-STORAGE_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "..", "scripts", "..", "storage", "models"
-)
-PROD_DIR = os.path.join(STORAGE_DIR, "prod")
 
 
 @router.post(

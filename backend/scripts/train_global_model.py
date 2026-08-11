@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Monthly global model retraining script.
+"""Monthly global model retraining script (mlops_retrain_plan.md §1-§2).
 
 Privacy measures:
 - PII bucketized (age ranges, BMI categories)
@@ -10,9 +10,17 @@ Data drift detection:
 - RMSE > 3.5 OR >10% increase from previous month → abort, keep old model
 - MAE also computed for stakeholder reporting
 
+Feature contract:
+- ALL features go through ``app.modules.cycle.feature_builder.build_feature_vector``.
+- The exported artifact carries ``schema_version: 2``, ``feature_names`` =
+  ``contract_feature_keys()`` and ``coefficients`` = XGBoost feature_importances_.
+  NOTE: feature_importances_ are non-negative and sum to 1 — they are linear
+  WEIGHTS, NOT regression coefficients. The prediction engine applies them as a
+  weighted sum (documented v1 approximation, mlops_retrain_plan.md §2).
+
 Atomic swap:
 - Write staging/global_model_v{N}.json → rename to prod/
-- Update system_config: global_model_version, global_model_path, global_model_rmse
+- Update system_config: global_model_version, global_model_path, global_model_metrics
 """
 
 from __future__ import annotations
@@ -21,68 +29,90 @@ import json
 import logging
 import os
 import shutil
-from datetime import date
+import zlib
+from datetime import UTC, date, datetime
 
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
+
+from app.core.config import MODEL_STORAGE_DIR
+from app.modules.cycle.feature_builder import (
+    build_feature_vector,
+    contract_feature_keys,
+    validate_feature_keys,
+)
 
 logger = logging.getLogger("scripts.train_global_model")
 
-STORAGE_DIR = os.path.join(os.path.dirname(__file__), "..", "storage", "models")
+STORAGE_DIR = MODEL_STORAGE_DIR
 STAGING_DIR = os.path.join(STORAGE_DIR, "staging")
 PROD_DIR = os.path.join(STORAGE_DIR, "prod")
 
 DRIFT_RMSE_THRESHOLD = 3.5
 DRIFT_PCT_INCREASE = 0.10  # 10%
+MIN_ROWS = 10
+NOISE_SD = 1.5
+
+
+def _hash_user_id(user_id: object) -> int:
+    """Stable non-negative integer seed from a user id for per-user noise.
+
+    Uses crc32 (deterministic, non-negative) instead of builtin ``hash()``,
+    which is salted per-process and can return negative values that
+    ``numpy.random.default_rng`` rejects.
+    """
+    return zlib.crc32(str(user_id).encode("utf-8"))
+
+
+def _dp_noise(user_id: object) -> float:
+    """Differential-privacy style noise N(0, 1.5), seeded per-user."""
+    rng = np.random.default_rng(_hash_user_id(user_id))
+    return float(rng.normal(0.0, NOISE_SD))
+
+
+def _trend_slope(values: np.ndarray) -> float | None:
+    """Linear regression slope over a user's cycle-length series."""
+    v = values.astype(float)
+    if len(v) < 2:
+        return None
+    slope = np.polyfit(np.arange(len(v)), v, 1)[0]
+    return float(slope)
 
 
 def build_training_dataset(connection_url: str) -> pd.DataFrame:
     """Build anonymized, bucketized training dataset.
 
-    Joins users + user_onboarding + cycle_entries.
-    Adds differential privacy noise seeded per-user.
+    Joins users + user_onboarding + cycle_entries. Cycle lengths and trend slope
+    are computed from consecutive period start dates (there is no stored
+    ``cycle_entries.cycle_length`` column).
     """
     from sqlalchemy import create_engine, text
 
     engine = create_engine(connection_url)
     query = text("""
         SELECT
-            CASE
-                WHEN u.age < 20 THEN '18-20'
-                WHEN u.age < 25 THEN '21-25'
-                WHEN u.age < 30 THEN '26-30'
-                WHEN u.age < 35 THEN '31-35'
-                WHEN u.age < 40 THEN '36-40'
-                ELSE '40+'
-            END AS age_bucket,
-            CASE
-                WHEN o.weight_kg IS NULL OR o.height_cm IS NULL THEN 'unknown'
-                WHEN (o.weight_kg / POWER(NULLIF(o.height_cm / 100.0, 0), 2)) < 18.5 THEN 'underweight'
-                WHEN (o.weight_kg / POWER(NULLIF(o.height_cm / 100.0, 0), 2)) < 25 THEN 'normal'
-                WHEN (o.weight_kg / POWER(NULLIF(o.height_cm / 100.0, 0), 2)) < 30 THEN 'overweight'
-                ELSE 'obese'
-            END AS bmi_bucket,
-            u.stress_level, u.exercise_frequency,
-            u.avg_sleep_hours, u.diet_type, u.total_cycles_logged,
-            u.avg_cycle_length, u.std_dev_cycle_length, u.median_cycle_length,
-            u.avg_period_length, u.trend_slope,
-            EXTRACT(MONTH FROM c.period_start_date) AS cycle_month,
+            u.id AS user_id,
+            u.avg_cycle_length,
             u.avg_prediction_error_days,
-            ENCODE(SHA256(u.id::text || 'shecare-global-model-salt'), 'hex') AS hashed_user_id,
-            GREATEST(c.cycle_length - 14, 7) AS luteal_length,
-            SIN(2 * PI() * EXTRACT(MONTH FROM c.period_start_date) / 12.0) AS month_sin,
-            COS(2 * PI() * EXTRACT(MONTH FROM c.period_start_date) / 12.0) AS month_cos,
-            EXTRACT(DOW FROM c.period_start_date) AS weekday_of_start,
-            CASE WHEN c.cycle_length > 45 THEN 1 ELSE 0 END AS is_break_cycle,
-            -- Box-Muller transform for N(0, 1.5) noise; RANDOM(u.id) seeds per-user for reproducibility
-            c.cycle_length + SQRT(-2 * LN(RANDOM(u.id))) * COS(2 * PI() * RANDOM()) * 1.5 AS next_cycle_interval
+            o.age,
+            o.weight_kg,
+            o.height_cm,
+            o.stress_level,
+            o.exercise_frequency,
+            o.sleep_hours,
+            o.diet,
+            c.period_start_date,
+            c.period_end_date
         FROM users u
         JOIN user_onboarding o ON u.id = o.user_id
         JOIN cycle_entries c ON u.id = c.user_id
         WHERE u.total_cycles_logged >= 3
+          AND c.cycle_type = 'menstrual'
+          AND c.is_correction = FALSE
+        ORDER BY u.id, c.period_start_date
     """)
     with engine.connect() as conn:
         df = pd.read_sql(query, conn)
@@ -90,17 +120,56 @@ def build_training_dataset(connection_url: str) -> pd.DataFrame:
     return df
 
 
-def train_model(df: pd.DataFrame) -> tuple[xgb.XGBRegressor, dict, float, float]:
-    """Train XGBoost regressor. Returns (model, coefficients, rmse, mae)."""
-    # Feature engineering: one-hot encode categoricals
-    cat_cols = ["age_bucket", "bmi_bucket", "stress_level", "exercise_frequency", "diet_type"]
-    df_encoded = pd.get_dummies(df, columns=cat_cols, drop_first=True)
+def train_model(
+    df: pd.DataFrame,
+) -> tuple[xgb.XGBRegressor, list[str], dict[str, float], dict[str, float], float, float, float]:
+    """Train XGBoost regressor on the shared contract features.
 
-    target_col = "next_cycle_interval"
-    feature_cols = [c for c in df_encoded.columns if c != target_col and c != "hashed_user_id"]
+    Returns ``(model, feature_names, coefficients, scaler, rmse, mae, r2)``.
+    """
+    df = df.sort_values(["user_id", "period_start_date"]).copy()
 
-    X = df_encoded[feature_cols].values
-    y = df_encoded[target_col].values
+    # Cycle length = gap between consecutive period starts (per user).
+    df["prev_start"] = df.groupby("user_id")["period_start_date"].shift(1)
+    df = df[df["prev_start"].notna()].copy()
+    df["cycle_length"] = (df["period_start_date"] - df["prev_start"]).dt.days
+    df = df[df["cycle_length"] > 0].copy()
+
+    # Per-user aggregates used as features (mirrors inference semantics).
+    df["avg_cycle"] = df.groupby("user_id")["cycle_length"].transform("mean")
+    df["trend_slope"] = df.groupby("user_id")["cycle_length"].transform(
+        lambda s: _trend_slope(s.to_numpy())
+    )
+    df["error_correction"] = df["avg_prediction_error_days"].fillna(0.0)
+    df["luteal_length"] = (df["cycle_length"] - 14).clip(lower=7)
+    df["cycle_month"] = df["period_start_date"].dt.month
+    df["bmi"] = df["weight_kg"] / ((df["height_cm"] / 100.0) ** 2)
+
+    # Target: cycle length + per-user DP noise.
+    df["next_cycle_interval"] = df["cycle_length"] + df["user_id"].apply(_dp_noise)
+
+    rows = []
+    for _, r in df.iterrows():
+        rows.append(
+            build_feature_vector(
+                avg_cycle=float(r["avg_cycle"]),
+                trend_slope=float(r["trend_slope"]) if pd.notna(r["trend_slope"]) else None,
+                error_correction=float(r["error_correction"]),
+                age=float(r["age"]) if pd.notna(r["age"]) else None,
+                bmi=float(r["bmi"]) if pd.notna(r["bmi"]) else None,
+                stress_level=r["stress_level"],
+                sleep_hours=float(r["sleep_hours"]) if pd.notna(r["sleep_hours"]) else None,
+                exercise_frequency=r["exercise_frequency"],
+                diet_type=r["diet"],
+                month=int(r["cycle_month"]),
+                luteal_length=float(r["luteal_length"]),
+            )
+        )
+    features_df = pd.DataFrame(rows)
+
+    feature_names = contract_feature_keys()
+    X = features_df[feature_names].to_numpy(dtype=float)
+    y = df["next_cycle_interval"].to_numpy(dtype=float)
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -118,22 +187,27 @@ def train_model(df: pd.DataFrame) -> tuple[xgb.XGBRegressor, dict, float, float]
     y_pred = model.predict(X_test)
     rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
     mae = float(mean_absolute_error(y_test, y_pred))
+    r2 = float(r2_score(y_test, y_pred))
 
-    logger.info("model_trained", extra={"rmse": round(rmse, 2), "mae": round(mae, 2)})
+    logger.info(
+        "model_trained", extra={"rmse": round(rmse, 2), "mae": round(mae, 2), "r2": round(r2, 4)}
+    )
 
-    scaler = {
-        "avg_cycle_mean": float(df["avg_cycle_length"].mean()) if "avg_cycle_length" in df else 29.0,
-        "avg_cycle_std": float(df["avg_cycle_length"].std()) if "avg_cycle_length" in df else 4.0,
-    }
+    validate_feature_keys(feature_names)
+    coefficients = dict(zip(feature_names, model.feature_importances_.tolist(), strict=True))
 
-    coefficients = dict(zip(feature_cols, model.feature_importances_.tolist(), strict=True))
+    avg = df["avg_cycle"]
+    std = float(avg.std()) if float(avg.std()) > 0 else 1.0
+    # Informational only — the engine applies raw features (no z-scoring).
+    scaler = {"avg_cycle_mean": float(avg.mean()), "avg_cycle_std": std}
 
-    return model, {"coefficients": coefficients, "scaler": scaler}, rmse, mae
+    return model, feature_names, coefficients, scaler, rmse, mae, r2
 
 
 def get_next_version(connection_url: str) -> int:
     """Get next model version from system_config."""
     from sqlalchemy import create_engine, text
+
     engine = create_engine(connection_url)
     with engine.connect() as conn:
         result = conn.execute(
@@ -144,9 +218,8 @@ def get_next_version(connection_url: str) -> int:
 
 def get_previous_rmse(connection_url: str) -> float | None:
     """Get previous RMSE from system_config JSON blob."""
-    import json as _json
-
     from sqlalchemy import create_engine, text
+
     engine = create_engine(connection_url)
     with engine.connect() as conn:
         value = conn.execute(
@@ -154,18 +227,34 @@ def get_previous_rmse(connection_url: str) -> float | None:
         ).scalar_one_or_none()
     if value:
         try:
-            return _json.loads(value).get("rmse")
+            rmse = json.loads(value).get("rmse")
+            return float(rmse) if isinstance(rmse, (int, float)) else None
         except Exception:
             return None
     return None
 
 
-def update_system_config(connection_url: str, version: int, filename: str, rmse: float, mae: float) -> None:
+def update_system_config(
+    connection_url: str,
+    version: int,
+    filename: str,
+    rmse: float,
+    mae: float,
+    r2: float,
+    dataset_size: int,
+) -> None:
     """Update system_config after successful atomic swap."""
     from sqlalchemy import create_engine, text
 
     engine = create_engine(connection_url)
-    metrics_json = json.dumps({"rmse": round(rmse, 2), "mae": round(mae, 2)})
+    metrics_json = json.dumps(
+        {
+            "rmse": round(rmse, 2),
+            "mae": round(mae, 2),
+            "r2": round(r2, 4),
+            "dataset_size": int(dataset_size),
+        }
+    )
 
     with engine.begin() as conn:
         conn.execute(
@@ -192,9 +281,18 @@ def update_system_config(connection_url: str, version: int, filename: str, rmse:
 
 
 def export_model(
-    coefficients: dict, scaler: dict, rmse: float, mae: float, version: int,
+    model: xgb.XGBRegressor,
+    feature_names: list[str],
+    coefficients: dict[str, float],
+    scaler: dict[str, float],
+    rmse: float,
+    mae: float,
+    r2: float,
+    version: int,
+    dataset_size: int,
 ) -> str:
-    """Write model to staging, atomically rename to prod."""
+    """Write model to staging, atomically rename to prod (schema_version 2)."""
+    validate_feature_keys(feature_names)
     os.makedirs(STAGING_DIR, exist_ok=True)
     os.makedirs(PROD_DIR, exist_ok=True)
 
@@ -203,17 +301,30 @@ def export_model(
     prod_path = os.path.join(PROD_DIR, filename)
 
     payload = {
+        "schema_version": 2,
+        "model_type": "xgboost",
         "version": version,
         "trained_on": date.today().isoformat(),
+        "feature_names": feature_names,
+        "coefficients": {k: float(v) for k, v in coefficients.items()},
+        # Informational only; the engine applies raw contract features.
+        "scaler": scaler,
         "rmse": round(rmse, 2),
         "mae": round(mae, 2),
-        "feature_names": list(coefficients.keys()),
-        "coefficients": coefficients,
-        "scaler": scaler,
+        "r2": round(r2, 4),
+        "training_metadata": {
+            "trained_at": datetime.now(UTC).isoformat(),
+            "dataset_size": int(dataset_size),
+            "rmse": round(rmse, 2),
+            "mae": round(mae, 2),
+            "r2": round(r2, 4),
+        },
+        # Serialized estimator for reference/diagnostics (not used by inference).
+        "model_booster_dump": model.get_booster().get_dump(dump_format="json"),
     }
 
     with open(staging_path, "w") as f:
-        json.dump(payload, f, indent=2)
+        json.dump(payload, f)
 
     shutil.move(staging_path, prod_path)
     logger.info("model_exported", extra={"filename": filename})
@@ -227,14 +338,16 @@ def train_global_model(connection_url: str | None = None) -> bool:
     """
     if connection_url is None:
         from app.core.config import get_settings
+
         connection_url = get_settings().database.url
 
     df = build_training_dataset(connection_url)
-    if len(df) < 10:
+    if len(df) < MIN_ROWS:
         logger.warning("train_insufficient_data", extra={"rows": len(df)})
         return False
 
-    _, coefficients_dict, rmse, mae = train_model(df)
+    model, feature_names, coefficients, scaler, rmse, mae, r2 = train_model(df)
+    dataset_size = int(df.shape[0])
 
     # Data drift detection
     previous_rmse = get_previous_rmse(connection_url)
@@ -248,11 +361,11 @@ def train_global_model(connection_url: str | None = None) -> bool:
             return False
 
     version = get_next_version(connection_url)
-    coefficients = coefficients_dict["coefficients"]
-    scaler = coefficients_dict["scaler"]
-    filename = export_model(coefficients, scaler, rmse, mae, version)
+    filename = export_model(
+        model, feature_names, coefficients, scaler, rmse, mae, r2, version, dataset_size
+    )
 
-    update_system_config(connection_url, version, filename, rmse, mae)
+    update_system_config(connection_url, version, filename, rmse, mae, r2, dataset_size)
     logger.info("model_deployed", extra={"version": version, "rmse": round(rmse, 2)})
     return True
 

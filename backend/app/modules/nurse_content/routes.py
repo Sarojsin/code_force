@@ -1,80 +1,43 @@
-"""Nurse content HTTP routes.
+"""Nurse content HTTP routes (plan 13).
 
-Admin endpoints (single-admin model):
-  POST   /api/v1/admin/contents/upload-url   - Cloudinary signed upload URL
-  POST   /api/v1/admin/contents              - create content (auto-approved)
-  GET    /api/v1/admin/contents              - list ALL content
-  PUT    /api/v1/admin/contents/{id}         - edit content
-  DELETE /api/v1/admin/contents/{id}         - delete content
+Endpoints:
+  POST   /api/v1/nurse/contents
+  GET    /api/v1/nurse/contents
+  PUT    /api/v1/nurse/contents/{content_id}
+  POST   /api/v1/nurse/contents/{content_id}/submit
+  DELETE /api/v1/nurse/contents/{content_id}
+  GET    /api/v1/contents (public)
+  GET    /api/v1/contents/{content_id} (public)
 
-Public:
-  GET    /api/v1/contents                    - approved content list
-  GET    /api/v1/contents/{id}               - approved content detail
+All ``/nurse/*`` routes require the ``nurse`` or ``admin`` role (Phase 1.4).
 """
 
 from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
-from app.modules.admin.dependencies import require_admin
 from app.modules.auth.dependencies import CurrentUser
-from app.modules.nurse_content.dependencies import NurseContentServiceDep
+from app.modules.nurse_content.dependencies import (
+    NurseContentServiceDep,
+    require_nurse,
+)
 from app.modules.nurse_content.schemas import (
     ContentCreate,
     ContentResponse,
     ContentUpdate,
-    UploadUrlResponse,
 )
 
-router = APIRouter(
-    prefix="/admin",
-    tags=["nurse-content-admin"],
-    dependencies=[Depends(require_admin)],
-)
+router = APIRouter(prefix="/nurse", tags=["nurse"], dependencies=[Depends(require_nurse)])
 public_router = APIRouter(prefix="/contents", tags=["content"])
-
-
-@router.post(
-    "/contents/upload-url",
-    response_model=UploadUrlResponse,
-    summary="Get Cloudinary signed upload URL for media",
-)
-async def get_upload_url(
-    current_user: CurrentUser,
-    svc: NurseContentServiceDep,
-    resource_type: str = Query("image", pattern="^(image|video)$"),
-) -> UploadUrlResponse:
-    cloudinary = svc.cloudinary
-    if cloudinary is None:
-        raise HTTPException(status_code=503, detail="Cloudinary is not configured")
-    payload = cloudinary.signed_upload_payload(
-        resource_type=resource_type,
-        folder="health_content",
-        tags=[f"content-{current_user.id}"],
-    )
-    return UploadUrlResponse(
-        upload_url="https://api.cloudinary.com/v1_1/"
-        + payload["cloud_name"]
-        + "/"
-        + resource_type
-        + "/upload",
-        cloud_name=payload["cloud_name"],
-        api_key=payload["api_key"],
-        timestamp=payload["timestamp"],
-        folder=payload["folder"],
-        tags=payload["tags"],
-        signature=payload["signature"],
-        expires_at=payload.get("expires_at"),
-    )
 
 
 @router.post(
     "/contents",
     response_model=ContentResponse,
     status_code=201,
-    summary="Create educational content (auto-approved)",
+    summary="Upload content metadata",
 )
 async def create_content(
     payload: ContentCreate,
@@ -88,26 +51,20 @@ async def create_content(
 @router.get(
     "/contents",
     response_model=list[ContentResponse],
-    summary="List ALL educational content (admin)",
+    summary="List own content",
 )
-async def list_all_content(
+async def list_own_content(
     current_user: CurrentUser,
     svc: NurseContentServiceDep,
-    category: str | None = Query(None),
-    content_type: str | None = Query(None, pattern="^(article|video|image)$"),
-    limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
 ) -> list[ContentResponse]:
-    contents = await svc.list_all_content(
-        category=category, content_type=content_type, limit=limit, offset=offset
-    )
+    contents = await svc.list_own_content(current_user.id)
     return [ContentResponse.model_validate(c) for c in contents]
 
 
 @router.put(
     "/contents/{content_id}",
     response_model=ContentResponse,
-    summary="Update educational content (admin)",
+    summary="Update own content",
 )
 async def update_content(
     content_id: uuid.UUID,
@@ -119,11 +76,25 @@ async def update_content(
     return ContentResponse.model_validate(content)
 
 
+@router.post(
+    "/contents/{content_id}/submit",
+    response_model=ContentResponse,
+    summary="Submit draft/rejected content for review",
+)
+async def submit_content(
+    content_id: uuid.UUID,
+    current_user: CurrentUser,
+    svc: NurseContentServiceDep,
+) -> ContentResponse:
+    content = await svc.submit_content(content_id, current_user.id)
+    return ContentResponse.model_validate(content)
+
+
 @router.delete(
     "/contents/{content_id}",
     response_model=None,
     status_code=204,
-    summary="Delete educational content (admin)",
+    summary="Delete own content",
 )
 async def delete_content(
     content_id: uuid.UUID,
@@ -142,13 +113,10 @@ async def delete_content(
 async def list_approved_content(
     svc: NurseContentServiceDep,
     category: str | None = Query(None),
-    content_type: str | None = Query(None, pattern="^(article|video|image)$"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> list[ContentResponse]:
-    contents = await svc.list_approved(
-        category=category, content_type=content_type, limit=limit, offset=offset
-    )
+    contents = await svc.list_approved(category=category, limit=limit, offset=offset)
     return [ContentResponse.model_validate(c) for c in contents]
 
 
@@ -161,10 +129,11 @@ async def get_public_content(
     content_id: uuid.UUID,
     svc: NurseContentServiceDep,
 ) -> ContentResponse:
-    content = await svc.get_content(content_id)
+    # Public access is restricted to approved + active content (Phase 1.3).
+    content = await svc.get_public_content(content_id)
     return ContentResponse.model_validate(content)
 
 
-def init_module(app: FastAPI, event_bus: object) -> None:
+def init_module(app, event_bus) -> None:
     app.include_router(router, prefix="/api/v1")
     app.include_router(public_router, prefix="/api/v1")

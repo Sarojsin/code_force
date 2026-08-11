@@ -2,6 +2,14 @@
 
 Global XGBoost model is used when available and the user has >= 3 cycles.
 Otherwise a simple median-based fallback with avg_error correction is used.
+
+Model artifact contract (mlops_retrain_plan.md §2):
+- ``feature_names`` MUST equal ``feature_builder.contract_feature_keys()``.
+- ``coefficients`` are XGBoost ``feature_importances_`` used as LINEAR WEIGHTS.
+  They are non-negative and sum to 1 — this is a documented v1 approximation, NOT
+  a regression model (no intercept + weighted-sum semantics). If the artifact
+  cannot be validated, the engine FAILS TO FALLBACK rather than predict with
+  wrong features.
 """
 
 from __future__ import annotations
@@ -16,10 +24,12 @@ from typing import Any
 
 import numpy as np
 
+from app.core.config import MODEL_STORAGE_DIR
+from app.modules.cycle.feature_builder import build_feature_vector
+
 logger = logging.getLogger("app.modules.cycle.prediction")
 
-STORAGE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "scripts", "..", "storage", "models")
-PROD_DIR = os.path.join(STORAGE_DIR, "prod")
+PROD_DIR = os.path.join(MODEL_STORAGE_DIR, "prod")
 
 
 @dataclass
@@ -79,6 +89,7 @@ class RollingWindowFeatures:
     prev_1 = most recent completed cycle, prev_2 = second most recent, etc.
     All None-safe: if fewer than 3 cycles exist, missing slots are None.
     """
+
     prev_1_cycle_length: int | None = None
     prev_1_period_length: int | None = None
     prev_1_irregular: int = 0
@@ -194,8 +205,27 @@ def fallback_prediction(
 # ---- Global model inference (server-side, same arithmetic as mobile) ----
 
 
+def is_valid_global_model(model: dict[str, Any] | None) -> bool:
+    """Return True only if the artifact carries the full contract shape.
+
+    Anything else (old XGBoost dump, truncated write, wrong schema) is invalid and
+    the caller must fall back instead of predicting with wrong features.
+    """
+    if not isinstance(model, dict):
+        return False
+    if not isinstance(model.get("coefficients"), dict):
+        return False
+    if not isinstance(model.get("feature_names"), list) or not model["feature_names"]:
+        return False
+    return all(name in model["coefficients"] for name in model["feature_names"])
+
+
 def _load_global_model(version: int | None = None) -> dict[str, Any] | None:
-    """Load the active global model JSON from disk."""
+    """Load the active global model JSON from disk.
+
+    Returns None when the file is missing OR the artifact is invalid (old schema,
+    no ``coefficients``) so callers degrade to the fallback predictor.
+    """
     if version is not None:
         path = os.path.join(PROD_DIR, f"global_model_v{version}.json")
     else:
@@ -223,8 +253,16 @@ def _load_global_model(version: int | None = None) -> dict[str, Any] | None:
 
     if not os.path.exists(path):
         return None
-    with open(path) as f:
-        return json.load(f)
+    try:
+        with open(path) as f:
+            model: dict[str, Any] = json.load(f)
+    except Exception:
+        logger.warning("model_artifact_unreadable", extra={"path": path})
+        return None
+    if not is_valid_global_model(model):
+        logger.warning("model_artifact_invalid", extra={"path": path})
+        return None
+    return model
 
 
 def apply_global_model(
@@ -242,53 +280,51 @@ def apply_global_model(
     user_exercise_frequency: str | None = None,
     user_diet: str | None = None,
 ) -> tuple[int, float]:
-    """Apply global model arithmetic (same as mobile ``predictNextCycle``).
+    """Apply the global model to a user's feature vector.
+
+    Feature construction goes through the shared ``build_feature_vector`` so the
+    keys match the artifact's ``feature_names`` exactly (mlops_retrain_plan.md §1).
+    ``coefficients`` are feature importances used as linear weights — documented
+    approximation, NOT regression coefficients.
 
     Returns ``(predicted_length, confidence)``.
     """
     coef = model.get("coefficients", {})
-    scaler = model.get("scaler", {})
-
-    prediction = coef.get("intercept", 28)
-
-    norm_avg = (
-        (user_avg_cycle - scaler.get("avg_cycle_mean", 29))
-        / max(scaler.get("avg_cycle_std", 4), 0.01)
-    )
-    prediction += coef.get("avg_cycle", 0) * norm_avg
-    prediction += coef.get("bmi_bucket", 0) * user_bmi_bucket_ordinal
-    prediction += coef.get("age_bucket", 0) * user_age_bucket_ordinal
-
-    if user_trend_slope is not None:
-        prediction += coef.get("trend_slope", 0) * user_trend_slope
-    if user_avg_error is not None:
-        prediction += coef.get("error_correction", 0) * user_avg_error
-
-    if user_stress_level == "high":
-        prediction += coef.get("stress_high", 0)
-    elif user_stress_level == "moderate":
-        prediction += coef.get("stress_moderate", 0)
-
-    if user_sleep_hours is not None:
-        prediction += coef.get("sleep_hours", 0) * user_sleep_hours
-    if user_exercise_frequency:
-        prediction += coef.get(f"exercise_{user_exercise_frequency}", 0)
-    if user_diet:
-        prediction += coef.get(f"diet_{user_diet}", 0)
+    feature_names = model.get("feature_names", [])
+    if not isinstance(coef, dict) or not feature_names:
+        raise ValueError("invalid global model artifact: missing coefficients/feature_names")
 
     from datetime import datetime as _dt
+
     now = _dt.now()
-    prediction += coef.get("month_sin", 0) * np.sin(2 * np.pi * now.month / 12)
-    prediction += coef.get("month_cos", 0) * np.cos(2 * np.pi * now.month / 12)
+    features = build_feature_vector(
+        avg_cycle=user_avg_cycle,
+        trend_slope=user_trend_slope,
+        error_correction=user_avg_error,
+        age_bucket=user_age_bucket_ordinal,
+        bmi_bucket=user_bmi_bucket_ordinal,
+        stress_level=user_stress_level,
+        sleep_hours=user_sleep_hours,
+        exercise_frequency=user_exercise_frequency,
+        diet_type=user_diet,
+        month=now.month,
+        luteal_length=user_avg_cycle - 14,
+    )
 
-    prediction += coef.get("luteal_length", 0) * (user_avg_cycle - 14)
-
+    # Weighted sum over the contract features. Feature importances are
+    # non-negative and sum to 1; "intercept" is the baseline cycle length.
+    prediction = float(coef.get("intercept", 28))
+    for name in feature_names:
+        prediction += float(coef.get(name, 0.0)) * features.get(name, 0.0)
     prediction += user_local_delta
 
     predicted_length = max(20, min(45, round(prediction)))
 
     # Confidence from model rmse
-    model_rmse = model.get("rmse", 3.0)
-    confidence = max(0.5, min(0.95, 1.0 - (model_rmse / 10)))
+    model_rmse = model.get("rmse")
+    if model_rmse is None:
+        metadata = model.get("training_metadata", {})
+        model_rmse = metadata.get("rmse", 3.0)
+    confidence = max(0.5, min(0.95, 1.0 - (float(model_rmse) / 10)))
 
     return predicted_length, round(confidence, 2)

@@ -18,6 +18,11 @@ class UnauthorizedContentError(NurseContentError):
     http_status = 403
 
 
+class ContentStateError(NurseContentError):
+    code = "CONTENT_INVALID_STATUS"
+    http_status = 400
+
+
 class NurseProfileNotFoundError(NurseContentError):
     code = "NURSE_PROFILE_NOT_FOUND"
     http_status = 404

@@ -7,6 +7,7 @@ Backend rule: secrets come from env (get_settings().admin), never hardcoded.
 from __future__ import annotations
 
 import logging
+import secrets
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,6 +41,7 @@ async def seed_admin(db: AsyncSession) -> None:
         is_active=True,
         hashed_password=hash_password(settings.admin.password),
         provider="local",
+        user_secret_key=secrets.token_hex(32),
     )
     db.add(admin)
     await db.commit()

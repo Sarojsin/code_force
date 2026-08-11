@@ -472,7 +472,12 @@ class AuthService:
         *,
         mfa_challenge: bool = False,
     ) -> TokenPair:
-        usk = user.user_secret_key or secrets.token_hex(SECRET_KEY_BYTES)
+        # If the user has no secret key yet (e.g. seeded admin), generate and
+        # persist one so the kill-switch check passes on subsequent requests.
+        if not user.user_secret_key:
+            user.user_secret_key = secrets.token_hex(SECRET_KEY_BYTES)
+            await self.db.flush()
+        usk = user.user_secret_key
         access, _access_jti, access_ttl = create_access_token(
             user.id,
             email=user.email or "",

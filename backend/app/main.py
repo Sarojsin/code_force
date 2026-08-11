@@ -140,7 +140,11 @@ def create_app() -> FastAPI:
         expose_headers=["X-Request-ID"],
     )
     if settings.environment == "production":
-        app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*.shecare.app"])
+        allowed_hosts = settings.allowed_hosts
+        if not allowed_hosts or allowed_hosts == ["*"]:
+            # Preserve legacy default unless ALLOWED_HOSTS is explicitly configured.
+            allowed_hosts = ["*.shecare.app"]
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
     # --- metrics middleware (plan 20) ---------------------------------
     app.middleware("http")(metrics_middleware)
