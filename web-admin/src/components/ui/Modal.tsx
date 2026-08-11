@@ -39,7 +39,7 @@ export function Modal({ open, title, onClose, children, footer }: ModalProps) {
             &times;
           </button>
         </div>
-        <div>{children}</div>
+        <div style={{ overflowY: 'auto', flex: 1 }}>{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
       </div>
     </div>

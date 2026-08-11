@@ -7,40 +7,77 @@
  */
 
 import React from 'react';
-import { FlatList, Image, StyleSheet, View, TouchableOpacity } from 'react-native';
+import { FlatList, Image, StyleSheet, View, TouchableOpacity, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, focusManager } from '@tanstack/react-query';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Text as Txt, Card, EmptyState, Loader } from 'src/components/ui';
 import { useTheme } from 'src/theme';
-import { nurseContentService, NurseContent } from 'src/services/api/nurse_content';
+import { nurseContentService, type NurseContent } from 'src/services/api/nurse_content';
+import type { WellnessStackParamList } from 'src/navigation/types';
 
-const CATEGORIES = ['all', 'wellness', 'nutrition', 'pregnancy', 'safety'] as const;
+const CATEGORIES = ['all', 'wellness', 'pregnancy', 'cycle', 'nutrition', 'mental_health'] as const;
+
+focusManager.setEventListener((handleFocus) => {
+  const onFocus = () => handleFocus(true);
+  const sub = AppState.addEventListener('change', (state) => {
+    if (state === 'active') onFocus();
+  });
+  return () => sub.remove();
+});
 
 export function VideoLibraryScreen() {
   const theme = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<WellnessStackParamList>>();
   const [activeCategory, setActiveCategory] = React.useState('all');
 
   const {
     data: contents,
     isLoading,
+    isFetching,
     isError,
     refetch,
-  } = useQuery({
-    queryKey: ['nurse-contents'],
-    queryFn: () => nurseContentService.getContents({ limit: 100 }),
-    staleTime: 5 * 60 * 1000,
+  } = useQuery<NurseContent[]>({
+    queryKey: ['nurse-contents', activeCategory],
+    queryFn: () =>
+      nurseContentService.getContents({
+        limit: 100,
+        category: activeCategory === 'all' ? undefined : activeCategory,
+      }),
+    staleTime: 60 * 1000,
   });
-
-  const filtered = React.useMemo(() => {
-    if (!contents) return [];
-    if (activeCategory === 'all') return contents;
-    return contents.filter((c) => c.category === activeCategory);
-  }, [contents, activeCategory]);
 
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-        <Loader />
+        <View style={styles.header}>
+          <Txt variant="h1" style={styles.title}>Health Library</Txt>
+          <Txt variant="body" color="secondary" style={styles.subtitle}>
+            Videos, images, and articles from our health experts.
+          </Txt>
+        </View>
+        <View style={styles.categoryRow}>
+          {CATEGORIES.map((cat) => (
+            <View
+              key={cat}
+              style={[styles.categoryChip, activeCategory === cat && { backgroundColor: theme.colors.primary }]}
+            >
+              <Txt variant="caption" style={[styles.categoryLabel, activeCategory === cat && { color: theme.colors.textInverse }]}>
+                {cat.charAt(0).toUpperCase() + cat.slice(1).replace('_', ' ')}
+              </Txt>
+            </View>
+          ))}
+        </View>
+        {[1, 2, 3].map((i) => (
+          <View key={i} style={[styles.skeletonCard, { backgroundColor: theme.colors.border }]}>
+            <View style={[styles.skeletonThumb, { backgroundColor: theme.colors.surface }]} />
+            <View style={styles.skeletonBody}>
+              <View style={[styles.skeletonLine, { width: '70%', backgroundColor: theme.colors.surface }]} />
+              <View style={[styles.skeletonLine, { width: '40%', backgroundColor: theme.colors.surface }]} />
+            </View>
+          </View>
+        ))}
       </SafeAreaView>
     );
   }
@@ -86,34 +123,48 @@ export function VideoLibraryScreen() {
                 activeCategory === cat && { color: theme.colors.textInverse },
               ]}
             >
-              {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              {cat.charAt(0).toUpperCase() + cat.slice(1).replace('_', ' ')}
             </Txt>
           </TouchableOpacity>
         ))}
       </View>
 
-      {filtered.length === 0 ? (
-        <EmptyState title="No content yet" message="Check back soon for new health content." />
+      {contents && contents.length === 0 && !isFetching ? (
+        <EmptyState
+          title="No content yet"
+          message={
+            activeCategory === 'all'
+              ? 'Check back soon for new health content.'
+              : `No ${activeCategory.replace('_', ' ')} content yet.`
+          }
+        />
       ) : (
         <FlatList
-          data={filtered}
+          data={contents ?? []}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ContentCard content={item} theme={theme} />}
+          renderItem={({ item }) => (
+            <ContentCard
+              content={item}
+              theme={theme}
+              onPress={() => navigation.navigate('ContentDetail', { id: item.id })}
+            />
+          )}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          ListFooterComponent={isFetching && contents && contents.length > 0 ? <Loader /> : null}
         />
       )}
     </SafeAreaView>
   );
 }
 
-function ContentCard({ content, theme }: { content: NurseContent; theme: any }) {
+function ContentCard({ content, theme, onPress }: { content: NurseContent; theme: any; onPress: () => void }) {
   const isVideo = content.content_type === 'video';
   const isImage = content.content_type === 'image';
   const thumbnail = content.thumbnail_url || (content.images && content.images[0]?.url) || null;
 
   return (
-    <Card style={styles.card} padded onPress={() => {}}>
+    <Card style={styles.card} padded onPress={onPress}>
       {thumbnail ? (
         <Image source={{ uri: thumbnail }} style={styles.thumbnail} resizeMode="cover" />
       ) : (
@@ -125,15 +176,15 @@ function ContentCard({ content, theme }: { content: NurseContent; theme: any }) 
       )}
       <View style={styles.cardBody}>
         <Txt variant="h3" style={styles.cardTitle}>{content.title}</Txt>
-        {content.summary ? (
-          <Txt variant="bodySmall" color="secondary" style={styles.cardSummary}>
-            {content.summary}
+        {content.description ? (
+          <Txt variant="bodySmall" color="secondary" style={styles.cardSummary} numberOfLines={2}>
+            {content.description}
           </Txt>
         ) : null}
         <View style={styles.cardFooter}>
-          <Txt variant="caption" color="muted">{content.category}</Txt>
-          {content.reading_time_minutes ? (
-            <Txt variant="caption" color="muted">{content.reading_time_minutes} min read</Txt>
+          <Txt variant="caption" color="muted">{content.category.replace('_', ' ')}</Txt>
+          {isVideo && content.video_duration_seconds ? (
+            <Txt variant="caption" color="muted">{Math.round(content.video_duration_seconds / 60)} min</Txt>
           ) : null}
         </View>
       </View>
@@ -146,7 +197,7 @@ const styles = StyleSheet.create({
   header: { padding: 24, paddingBottom: 12 },
   title: { marginBottom: 4 },
   subtitle: { marginTop: 4, opacity: 0.7 },
-  categoryRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 24, marginBottom: 16 },
+  categoryRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 24, marginBottom: 16, flexWrap: 'wrap' },
   categoryChip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -155,7 +206,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E5E5',
   },
   categoryLabel: { fontWeight: '600' },
-  list: { paddingHorizontal: 24, gap: 16 },
+  list: { paddingHorizontal: 24, paddingBottom: 24 },
   card: { marginBottom: 16 },
   thumbnail: { width: '100%', height: 160, borderRadius: 12 },
   placeholder: { alignItems: 'center', justifyContent: 'center' },
@@ -163,4 +214,8 @@ const styles = StyleSheet.create({
   cardTitle: { marginBottom: 4, fontSize: 18 },
   cardSummary: { marginTop: 4, marginBottom: 8 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between' },
+  skeletonCard: { marginHorizontal: 24, marginBottom: 16, borderRadius: 12, overflow: 'hidden' },
+  skeletonThumb: { width: '100%', height: 160 },
+  skeletonBody: { padding: 12, gap: 8 },
+  skeletonLine: { height: 14, borderRadius: 4 },
 });

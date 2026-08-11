@@ -183,6 +183,12 @@ export function ContentLibrary() {
 }
 
 function ContentEditor({ item, onClose, onSaved }: { item: ContentItem | null; onClose: () => void; onSaved: () => void }) {
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string>(item?.video_url ?? '');
+  const [thumbPreview, setThumbPreview] = useState<string>(item?.thumbnail_url ?? '');
+  const [uploading, setUploading] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -209,17 +215,53 @@ function ContentEditor({ item, onClose, onSaved }: { item: ContentItem | null; o
     onError: err => toast.error('Save failed', extractError(err)),
   });
 
-  function onSubmit(values: ContentForm) {
-    save.mutate({
-      title: values.title,
-      category: values.category,
-      description: values.description || null,
-      video_url: values.video_url || null,
-      thumbnail_url: values.thumbnail_url || null,
-      tags: values.tags
-        ? values.tags.split(',').map(t => t.trim()).filter(Boolean)
-        : [],
-    });
+  async function uploadFile(file: File, type: 'image' | 'video'): Promise<string> {
+    const uploadData = await nurseContentApi.getUploadUrl(type);
+    return nurseContentApi.uploadToCloudinary(file, uploadData);
+  }
+
+  function handleVideoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setVideoFile(file);
+    setVideoPreview(URL.createObjectURL(file));
+  }
+
+  function handleThumbChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setThumbFile(file);
+    setThumbPreview(URL.createObjectURL(file));
+  }
+
+  async function onSubmit(values: ContentForm) {
+    setUploading(true);
+    try {
+      let videoUrl = values.video_url || null;
+      let thumbUrl = values.thumbnail_url || null;
+
+      if (videoFile) {
+        videoUrl = await uploadFile(videoFile, 'video');
+      }
+      if (thumbFile) {
+        thumbUrl = await uploadFile(thumbFile, 'image');
+      }
+
+      save.mutate({
+        title: values.title,
+        category: values.category,
+        description: values.description || null,
+        video_url: videoUrl,
+        thumbnail_url: thumbUrl,
+        tags: values.tags
+          ? values.tags.split(',').map(t => t.trim()).filter(Boolean)
+          : [],
+      });
+    } catch (err) {
+      toast.error('Upload failed', err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
@@ -232,7 +274,7 @@ function ContentEditor({ item, onClose, onSaved }: { item: ContentItem | null; o
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button form="content-form" type="submit" loading={isSubmitting || save.isPending}>
+          <Button form="content-form" type="submit" loading={isSubmitting || save.isPending || uploading}>
             Save
           </Button>
         </>
@@ -254,12 +296,43 @@ function ContentEditor({ item, onClose, onSaved }: { item: ContentItem | null; o
         <Field label="Description" hint="Short summary shown in the app">
           <TextArea placeholder="One or two sentences…" {...register('description')} />
         </Field>
-        <Field label="Video URL" hint="YouTube or direct video link">
-          <Input placeholder="https://youtube.com/watch?v=..." {...register('video_url')} />
+
+        <Field label="Video" hint="Upload a video file">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input
+              type="file"
+              accept="video/*"
+              onChange={handleVideoChange}
+              style={{ fontSize: 13 }}
+            />
+            {videoPreview && (
+              <video
+                src={videoPreview}
+                controls
+                style={{ width: '100%', maxHeight: 200, borderRadius: 8, background: '#000' }}
+              />
+            )}
+          </div>
         </Field>
-        <Field label="Thumbnail URL" hint="Image URL for the card thumbnail">
-          <Input placeholder="https://example.com/thumbnail.jpg" {...register('thumbnail_url')} />
+
+        <Field label="Thumbnail" hint="Upload an image for the card">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleThumbChange}
+              style={{ fontSize: 13 }}
+            />
+            {thumbPreview && (
+              <img
+                src={thumbPreview}
+                alt="Thumbnail preview"
+                style={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 8 }}
+              />
+            )}
+          </div>
         </Field>
+
         <Field label="Tags" hint="Comma-separated">
           <Input placeholder="cramps, self-care, nutrition" {...register('tags')} />
         </Field>

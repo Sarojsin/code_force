@@ -23,6 +23,8 @@ import { AchievementPopup } from '../../components/ui/AchievementPopup';
 import { CheckInCard } from '../../components/home/CheckInCard';
 import { CatchUpCard } from '../../components/home/CatchUpCard';
 import { eventBus } from '../../services/eventBus';
+import { useTodayDayData } from 'src/hooks/useTodayDayData';
+import { HomeRecommendationBanner } from 'src/components/home/HomeRecommendationBanner';
 
 type Nav = any;
 
@@ -41,6 +43,7 @@ export function HomeDashboardScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
   const { cycleDay, hasCycleData, phaseKey, phaseLabel, phaseEmoji, phaseAccent, phaseDesc, nextPeriodDays, predictedCycleLength, calData, isLoading: loading, error, refetch } = useCurrentCycleState(3, 3);
+  const dayData = useTodayDayData();
   const user = useAuthStore((s) => s.user);
   const displayName = user?.display_name ?? '';
   const firstName = displayName.split(' ')[0] || '';
@@ -255,6 +258,16 @@ export function HomeDashboardScreen() {
             )}
 
             <AnimatedSection delay={staggerItems[1]}>
+              <CheckInCard calData={calData} />
+            </AnimatedSection>
+
+            {hasCycleData && (
+              <AnimatedSection delay={staggerItems[2]}>
+                <HomeRecommendationBanner dayData={dayData} phaseKey={phaseKey} />
+              </AnimatedSection>
+            )}
+
+            <AnimatedSection delay={staggerItems[3]}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.phaseTimeline}>
                 {(['menstrual', 'follicular', 'ovulation', 'luteal'] as const).map((key) => {
                   const meta = getPhaseMeta(key);
@@ -280,16 +293,12 @@ export function HomeDashboardScreen() {
               </ScrollView>
             </AnimatedSection>
 
-            <AnimatedSection delay={staggerItems[2]}>
-              <CheckInCard calData={calData} />
-            </AnimatedSection>
-
-            <AnimatedSection delay={staggerItems[3]}>
+            <AnimatedSection delay={staggerItems[4]}>
               <CatchUpCard />
             </AnimatedSection>
 
             <View style={styles.bentoRow}>
-              <AnimatedSection delay={staggerItems[4]} style={{ flex: 1, marginRight: 6 }}>
+              <AnimatedSection delay={staggerItems[5]} style={{ flex: 1, marginRight: 6 }}>
                 <Pressable
                   onPress={() => navigation.navigate('JournalEntry', { id: 'new' })}
                   style={[styles.bentoCard, { backgroundColor: '#fff', borderRadius: 20 }]}
@@ -302,7 +311,7 @@ export function HomeDashboardScreen() {
                   <Text variant="caption" color="muted">Quick thoughts in seconds</Text>
                 </Pressable>
               </AnimatedSection>
-              <AnimatedSection delay={staggerItems[4]} style={{ flex: 1, marginLeft: 6 }}>
+              <AnimatedSection delay={staggerItems[5]} style={{ flex: 1, marginLeft: 6 }}>
                 <Pressable
                   onPress={() => {
                     if (diaryAssetStatus === 'ready') {
@@ -335,7 +344,7 @@ export function HomeDashboardScreen() {
               </AnimatedSection>
             </View>
 
-            <AnimatedSection delay={staggerItems[5]}>
+            <AnimatedSection delay={staggerItems[6]}>
               <Pressable
                 onPress={() => navigation.navigate('Videos')}
                 style={[styles.bentoCard, { backgroundColor: '#fff', borderRadius: 20, marginBottom: 24 }]}
