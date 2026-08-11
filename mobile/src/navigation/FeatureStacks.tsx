@@ -22,9 +22,6 @@ import { MoodHistoryScreen } from 'src/screens/wellness/MoodHistoryScreen';
 import { BreathingListScreen } from 'src/screens/wellness/BreathingListScreen';
 import { InsightsScreen } from 'src/screens/wellness/InsightsScreen';
 import { VideoLibraryScreen } from 'src/screens/wellness/VideoLibraryScreen';
-import { AdminDashboardScreen } from 'src/screens/admin/AdminDashboardScreen';
-import { UserManagementScreen } from 'src/screens/admin/UserManagementScreen';
-import { AdminContentManagementScreen } from 'src/screens/admin/AdminContentManagementScreen';
 import { PregnancyHomeScreen } from 'src/screens/pregnancy/PregnancyHomeScreen';
 import { PregnancyProfileScreen } from 'src/screens/pregnancy/PregnancyProfileScreen';
 import { PregnancyDailyLogScreen } from 'src/screens/pregnancy/PregnancyDailyLogScreen';
@@ -141,9 +138,6 @@ export function ProfileStack() {
       <ProfileNav.Screen name="LinkedFamily" component={LinkedFamilyScreen} options={{ title: 'Linked Family' }} />
       <ProfileNav.Screen name="CompanionInstall" component={LunaInstallScreen} options={{ title: 'Luna Companion' }} />
       <ProfileNav.Screen name="DiaryAssetInstall" component={DiaryAssetInstallScreen} options={{ title: 'Diary Assets' }} />
-      <ProfileNav.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ title: 'Admin Dashboard' }} />
-      <ProfileNav.Screen name="UserManagement" component={UserManagementScreen} options={{ title: 'User Management' }} />
-      <ProfileNav.Screen name="AdminContentManagement" component={AdminContentManagementScreen} options={{ title: 'Content Management' }} />
     </ProfileNav.Navigator>
   );
 }

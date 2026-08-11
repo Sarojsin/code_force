@@ -1,0 +1,33 @@
+# Local / tooling caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# VCS / CI
+.git/
+.gitignore
+
+# Local secrets / env (never baked into the image)
+.env
+.env.*
+
+# Tests, docs, tooling not needed in the image
+tests/
+docs/
+*.md
+
+# Editor artifacts
+.idea/
+.vscode/
+.DS_Store
+
+# Egg/metadata
+*.egg-info/
+build/
+dist/

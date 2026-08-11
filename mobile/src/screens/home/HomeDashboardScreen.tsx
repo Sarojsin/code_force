@@ -336,29 +336,17 @@ export function HomeDashboardScreen() {
             </View>
 
             <AnimatedSection delay={staggerItems[5]}>
-              <Text variant="h3" style={{ marginBottom: 12 }}>Wellness Videos</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {[
-                  { emoji: '🥗', title: 'Cycle Nutrition', duration: '8 min', badge: 'Nutrition' },
-                  { emoji: '🧘', title: 'Yoga for Cramps', duration: '15 min', badge: 'Exercise' },
-                  { emoji: '😴', title: 'Better Sleep', duration: '6 min', badge: 'Sleep' },
-                  { emoji: '🧠', title: 'Mindful Eating', duration: '10 min', badge: 'Wellness' },
-                ].map((v, i) => (
-                  <Pressable
-                    key={v.title}
-                    style={[styles.videoCard, { backgroundColor: '#fff', borderRadius: 16, marginRight: i < 3 ? 12 : 0 }]}
-                  >
-                    <View style={[styles.videoIcon, { borderRadius: 12 }]}>
-                       <Text variant="emoji">{v.emoji}</Text>
-                    </View>
-                    <Text variant="body" style={{ fontWeight: '600', marginTop: 8 }}>{v.title}</Text>
-                    <Text variant="caption" color="muted">⏱ {v.duration}</Text>
-                    <View style={[styles.videoBadge, { backgroundColor: theme.colors.primary + '22', borderRadius: 100 }]}>
-                      <Text style={{ color: theme.colors.primary, fontSize: 10, fontWeight: '600' }}>{v.badge}</Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </ScrollView>
+              <Pressable
+                onPress={() => navigation.navigate('Videos')}
+                style={[styles.bentoCard, { backgroundColor: '#fff', borderRadius: 20, marginBottom: 24 }]}
+              >
+                <View style={[styles.bentoIcon, { borderRadius: 12 }]}>
+                  <LinearGradient colors={['#60A5FA', '#3B82F6']} style={[StyleSheet.absoluteFill, { borderRadius: 12 }]} />
+                  <Text style={{ fontSize: 20 }}>🏥</Text>
+                </View>
+                <Text variant="h3" style={{ marginTop: 8 }}>Health Library</Text>
+                <Text variant="caption" color="muted">Videos, articles & tips from health experts</Text>
+              </Pressable>
             </AnimatedSection>
 
           </View>

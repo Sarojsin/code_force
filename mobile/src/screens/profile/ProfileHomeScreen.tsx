@@ -25,12 +25,6 @@ const MENU_ITEMS = [
   { label: 'Companion Setup', route: 'CompanionInstall' as const, icon: 'M21 11.5v5c0 1.38-1.12 2.5-2.5 2.5H16v4.5c0 .28-.22.5-.5.5h-2c-.28 0-.5-.22-.5-.5V19h-2v4.5c0 .28-.22.5-.5.5h-2c-.28 0-.5-.22-.5-.5V19H5.5C4.12 19 3 17.88 3 16.5v-5c0-1.38 1.12-2.5 2.5-2.5h13c1.38 0 2.5 1.12 2.5 2.5z' },
 ];
 
-const ADMIN_MENU_ITEMS = [
-  { label: 'Admin Dashboard', route: 'AdminDashboard' as const, icon: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' },
-  { label: 'User Management', route: 'UserManagement' as const, icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
-  { label: 'Content Management', route: 'AdminContentManagement' as const, icon: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z' },
-];
-
 export function ProfileHomeScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
@@ -118,30 +112,6 @@ export function ProfileHomeScreen() {
               </Svg>
             </Pressable>
           ))}
-          {user?.role === 'admin' ? (
-            <>
-              <Txt variant="caption" color="muted" style={styles.adminSectionLabel}>Admin</Txt>
-              {ADMIN_MENU_ITEMS.map((item) => (
-                <Pressable
-                  key={item.route}
-                  onPress={() => navigation.navigate(item.route)}
-                  style={[styles.menuRow, { borderBottomColor: theme.colors.border, minHeight: theme.minTouchTarget }]}
-                  accessibilityLabel={`Navigate to ${item.label}`}
-                  accessibilityRole="button"
-                >
-                  <View style={[styles.menuIcon, { borderRadius: 10, backgroundColor: theme.colors.accent + '14' }]}>
-                    <Svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <Path d={item.icon} fill={theme.colors.accent} />
-                    </Svg>
-                  </View>
-                  <Txt variant="body" style={styles.menuLabel}>{item.label}</Txt>
-                  <Svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <Path d="M9 18l6-6-6-6" stroke={theme.colors.mauve} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </Svg>
-                </Pressable>
-              ))}
-            </>
-          ) : null}
         </View>
 
         <Button

@@ -21,6 +21,9 @@ RUN pip install --no-cache-dir poetry && poetry install --only=main --no-root
 COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
+COPY scripts ./scripts
+# Worker trains models → storage must be writable by the non-root runtime user.
+COPY --chown=shecare:shecare storage ./storage
 
 USER shecare
 
