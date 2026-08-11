@@ -81,6 +81,12 @@ class HuggingFaceSettings(BaseSettings):
     inference_url: str = "https://api-inference.huggingface.co/models"
 
 
+class CloudinarySettings(BaseSettings):
+    cloud_name: str = ""
+    api_key: str = ""
+    api_secret: str = ""
+
+
 class EncryptionSettings(BaseSettings):
     master_key: str = Field(default="dev-only-fernet-key-replace-in-prod")
     pbkdf2_iterations: int = 600_000
@@ -133,6 +139,7 @@ class Settings(BaseSettings):
     s3: S3Settings = Field(default_factory=S3Settings)
     admin: AdminSettings = Field(default_factory=AdminSettings)
     huggingface: HuggingFaceSettings = Field(default_factory=HuggingFaceSettings)
+    cloudinary: CloudinarySettings = Field(default_factory=CloudinarySettings)
     encryption: EncryptionSettings = Field(default_factory=EncryptionSettings)
     safety: SafetySettings = Field(default_factory=SafetySettings)
     sentry: SentrySettings = Field(default_factory=SentrySettings)

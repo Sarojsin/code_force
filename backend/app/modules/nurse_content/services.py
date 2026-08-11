@@ -66,6 +66,8 @@ class NurseContentService:
             nurse_id=nurse_id,
             title=data.title,
             description=data.description,
+            video_url=data.video_url,
+            thumbnail_url=data.thumbnail_url,
             category=data.category,
             tags=data.tags,
             status=STATUS_DRAFT,

@@ -365,6 +365,7 @@ class SyncService:
             notes=op.data.get("notes"),
             symptoms=symptoms_data,
             medications=medications_data,
+            recommendations_completed=op.data.get("recommendations_completed") or [],
         )
 
         svc = CycleService(self.db)

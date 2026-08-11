@@ -49,9 +49,12 @@ _TEST_USER_SECRET = "sync-test-secret-32characters!!!!!"
 async def app_client() -> AsyncClient:
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
     async with engine.begin() as conn:
-        from app.modules.auth import models  # noqa: F401
-        from app.modules.wellness import models  # noqa: F401
-        from app.modules.cycle import models  # noqa: F401
+        from app.modules.auth import models as _auth_models  # noqa: F401
+        from app.modules.cycle import models as _cycle_models  # noqa: F401
+        from app.modules.family import models as _family_models  # noqa: F401
+        from app.modules.safety import models as _safety_models  # noqa: F401
+        from app.modules.users import models as _users_models  # noqa: F401
+        from app.modules.wellness import models as _wellness_models  # noqa: F401
         await conn.run_sync(Base.metadata.create_all)
 
     Session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -76,6 +79,11 @@ async def app_client() -> AsyncClient:
             is_verified=True,
         )
         db.add(user)
+
+        from app.modules.cycle.models import Medication, Symptom
+
+        db.add(Symptom(name="Cramps", category="pain", icon="🔥", display_order=1))
+        db.add(Medication(name="Ibuprofen", category="painkiller", display_order=1))
         await db.commit()
         await db.refresh(user)
 
@@ -83,6 +91,7 @@ async def app_client() -> AsyncClient:
     from fastapi.exceptions import RequestValidationError
     from starlette.exceptions import HTTPException as StarletteHTTPException
 
+    from app.core.config import get_settings
     from app.core.exceptions import (
         RateLimitError,
         SheCareError,
@@ -91,7 +100,6 @@ async def app_client() -> AsyncClient:
         validation_exception_handler,
     )
     from app.core.security import create_access_token, get_token_revocation_store
-    from app.core.config import get_settings
     from app.modules.sync.routes import init_module as sync_init
 
     settings = get_settings()
@@ -184,6 +192,53 @@ async def test_sync_batch_cycle_create(app_client: AsyncClient) -> None:
     )
     assert resp.status_code == 200
     assert resp.json()["results"][0]["status"] == "created"
+
+
+@pytest.mark.asyncio
+async def test_sync_batch_cycle_day_upsert(app_client: AsyncClient) -> None:
+    """Offline DayDetailSheet logs (mobile type `cycle/day`) must sync.
+
+    Regression: the SyncOperation type regex previously rejected `cycle/day`
+    with a 422, so the offline queue discarded the op. Covers full payload
+    round-trip incl. symptoms / medications / recommendations_completed.
+    """
+    resp = await app_client.post(
+        "/api/v1/sync/batch",
+        json={
+            "operations": [
+                {
+                    "type": "cycle/day",
+                    "data": {
+                        "log_date": "2026-06-16",
+                        "mood": "calm",
+                        "mood_intensity": 3,
+                        "pain_level": 2,
+                        "energy_level": 2,
+                        "sleep_minutes": 420,
+                        "water_glasses": 6,
+                        "flow_level": "light",
+                        "notes": "Synced day log",
+                        "symptoms": [{"symptom": "Cramps", "severity": 3}],
+                        "medications": [{"name": "Ibuprofen", "dose": "200mg"}],
+                        "recommendations_completed": ["menstrual-cramps"],
+                    },
+                    "temp_id": "tmp-day-1",
+                },
+            ],
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    result = body["results"][0]
+    assert result["status"] == "updated"
+    assert result["temp_id"] == "tmp-day-1"
+    assert result["entity_id"] is not None
+    server_data = result["server_data"]
+    assert server_data["log_date"] == "2026-06-16"
+    assert server_data["pain_level"] == 2
+    assert server_data["recommendations_completed"] == ["menstrual-cramps"]
+    assert any(s["name"] == "Cramps" for s in server_data["symptoms"])
+    assert any(m["name"] == "Ibuprofen" for m in server_data["medications"])
 
 
 @pytest.mark.asyncio

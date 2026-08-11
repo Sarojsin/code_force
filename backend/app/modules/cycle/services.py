@@ -1199,14 +1199,10 @@ class CycleService:
             day.notes = self.encryption.encrypt_for_user(raw_notes, user_salt or "")
 
         if "symptoms" in dump:
-            joins = await self._build_day_symptoms(dump["symptoms"])
-            await self._load_day_joins(day)
-            day.day_symptoms = joins
+            await self._merge_day_symptoms(day, dump["symptoms"])
 
         if "medications" in dump:
-            joins = await self._build_day_medications(dump["medications"])
-            await self._load_day_joins(day)
-            day.day_medications = joins
+            await self._merge_day_medications(day, dump["medications"])
 
         # Gotcha §13.3: parent timestamps drive offline sync detection.
         day.updated_at = datetime.now(tz=UTC)
@@ -1251,8 +1247,22 @@ class CycleService:
 
         return day
 
-    async def _build_day_symptoms(self, items: list) -> list[DaySymptom]:
-        built: list[DaySymptom] = []
+    async def _merge_day_symptoms(self, day: CycleDay, items: list) -> None:
+        """Merge incoming symptoms into an existing day's collection.
+
+        Updates severity for already-present symptoms, adds new ones, and
+        removes any not in the incoming list.  The unique_day_symptom DB
+        constraint stays as the final safety net.
+        """
+        await self._load_day_joins(day)
+
+        # symptom_id → existing DaySymptom object
+        existing: dict[uuid.UUID, DaySymptom] = {
+            ds.symptom_id: ds for ds in day.day_symptoms
+        }
+
+        incoming_ids: set[uuid.UUID] = set()
+
         for item in items:
             if isinstance(item, dict):
                 symptom_name = item.get("symptom")
@@ -1269,11 +1279,34 @@ class CycleService:
                     extra={"symptom": symptom_name},
                 )
                 continue
-            built.append(DaySymptom(symptom_id=sym.id, severity=severity))
-        return built
 
-    async def _build_day_medications(self, items: list) -> list[DayMedication]:
-        built: list[DayMedication] = []
+            incoming_ids.add(sym.id)
+            if sym.id in existing:
+                # Update severity in-place — no new row, no unique conflict.
+                existing[sym.id].severity = severity
+            else:
+                day.day_symptoms.append(
+                    DaySymptom(symptom_id=sym.id, severity=severity)
+                )
+
+        # Remove symptoms the user no longer has (delete-orphan cascade handles DB).
+        for sym_id, ds in list(existing.items()):
+            if sym_id not in incoming_ids:
+                day.day_symptoms.remove(ds)
+
+    async def _merge_day_medications(self, day: CycleDay, items: list) -> None:
+        """Merge incoming medications into an existing day's collection.
+
+        Same logic as _merge_day_symptoms but for the medications join.
+        """
+        await self._load_day_joins(day)
+
+        existing: dict[uuid.UUID, DayMedication] = {
+            dm.medication_id: dm for dm in day.day_medications
+        }
+
+        incoming_ids: set[uuid.UUID] = set()
+
         for item in items:
             if isinstance(item, dict):
                 name = item.get("name")
@@ -1292,14 +1325,23 @@ class CycleService:
                     extra={"medication": name},
                 )
                 continue
-            built.append(
-                DayMedication(
-                    medication_id=med.id,
-                    dose=dose,
-                    taken_at=taken_at,
+
+            incoming_ids.add(med.id)
+            if med.id in existing:
+                existing[med.id].dose = dose
+                existing[med.id].taken_at = taken_at
+            else:
+                day.day_medications.append(
+                    DayMedication(
+                        medication_id=med.id,
+                        dose=dose,
+                        taken_at=taken_at,
+                    )
                 )
-            )
-        return built
+
+        for med_id, dm in list(existing.items()):
+            if med_id not in incoming_ids:
+                day.day_medications.remove(dm)
 
     async def _load_day_joins(self, day: CycleDay) -> None:
         """Materialize a day's selectin collections in async context.
