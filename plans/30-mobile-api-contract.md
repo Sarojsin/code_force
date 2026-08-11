@@ -654,3 +654,161 @@ the aggregate fresh even when the mobile client never PUTs.
   when `server.updated_at > local`.
 - Sign-out clears the local queue + cache but **never** deletes the server-side
   `luna_state` row.
+
+---
+
+## 13. Health Content (nurse_content module)
+
+### 13.1 Public: browse the Health Library
+
+`GET /contents`
+
+| Query param | Type | Notes |
+|-------------|------|-------|
+| `category` | `string?` | `wellness`, `nutrition`, `pregnancy`, `safety`, ... |
+| `content_type` | `string?` | `article`, `video`, `image` |
+| `limit` | `int?` | max `200`, default `50` |
+| `offset` | `int?` | default `0` |
+
+Returns only `status == "approved"` + `is_active == true` content, newest
+published first.
+
+`GET /contents/{content_id}` — fetch a single approved item.
+
+**Response item shape:**
+
+```json
+{
+  "id": "uuid",
+  "nurse_id": "uuid",
+  "title": "string",
+  "description": "string|null",
+  "summary": "string|null",
+  "body": "string|null",
+  "reading_time_minutes": 5,
+  "author_name": "SheCare Nurse|string|null",
+  "content_type": "article|video|image",
+  "video_public_id": "string|null",
+  "video_url": "string|null",
+  "video_duration_seconds": 120,
+  "thumbnail_public_id": "string|null",
+  "thumbnail_url": "string|null",
+  "images": [{"url": "string", "public_id": "string|null", "caption": "string|null", "order": 0}],
+  "category": "wellness",
+  "tags": ["breathing", "stress"],
+  "status": "approved",
+  "approved_by": "uuid|null",
+  "published_at": "iso8601|null",
+  "created_at": "iso8601",
+  "updated_at": "iso8601"
+}
+```
+
+The response envelope still applies:
+`{ "data": {...}, "message": "ok" }`.
+
+### 13.2 Admin: manage health content (single-admin model)
+
+All endpoints require `Authorization: Bearer <admin_access_token>` and an admin
+role. New content is **auto-approved** (`status: "approved"`), so no separate
+approval step is needed.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/admin/contents/upload-url?resource_type=image\|video` | Cloudinary signed upload URL |
+| POST | `/admin/contents` | Create content (auto-approved) |
+| GET | `/admin/contents` | List ALL content (incl. `pending`/`rejected`) |
+| PUT | `/admin/contents/{content_id}` | Update content |
+| DELETE | `/admin/contents/{content_id}` | Soft-delete content (`is_active = false`) |
+
+**Create body** (`ContentCreate` shape — same as response item above, minus
+`id`/`status`/timestamps; `content_type` + `category` + `title` required):
+
+```json
+{
+  "title": "Breathing exercises for calm",
+  "summary": "2-minute guided breathing",
+  "body": "Full article text...",
+  "content_type": "video",
+  "video_public_id": "health_content/abc123",
+  "video_url": "https://res.cloudinary.com/...",
+  "thumbnail_url": "https://res.cloudinary.com/.../thumb.jpg",
+  "category": "wellness",
+  "tags": ["breathing", "stress"]
+}
+```
+
+**Upload URL response:**
+
+```json
+{
+  "data": {
+    "upload_url": "https://api.cloudinary.com/v1_1/<cloud>/image/upload",
+    "cloud_name": "...",
+    "api_key": "...",
+    "timestamp": 1720000000,
+    "folder": "health_content",
+    "tags": "content-<user_id>",
+    "signature": "...",
+    "expires_at": 1720000900
+  },
+  "message": "ok"
+}
+```
+
+The mobile client then POSTs the media file directly to `upload_url` with
+`file`, `api_key`, `timestamp`, `signature`, `folder`, `tags` and receives the
+Cloudinary asset (`public_id`, `secure_url`) back, which it stores via
+`/admin/contents`.
+
+**Errors (admin endpoints):**
+- `403 ADMIN_REQUIRED` — role is not `admin`.
+- `404 CONTENT_NOT_FOUND` — content id does not exist or is soft-deleted.
+- `403 UNAUTHORIZED_CONTENT` — content belongs to another nurse.
+- `422` — invalid `ContentCreate`/`ContentUpdate` body.
+
+---
+
+## 14. Symptoms Master & `recommendations_completed`
+
+### 14.1 Symptoms master (57 rows, read-only)
+
+`GET /api/v1/cycle/symptoms` returns the active symptom master, ordered by
+`display_order`. Rows are mirrored **exactly** (by `name`/`category`/`display_order`)
+in `mobile/src/assets/masters/symptoms.json` and seeded into the local
+`DayMasterLocalService`. The mobile side reads it offline-first; parity is enforced
+by the PR-1 master-parity test.
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Abdominal Cramps",
+      "category": "reproductive",
+      "icon": "cramps",
+      "icon_kind": "lucide|custom|emoji",
+      "display_order": 1,
+      "is_active": true
+    }
+  ],
+  "message": "ok"
+}
+```
+
+Six categories: `reproductive`, `mood`, `digestive`, `energy`, `pain`, `skin`.
+The recommendation engine keys cards by these canonical `name` values; aliases are
+resolved client-side (see `expertRecommendations.ts` `LEGACY_SLUGS`), never in the
+contract.
+
+### 14.2 `recommendations_completed` round-trip (optional string[])
+
+`DailyDay` / `DailyUpsert` payloads accept an optional
+`recommendations_completed?: string[]` (field already present on the mobile types
+at `mobile/src/services/api/cycle.ts:131,149`). It records the ids of completed
+recommendation cards for the day and is round-tripped through the cycle day
+upsert. It is best-effort — backend treats it as opaque data; the source of truth
+for rendering is the client engine's persisted `wellness.recs.done.${id}` keys.
+
+**No request/response *shape* changed** by the recommendation feature — only the
+master content grew (57 rows).
