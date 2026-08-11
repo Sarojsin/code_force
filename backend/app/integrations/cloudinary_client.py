@@ -7,6 +7,7 @@ rest of the codebase free of Cloudinary-specific types.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any, cast
 
 import cloudinary  # type: ignore[import-untyped]
@@ -44,7 +45,6 @@ class CloudinaryClient:
         resource_type: str,
         folder: str = "health_content",
         tags: list[str] | None = None,
-        expires_in: int = 900,
     ) -> dict[str, Any]:
         """Return a signed upload payload the mobile client can post to
         ``https://api.cloudinary.com/v1_1/<cloud>/<resource_type>/upload``.
@@ -54,14 +54,12 @@ class CloudinaryClient:
         link uploaded assets to a content item.
         """
         try:
-            timestamp = cloudinary.utils.get_timestamp()
+            timestamp = int(time.time())
             params: dict[str, Any] = {
                 "timestamp": timestamp,
                 "folder": folder,
                 "tags": ",".join(tags or []),
             }
-            if expires_in:
-                params["expires_at"] = timestamp + expires_in
             signature = cloudinary.utils.api_sign_request(
                 params, self._settings.api_secret
             )
@@ -73,8 +71,6 @@ class CloudinaryClient:
                 "tags": ",".join(tags or []),
                 "signature": signature,
             }
-            if expires_in:
-                payload["expires_at"] = timestamp + expires_in
             logger.info("cloudinary.signed_upload", extra={"folder": folder, "resource_type": resource_type})
             return payload
         except Exception as exc:  # noqa: BLE001 - SDK raises generic Exception

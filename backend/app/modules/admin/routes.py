@@ -19,12 +19,13 @@ import uuid
 
 from fastapi import APIRouter, Depends, Query
 
-from app.modules.admin.dependencies import AdminServiceDep, require_admin
+from app.modules.admin.dependencies import AdminServiceDep, CloudinaryClientDep, require_admin
 from app.modules.admin.schemas import (
     AnalyticsResponse,
     BroadcastCreate,
     BroadcastResponse,
     RoleUpdate,
+    UploadUrlResponse,
     UserAdminResponse,
 )
 from app.modules.auth.dependencies import CurrentUser
@@ -99,6 +100,23 @@ async def broadcast(
 ) -> BroadcastResponse:
     users = await svc.list_users(is_active=True)
     return BroadcastResponse(message="Broadcast queued", recipient_count=len(users))
+
+
+@router.post(
+    "/contents/upload-url",
+    response_model=UploadUrlResponse,
+    summary="Get a signed Cloudinary upload URL for content media",
+)
+async def get_upload_url(
+    resource_type: str = Query("image", regex="^(image|video)$"),
+    cloudinary_client: CloudinaryClientDep = None,
+) -> UploadUrlResponse:
+    payload = cloudinary_client.signed_upload_payload(
+        resource_type=resource_type,
+        folder="health_content",
+        tags=["content_upload"],
+    )
+    return UploadUrlResponse(**payload)
 
 
 @router.get(

@@ -7,7 +7,9 @@ from typing import Annotated
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.database import get_db
+from app.integrations.cloudinary_client import CloudinaryClient
 from app.modules.admin.services import AdminService
 from app.modules.auth.dependencies import CurrentUser
 
@@ -18,9 +20,15 @@ async def get_admin_service(
     return AdminService(db=db)
 
 
+async def get_cloudinary_client() -> CloudinaryClient:
+    settings = get_settings()
+    return CloudinaryClient(settings.cloudinary)
+
+
 async def require_admin(current_user: CurrentUser) -> None:
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail={"code": "ADMIN_REQUIRED", "details": "Admin role required"})
 
 
 AdminServiceDep = Annotated[AdminService, Depends(get_admin_service)]
+CloudinaryClientDep = Annotated[CloudinaryClient, Depends(get_cloudinary_client)]

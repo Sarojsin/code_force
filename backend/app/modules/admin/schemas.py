@@ -12,7 +12,7 @@ class UserAdminResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    phone_number: str
+    phone_number: str | None = None
     display_name: str | None
     role: str
     is_active: bool
@@ -40,3 +40,12 @@ class BroadcastCreate(BaseModel):
 class BroadcastResponse(BaseModel):
     message: str
     recipient_count: int
+
+
+class UploadUrlResponse(BaseModel):
+    cloud_name: str
+    api_key: str
+    timestamp: int
+    folder: str
+    tags: str
+    signature: str

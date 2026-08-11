@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ContentCreate(BaseModel):
@@ -42,6 +42,18 @@ class ContentResponse(BaseModel):
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+    content_type: str = "article"
+
+    @model_validator(mode="after")
+    def derive_content_type(self) -> "ContentResponse":
+        if self.video_url:
+            self.content_type = "video"
+        elif self.thumbnail_url:
+            self.content_type = "image"
+        else:
+            self.content_type = "article"
+        return self
 
 
 class ContentApproveResponse(BaseModel):
