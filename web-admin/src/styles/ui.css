@@ -202,11 +202,15 @@ textarea.input {
 .modal {
   width: 100%;
   max-width: 520px;
+  max-height: calc(100vh - 100px);
   background: var(--surface);
   border-radius: 14px;
   box-shadow: 0 12px 32px rgba(34, 31, 46, 0.2);
   padding: 24px;
   animation: slide-up 200ms ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .modal-header {
   display: flex;

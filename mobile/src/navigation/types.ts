@@ -23,6 +23,7 @@ export type WellnessStackParamList = {
   BreathingList: undefined;
   Insights: undefined;
   Videos: undefined;
+  ContentDetail: { id: string };
 };
 
 export type CycleStackParamList = {
@@ -72,6 +73,7 @@ export type HomeStackParamList = {
   MoodLog: undefined;
   CyclePredictions: undefined;
   Videos: undefined;
+  ContentDetail: { id: string };
   AIChat: undefined;
   JournalList: undefined;
   JournalEntry: { id: string };

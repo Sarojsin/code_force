@@ -91,3 +91,14 @@ export interface ContentPayload {
   category: string;
   tags: string[];
 }
+
+export interface UploadUrlResponse {
+  upload_url: string;
+  cloud_name: string;
+  api_key: string;
+  timestamp: number;
+  folder: string;
+  tags: string;
+  signature: string;
+  expires_at?: number | null;
+}
