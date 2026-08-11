@@ -21,8 +21,13 @@ from sqlalchemy.ext.compiler import compiles
 def _compile_jsonb_sqlite(type_, compiler, **kw):
     return "JSON"
 
+
 from app.core.database import Base
-from app.modules.nurse_content.exceptions import ContentNotFoundError, UnauthorizedContentError
+from app.modules.nurse_content.exceptions import (
+    ContentNotFoundError,
+    ContentStateError,
+    UnauthorizedContentError,
+)
 from app.modules.nurse_content.schemas import ContentCreate, ContentUpdate
 from app.modules.nurse_content.services import NurseContentService
 
@@ -33,6 +38,7 @@ async def db_session() -> AsyncIterator[AsyncSession]:
     async with engine.begin() as conn:
         from app.modules.auth import models as _auth_models  # noqa: F401 (users table for FK)
         from app.modules.nurse_content import models  # noqa: F401
+
         await conn.run_sync(Base.metadata.create_all)
     Session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with Session() as session:
@@ -47,7 +53,6 @@ async def svc(db_session: AsyncSession) -> NurseContentService:
 
 nurse_id = uuid.uuid4()
 other_nurse_id = uuid.uuid4()
-admin_id = uuid.uuid4()
 
 
 @pytest.mark.asyncio
@@ -58,7 +63,9 @@ async def test_get_or_create_profile(svc: NurseContentService) -> None:
 
 @pytest.mark.asyncio
 async def test_create_content(svc: NurseContentService) -> None:
-    data = ContentCreate(title="Breathing Basics", description="Learn to breathe", category="wellness")
+    data = ContentCreate(
+        title="Breathing Basics", description="Learn to breathe", category="wellness"
+    )
     content = await svc.create_content(nurse_id, data)
     assert content.title == "Breathing Basics"
     assert content.status == "draft"
@@ -80,7 +87,9 @@ async def test_get_content_not_found(svc: NurseContentService) -> None:
 
 @pytest.mark.asyncio
 async def test_update_content(svc: NurseContentService) -> None:
-    content = await svc.create_content(nurse_id, ContentCreate(title="Original", category="nutrition"))
+    content = await svc.create_content(
+        nurse_id, ContentCreate(title="Original", category="nutrition")
+    )
     updated = await svc.update_content(content.id, nurse_id, ContentUpdate(title="Updated"))
     assert updated.title == "Updated"
 
@@ -100,58 +109,81 @@ async def test_delete_other_nurse_content_raises(svc: NurseContentService) -> No
 
 
 @pytest.mark.asyncio
-async def test_submit_and_approve_content(svc: NurseContentService) -> None:
-    content = await svc.create_content(nurse_id, ContentCreate(title="Approve me", category="wellness"))
-    assert content.status == "draft"
-
-    # Submit for review: draft -> pending
-    submitted = await svc.submit_content(content.id, nurse_id)
-    assert submitted.status == "pending"
-
-    # Approve: pending -> approved
-    approved = await svc.approve_content(submitted.id, admin_id)
+async def test_approve_content(svc: NurseContentService) -> None:
+    admin_id = uuid.uuid4()
+    content = await svc.create_content(
+        nurse_id, ContentCreate(title="Approve me", category="wellness")
+    )
+    await svc.submit_content(content.id, nurse_id)
+    approved = await svc.approve_content(content.id, admin_id)
     assert approved.status == "approved"
     assert approved.approved_by == admin_id
 
 
 @pytest.mark.asyncio
-async def test_reject_content(svc: NurseContentService) -> None:
-    content = await svc.create_content(nurse_id, ContentCreate(title="Reject me", category="wellness"))
+async def test_submit_content_requires_pending_flow(svc: NurseContentService) -> None:
+    content = await svc.create_content(nurse_id, ContentCreate(title="Flow", category="wellness"))
+    # approve directly from draft must fail
+    with pytest.raises(ContentStateError):
+        await svc.approve_content(content.id, uuid.uuid4())
     submitted = await svc.submit_content(content.id, nurse_id)
+    assert submitted.status == "pending"
+    # re-submit from pending must fail
+    with pytest.raises(ContentStateError):
+        await svc.submit_content(content.id, nurse_id)
 
-    rejected = await svc.reject_content(submitted.id, admin_id)
+
+@pytest.mark.asyncio
+async def test_submit_other_nurse_content_raises(svc: NurseContentService) -> None:
+    content = await svc.create_content(nurse_id, ContentCreate(title="Mine", category="wellness"))
+    with pytest.raises(UnauthorizedContentError):
+        await svc.submit_content(content.id, other_nurse_id)
+
+
+@pytest.mark.asyncio
+async def test_reject_then_resubmit(svc: NurseContentService) -> None:
+    admin_id = uuid.uuid4()
+    content = await svc.create_content(nurse_id, ContentCreate(title="Cycle", category="wellness"))
+    await svc.submit_content(content.id, nurse_id)
+    rejected = await svc.reject_content(content.id, admin_id)
     assert rejected.status == "rejected"
-
-    # Rejected content can be edited and resubmitted
-    updated = await svc.update_content(rejected.id, nurse_id, ContentUpdate(title="Fixed"))
-    assert updated.status == "draft"
-
-    resubmitted = await svc.submit_content(updated.id, nurse_id)
+    resubmitted = await svc.submit_content(content.id, nurse_id)
     assert resubmitted.status == "pending"
 
 
 @pytest.mark.asyncio
-async def test_unpublish_and_publish_content(svc: NurseContentService) -> None:
-    content = await svc.create_content(nurse_id, ContentCreate(title="Unpublish me", category="wellness"))
-    submitted = await svc.submit_content(content.id, nurse_id)
-    approved = await svc.approve_content(submitted.id, admin_id)
-
-    # Unpublish: approved -> unpublished
-    unpublished = await svc.unpublish_content(approved.id, admin_id)
+async def test_publish_unpublish_cycle(svc: NurseContentService) -> None:
+    admin_id = uuid.uuid4()
+    content = await svc.create_content(nurse_id, ContentCreate(title="Pub", category="wellness"))
+    await svc.submit_content(content.id, nurse_id)
+    await svc.approve_content(content.id, admin_id)
+    unpublished = await svc.unpublish_content(content.id, admin_id)
     assert unpublished.status == "unpublished"
     assert unpublished.published_at is None
-
-    # Re-publish: unpublished -> approved
-    republished = await svc.publish_content(unpublished.id, admin_id)
+    republished = await svc.publish_content(content.id, admin_id)
     assert republished.status == "approved"
     assert republished.published_at is not None
 
 
 @pytest.mark.asyncio
+async def test_get_public_content_leak_fixed(svc: NurseContentService) -> None:
+    admin_id = uuid.uuid4()
+    draft = await svc.create_content(nurse_id, ContentCreate(title="Draft", category="wellness"))
+    with pytest.raises(ContentNotFoundError):
+        await svc.get_public_content(draft.id)
+    await svc.submit_content(draft.id, nurse_id)
+    with pytest.raises(ContentNotFoundError):
+        await svc.get_public_content(draft.id)
+    await svc.approve_content(draft.id, admin_id)
+    public = await svc.get_public_content(draft.id)
+    assert public.status == "approved"
+
+
+@pytest.mark.asyncio
 async def test_list_pending(svc: NurseContentService) -> None:
     c1 = await svc.create_content(nurse_id, ContentCreate(title="Pending 1", category="wellness"))
-    await svc.submit_content(c1.id, nurse_id)
     c2 = await svc.create_content(nurse_id, ContentCreate(title="Pending 2", category="nutrition"))
+    await svc.submit_content(c1.id, nurse_id)
     await svc.submit_content(c2.id, nurse_id)
     pending = await svc.list_pending()
     assert len(pending) == 2
@@ -159,9 +191,11 @@ async def test_list_pending(svc: NurseContentService) -> None:
 
 @pytest.mark.asyncio
 async def test_list_approved(svc: NurseContentService) -> None:
-    content = await svc.create_content(nurse_id, ContentCreate(title="Approved content", category="wellness"))
-    submitted = await svc.submit_content(content.id, nurse_id)
-    await svc.approve_content(submitted.id, admin_id)
+    content = await svc.create_content(
+        nurse_id, ContentCreate(title="Approved content", category="wellness")
+    )
+    await svc.submit_content(content.id, nurse_id)
+    await svc.approve_content(content.id, uuid.uuid4())
     approved = await svc.list_approved()
     assert len(approved) == 1
 
@@ -170,10 +204,10 @@ async def test_list_approved(svc: NurseContentService) -> None:
 async def test_list_approved_by_category(svc: NurseContentService) -> None:
     c1 = await svc.create_content(nurse_id, ContentCreate(title="Wellness", category="wellness"))
     c2 = await svc.create_content(nurse_id, ContentCreate(title="Nutrition", category="nutrition"))
-    s1 = await svc.submit_content(c1.id, nurse_id)
-    s2 = await svc.submit_content(c2.id, nurse_id)
-    await svc.approve_content(s1.id, admin_id)
-    await svc.approve_content(s2.id, admin_id)
+    await svc.submit_content(c1.id, nurse_id)
+    await svc.submit_content(c2.id, nurse_id)
+    await svc.approve_content(c1.id, uuid.uuid4())
+    await svc.approve_content(c2.id, uuid.uuid4())
     wellness = await svc.list_approved(category="wellness")
     assert len(wellness) == 1
     assert wellness[0].category == "wellness"

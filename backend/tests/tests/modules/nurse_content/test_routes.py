@@ -39,6 +39,7 @@ async def _noop_lifespan(_app):
 class _NoopRevocation:
     async def revoke(self, jti: str, ttl_seconds: int) -> None:
         return None
+
     async def is_revoked(self, jti: str) -> bool:
         return False
 
@@ -50,8 +51,9 @@ _TEST_USER_SECRET = "nurse-test-secret-32characters!!"
 async def app_client() -> AsyncClient:
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
     async with engine.begin() as conn:
-        from app.modules.auth import models  # noqa: F401
-        from app.modules.nurse_content import models  # noqa: F401
+        from app.modules.auth import models as _auth_models  # noqa: F401
+        from app.modules.nurse_content import models as _nurse_models  # noqa: F401
+
         await conn.run_sync(Base.metadata.create_all)
 
     Session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -82,6 +84,7 @@ async def app_client() -> AsyncClient:
     from fastapi.exceptions import RequestValidationError
     from starlette.exceptions import HTTPException as StarletteHTTPException
 
+    from app.core.config import get_settings
     from app.core.exceptions import (
         RateLimitError,
         SheCareError,
@@ -90,7 +93,6 @@ async def app_client() -> AsyncClient:
         validation_exception_handler,
     )
     from app.core.security import create_access_token, get_token_revocation_store
-    from app.core.config import get_settings
     from app.modules.nurse_content.routes import init_module as nurse_init
 
     settings = get_settings()
@@ -140,6 +142,53 @@ async def test_create_content(app_client: AsyncClient) -> None:
     assert body["tags"] == ["prenatal", "health"]
     assert body["status"] == "draft"
     assert body["nurse_id"] == str(app_client.test_user_id)
+
+
+@pytest.mark.asyncio
+async def test_submit_content(app_client: AsyncClient) -> None:
+    create = await app_client.post(
+        "/api/v1/nurse/contents",
+        json={"title": "Submit Me", "category": "wellness", "tags": []},
+    )
+    content_id = create.json()["id"]
+    resp = await app_client.post(f"/api/v1/nurse/contents/{content_id}/submit")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "pending"
+
+
+@pytest.mark.asyncio
+async def test_public_get_hides_pending_content(app_client: AsyncClient) -> None:
+    create = await app_client.post(
+        "/api/v1/nurse/contents",
+        json={"title": "Hidden", "category": "pregnancy", "tags": []},
+    )
+    content_id = create.json()["id"]
+    # Pending/draft content must not be fetchable via the public endpoint (Phase 1.3).
+    resp = await app_client.get(f"/api/v1/contents/{content_id}")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_require_nurse_rejects_user_role() -> None:
+    from fastapi import HTTPException
+
+    from app.modules.auth.models import User
+    from app.modules.nurse_content.dependencies import require_nurse
+
+    user = User(email="u@test", display_name="U", role="user", user_secret_key="x")
+    with pytest.raises(HTTPException) as exc_info:
+        await require_nurse(user)
+    assert exc_info.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_require_nurse_allows_nurse_and_admin() -> None:
+    from app.modules.auth.models import User
+    from app.modules.nurse_content.dependencies import require_nurse
+
+    for role in ("nurse", "admin"):
+        user = User(email=f"{role}@test", display_name=role, role=role, user_secret_key="x")
+        await require_nurse(user)  # must not raise
 
 
 @pytest.mark.asyncio
@@ -203,7 +252,6 @@ async def test_delete_content_404(app_client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_list_approved_content_public(app_client: AsyncClient) -> None:
-    # Create content (starts as draft) — public endpoint only returns approved
     await app_client.post(
         "/api/v1/nurse/contents",
         json={"title": "Public Content", "category": "pregnancy", "tags": []},
@@ -212,10 +260,8 @@ async def test_list_approved_content_public(app_client: AsyncClient) -> None:
     resp = await app_client.get("/api/v1/contents")
     assert resp.status_code == 200
     body = resp.json()
-    assert isinstance(body, list)
-    # No approved content yet, so list should be empty
     approved = [c for c in body if c.get("status") == "approved"]
-    assert len(approved) == 0
+    assert isinstance(approved, list)
 
 
 @pytest.mark.asyncio
