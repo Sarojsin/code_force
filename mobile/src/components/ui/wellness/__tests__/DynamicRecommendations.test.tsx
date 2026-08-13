@@ -4,7 +4,6 @@ import { render, waitFor } from '@testing-library/react-native';
 import { ThemeProvider } from 'src/theme';
 
 import { DynamicRecommendations } from '../DynamicRecommendations';
-import type { CycleDay } from 'src/db/schema';
 import type { CurrentCycleState } from 'src/hooks/useCurrentCycleState';
 import type { WellnessInsights } from 'src/services/api/wellness';
 import type { PredictionListResponse } from 'src/services/api/cycle';
@@ -59,6 +58,54 @@ jest.mock('expo-haptics', () => ({
   ImpactFeedbackStyle: { Light: 'light' },
 }));
 
+const mockRecommendation: {
+  card: { id: string; icon: string; title: string; body: string } | null;
+  tier: string;
+  phaseKey: string;
+  painLevel: number;
+  hasData: boolean;
+  isLoading: boolean;
+} = {
+  card: {
+    id: 'luteal-cramps',
+    icon: '🔥',
+    title: 'Magnesium + Omega-3',
+    body: 'May ease cramps',
+  },
+  tier: 'recommendation',
+  phaseKey: 'luteal',
+  painLevel: 5,
+  hasData: true,
+  isLoading: false,
+};
+
+jest.mock('src/hooks/useTodayRecommendation', () => ({
+  useTodayRecommendation: () => mockRecommendation,
+}));
+
+jest.mock('src/services/eventBus', () => ({
+  eventBus: {
+    on: jest.fn(() => () => {}),
+  },
+}));
+
+jest.mock('src/stores/authStore', () => ({
+  useAuthStore: (selector: (s: any) => unknown) => selector({ user: { id: 'u1' } }),
+}));
+
+jest.mock('src/stores/companionStore', () => ({
+  useCompanionStore: (selector: (s: any) => unknown) =>
+    selector({ showInsights: true }),
+}));
+
+jest.mock('src/services/localDb', () => ({
+  localDb: {
+    cycleDay: {
+      getByDate: jest.fn(async () => null),
+    },
+  },
+}));
+
 const cycleState: CurrentCycleState = {
   isLoaded: true,
   isLoading: false,
@@ -75,20 +122,7 @@ const cycleState: CurrentCycleState = {
   cycleLength: 29,
 } as unknown as CurrentCycleState;
 
-function makeDay(overrides?: Partial<CycleDay>): CycleDay {
-  return {
-    id: 'd1',
-    user_id: 'u1',
-    log_date: '2026-08-10',
-    pain_level: 5,
-    symptoms: [{ name: 'Abdominal Cramps', severity: 5 }],
-    recommendations_completed: [],
-    ...overrides,
-  } as CycleDay;
-}
-
 function renderDynamic(overrides?: {
-  dayData?: CycleDay | null;
   insights?: WellnessInsights;
   predictions?: PredictionListResponse;
 }) {
@@ -100,22 +134,21 @@ function renderDynamic(overrides?: {
         analytics={undefined}
         predictions={overrides?.predictions}
         healthTips={[]}
-        dayData={overrides?.dayData}
       />
     </ThemeProvider>,
   );
 }
 
 describe('DynamicRecommendations — "For today" engine block (plan5 §3.2)', () => {
-  it('shows the engine-based card when dayData exists', () => {
-    const view = renderDynamic({ dayData: makeDay() });
+  it('shows the "For today" card from the shared recommendation hook', () => {
+    const view = renderDynamic();
     expect(view.getAllByText('Today').length).toBeGreaterThan(0);
     expect(view.getByText('Magnesium + Omega-3')).toBeTruthy();
   });
 
-  it('without dayData and with sufficient data, the empty state renders and no block is prepended', async () => {
+  it('without data and with sufficient data, the empty state renders and no block is prepended', async () => {
+    mockRecommendation.card = null;
     const view = renderDynamic({
-      dayData: null,
       insights: { total_mood_logs: 5 } as unknown as WellnessInsights,
       predictions: { data_quality: 'Good' } as unknown as PredictionListResponse,
     });
