@@ -154,6 +154,8 @@ export function SettingsScreen() {
   const companionLevel = useCompanionStore((s) => s.level);
   const companionTitle = useCompanionStore((s) => s.levelTitle);
   const companionXp = useCompanionStore((s) => s.xp);
+  const companionShowInsights = useCompanionStore((s) => s.showInsights);
+  const companionListenAndSpeak = useCompanionStore((s) => s.listenAndSpeak);
   const diaryInstallStatus = useDiaryAssetStore((s) => s.installStatus);
   const diaryAssetsVersion = useDiaryAssetStore((s) => s.assetsVersion);
   const diaryHydrated = useDiaryAssetStore((s) => s.isHydrated);
@@ -183,6 +185,16 @@ export function SettingsScreen() {
   const handleLunaSpeakToggle = async (value: boolean) => {
     await voiceService.setEnabled(value);
     logger.info('Luna speaks:', value);
+  };
+
+  const handleInsightsToggle = async (value: boolean) => {
+    await useCompanionStore.getState().setInsightsPref({ showInsights: value });
+    logger.info('Luna showInsights:', value);
+  };
+
+  const handleListenAndSpeakToggle = async (value: boolean) => {
+    await useCompanionStore.getState().setInsightsPref({ listenAndSpeak: value });
+    logger.info('Luna listenAndSpeak:', value);
   };
 
   const handleTestVoice = () => {
@@ -373,6 +385,8 @@ export function SettingsScreen() {
               <SettingRow label="Hide Companion" description="Luna disappears from the dashboard" value={companionHidden} onToggle={handleLunaToggle('isHidden')} accessibilityLabel="Toggle hide Luna companion" />
               <SettingRow label="Reduce Animations" description="Static cat only (no movement)" value={companionReduceAnimations} onToggle={handleLunaToggle('reduceAnimations')} accessibilityLabel="Toggle reduce Luna animations" />
               <SettingRow label="Mute Sounds" description="Disable meows and purrs" value={companionMuteSounds} onToggle={handleLunaToggle('muteSounds')} accessibilityLabel="Toggle mute Luna sounds" />
+              <SettingRow label="Show Health Insights" description="Tips and recommendations on Home" value={companionShowInsights} onToggle={handleInsightsToggle} accessibilityLabel="Toggle Luna health insights" />
+              <SettingRow label="Listen & Speak" description="Active on the Home screen only. Other screens use Tap to Speak." value={companionListenAndSpeak} onToggle={handleListenAndSpeakToggle} accessibilityLabel="Toggle Luna listen and speak" />
               <SettingRow label="Luna Speaks" description="Read dialogue aloud (device voice)" value={companionSpeakEnabled} onToggle={handleLunaSpeakToggle} accessibilityLabel="Toggle Luna speaking" />
               {companionSpeakEnabled && (
                 <>
@@ -405,6 +419,18 @@ export function SettingsScreen() {
                   />
                 </>
               )}
+              <SettingRow
+                label="Chat with Luna"
+                description="Ask Luna about your health, cycle and mood"
+                showDisclosure
+                onPress={() =>
+                  navigation.navigate('Main', {
+                    screen: 'Home',
+                    params: { screen: 'AIChat' },
+                  })
+                }
+                accessibilityLabel="Open AI chat with Luna"
+              />
             </>
           )}
         </SettingsSection>

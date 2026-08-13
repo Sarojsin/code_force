@@ -1,13 +1,16 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { FlatList, StyleSheet, View, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withRepeat, withTiming, Easing, withSequence } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 
 import { Text } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useNetworkStatus } from 'src/services/sync';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTodayRecommendation } from 'src/hooks/useTodayRecommendation';
+import { useSpeechRecognition } from 'src/hooks/useSpeechRecognition';
+import { matchesInsightKeyword, buildInsightReplyWithDisclaimer } from 'src/utils/lunaReply';
 
 const LUNA_BLUSH = '#FF6B8A';
 const LUNA_ROSE = '#F7C5CC';
@@ -92,54 +95,6 @@ function TypingDots() {
   );
 }
 
-function PulseRing({ active }: { active: boolean }) {
-  const ringScale = useSharedValue(1);
-  const ringOpacity = useSharedValue(0.4);
-
-  React.useEffect(() => {
-    if (active) {
-      ringScale.value = withRepeat(
-        withSequence(
-          withTiming(1.5, { duration: 800, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
-        ),
-        -1,
-      );
-      ringOpacity.value = withRepeat(
-        withSequence(
-          withTiming(0, { duration: 800 }),
-          withTiming(0.4, { duration: 800 }),
-        ),
-        -1,
-      );
-    } else {
-      ringScale.value = withSpring(1);
-      ringOpacity.value = withTiming(0);
-    }
-  }, [active, ringScale, ringOpacity]);
-
-  const ringStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: ringScale.value }],
-    opacity: ringOpacity.value,
-  }));
-
-  if (!active) return null;
-
-  return (
-    <Animated.View
-      style={[
-        StyleSheet.absoluteFill,
-        {
-          borderRadius: 20,
-          borderWidth: 2,
-          borderColor: '#FF3B30',
-        },
-        ringStyle,
-      ]}
-    />
-  );
-}
-
 function StreamText({ text }: { text: string }) {
   const words = text.split(/(\s+)/);
   const [revealed, setRevealed] = useState(1);
@@ -160,7 +115,7 @@ function StreamText({ text }: { text: string }) {
 
 function ChatInputBar({ onSend }: { onSend: (text: string) => void }) {
   const [inputText, setInputText] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   const send = useCallback(() => {
     if (!inputText.trim()) return;
@@ -168,12 +123,30 @@ function ChatInputBar({ onSend }: { onSend: (text: string) => void }) {
     setInputText('');
   }, [inputText, onSend]);
 
+  const { isListening, error: sttError, start: startSTT, stop: stopSTT } = useSpeechRecognition({
+    onResult: (result) => {
+      if (result.isFinal && result.transcript.trim()) {
+        onSend(result.transcript.trim());
+        setInputText('');
+      }
+    },
+  });
+
+  const handleMicPress = useCallback(() => {
+    if (isListening) {
+      stopSTT();
+      return;
+    }
+    startSTT().catch(() => {});
+  }, [isListening, startSTT, stopSTT]);
+
   return (
     <View style={[styles.inputBar, { backgroundColor: 'rgba(255,248,240,0.96)', borderTopColor: LUNA_ROSE + '55' }]}>
       <TextInput
+        ref={inputRef}
         value={inputText}
         onChangeText={setInputText}
-        placeholder="Ask Luna anything…"
+        placeholder={isListening ? 'Listening…' : 'Ask Luna anything…'}
         placeholderTextColor={LUNA_MID}
         multiline
         maxLength={500}
@@ -183,23 +156,24 @@ function ChatInputBar({ onSend }: { onSend: (text: string) => void }) {
           {
             color: LUNA_DARK,
             backgroundColor: 'rgba(255,255,255,0.85)',
-            borderColor: LUNA_ROSE,
+            borderColor: isListening ? LUNA_GREEN : LUNA_ROSE,
           },
         ]}
       />
       <View style={styles.inputActions}>
         <Pressable
-          onPress={() => setIsRecording(v => !v)}
-          accessibilityLabel={isRecording ? 'Stop recording' : 'Voice input'}
-          style={[styles.iconAction, { backgroundColor: isRecording ? '#FFE5E5' : '#E8D5F5', borderRadius: 20 }]}
+          onPress={handleMicPress}
+          accessibilityLabel={isListening ? 'Stop voice input' : 'Voice input'}
+          accessibilityState={{ busy: isListening }}
+          accessibilityHint={isListening ? 'Stops recording your voice' : 'Starts recording your voice'}
+          style={[styles.iconAction, { backgroundColor: isListening ? '#FFD7DD' : '#E8D5F5', borderRadius: 20 }]}
         >
           <View>
-            {isRecording && <PulseRing active={isRecording} />}
             <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <Path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <Path d="M19 10v2a7 7 0 01-14 0v-2" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <Line x1="12" y1="19" x2="12" y2="23" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" />
-              <Line x1="8" y1="23" x2="16" y2="23" stroke={isRecording ? '#FF3B30' : LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" />
+              <Path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" stroke={LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <Path d="M19 10v2a7 7 0 01-14 0v-2" stroke={LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <Line x1="12" y1="19" x2="12" y2="23" stroke={LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" />
+              <Line x1="8" y1="23" x2="16" y2="23" stroke={LUNA_BLUSH} strokeWidth="2" strokeLinecap="round" />
             </Svg>
           </View>
         </Pressable>
@@ -222,6 +196,11 @@ function ChatInputBar({ onSend }: { onSend: (text: string) => void }) {
           <Text style={{ fontSize: 20, color: '#fff', lineHeight: 22 }}>↑</Text>
         </Pressable>
       </View>
+      {sttError && (
+        <View style={styles.sttErrorBanner}>
+          <Text variant="caption" style={{ color: LUNA_MID, textAlign: 'center' }}>{sttError.message}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -229,6 +208,7 @@ function ChatInputBar({ onSend }: { onSend: (text: string) => void }) {
 export function AIChatScreen() {
   const theme = useTheme();
   const { isConnected } = useNetworkStatus();
+  const { card } = useTodayRecommendation();
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [isTyping, setIsTyping] = useState(false);
   const flatListRef = useRef<FlatList>(null);
@@ -252,6 +232,29 @@ export function AIChatScreen() {
     }
 
     setIsTyping(true);
+
+    // Phase 3: cycle-awareness — when the user asks about their health today,
+    // answer with the real per-day recommendation card (ignores showInsights).
+    const lower = userText.toLowerCase();
+    if (matchesInsightKeyword(lower)) {
+      const response = buildInsightReplyWithDisclaimer(card);
+      if (response) {
+        const msg: ChatMessage = {
+          id: `ai-${Date.now()}`,
+          text: response,
+          sender: 'ai',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setTimeout(() => {
+          setIsTyping(false);
+          appendMessage(msg);
+          setStreamed(prev => ({ ...prev, [msg.id]: 1 }));
+          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+        }, 500);
+        return;
+      }
+    }
+
     const responses: Record<string, string> = {
       'track my period': "Of course! 🌸 Head over to the **Calendar** tab to log your start and end dates. Or just tell me when it started and I'll guide you there step by step. Tracking regularly helps me give you better cycle insights!",
       'log a symptom': "I'm here for you! 💕 Which symptom are you noticing today? Common ones include: Cramps 🫨, Bloating 🫧, Fatigue 😴, Headache 🤕, Nausea 🤢, or Back pain. You can also tap the Calendar tab and log them right there. Every log helps us spot your patterns!",
@@ -273,7 +276,7 @@ export function AIChatScreen() {
       setStreamed(prev => ({ ...prev, [msg.id]: 1 }));
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     }, 500);
-  }, [appendMessage]);
+  }, [appendMessage, card]);
 
   const handleSend = useCallback((text: string) => {
     const msgText = text.trim();
@@ -489,6 +492,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   iconAction: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  sttErrorBanner: { position: 'absolute', bottom: 76, left: 12, right: 12, padding: 6 },
   sendBtn: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
   disclaimerBanner: { flexDirection: 'row', alignItems: 'center', padding: 10, marginBottom: 12, borderWidth: 1, gap: 8 },
 });

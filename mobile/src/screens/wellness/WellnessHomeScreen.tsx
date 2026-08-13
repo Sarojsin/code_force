@@ -64,7 +64,6 @@ export function WellnessHomeScreen() {
             analytics={dashboard.analytics}
             predictions={dashboard.predictions}
             healthTips={dashboard.phaseRecommendations}
-            dayData={dashboard.dayData}
           />
         </View>
 
