@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useSyncExternalStore } from 'react';
 import { eventBus } from '../eventBus';
 import { useCompanionStore, XP_REWARDS, COIN_REWARDS } from '../../stores/companionStore';
 import { dialogueEngine } from './DialogueEngine';
@@ -121,98 +121,174 @@ const MOOD_ANIMATIONS: Record<string, AnimationState> = {
   neutral: 'idle_blink',
 };
 
-export function useSpeechBubble() {
-  const [current, setCurrent] = useState<SpeechBubbleEvent | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const speechIdRef = useRef<string | null>(null);
+// ─────────────────────────────────────────────────────────────────────────
+// Phase 0: single shared bubble host.
+// Previously `useSpeechBubble()` created per-instance state: HomeDashboard
+// held an unrendered instance, LunaOverlay held the only renderer. Events
+// updated the invisible instance. Now state lives at module scope and the
+// hook subscribes via `useSyncExternalStore`.
+// ─────────────────────────────────────────────────────────────────────────
 
-  const clearTimer = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-  }, []);
+let currentBubble: SpeechBubbleEvent | null = null;
+let bubbleTimeout: ReturnType<typeof setTimeout> | null = null;
+let speechIdRef: string | null = null;
 
-  const show = useCallback((text: string, animation: AnimationState, durationMs: number) => {
-    clearTimer();
-    if (speechIdRef.current) {
-      voiceService.stop();
-      speechIdRef.current = null;
-    }
+type BubbleListener = () => void;
+const bubbleListeners = new Set<BubbleListener>();
 
-    const bubble: SpeechBubbleEvent = {
-      id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      text,
-      animation,
-      durationMs,
-      timestamp: Date.now(),
-    };
-
-    setCurrent(bubble);
-
-    if (voiceService.isEnabled()) {
-      speechIdRef.current = bubble.id;
-      void voiceService
-        .speak(text, {
-          onDone: () => {
-            if (speechIdRef.current === bubble.id) {
-              speechIdRef.current = null;
-              setCurrent(null);
-            }
-          },
-          onStopped: () => {
-            if (speechIdRef.current === bubble.id) {
-              speechIdRef.current = null;
-              setCurrent(null);
-            }
-          },
-        })
-        .catch(() => {
-          if (speechIdRef.current === bubble.id) {
-            speechIdRef.current = null;
-            setCurrent(null);
-          }
-        });
-      timeoutRef.current = setTimeout(() => {
-        if (speechIdRef.current === bubble.id) {
-          speechIdRef.current = null;
-          setCurrent(null);
-        }
-      }, Math.max(durationMs, 15000));
-    } else {
-      timeoutRef.current = setTimeout(() => {
-        setCurrent(null);
-      }, durationMs);
-    }
-  }, [clearTimer]);
-
-  const dismiss = useCallback(() => {
-    clearTimer();
-    if (speechIdRef.current) {
-      voiceService.stop();
-      speechIdRef.current = null;
-    }
-    setCurrent(null);
-  }, [clearTimer]);
-
-  useEffect(() => {
-    return () => {
-      clearTimer();
-      if (speechIdRef.current) {
-        voiceService.stop();
-        speechIdRef.current = null;
-      }
-    };
-  }, [clearTimer]);
-
-  return { current, show, dismiss };
+function emitBubbleChange(): void {
+  bubbleListeners.forEach((listener) => listener());
 }
 
+function subscribeBubble(listener: BubbleListener): () => void {
+  bubbleListeners.add(listener);
+  return () => {
+    bubbleListeners.delete(listener);
+  };
+}
+
+function getBubbleSnapshot(): SpeechBubbleEvent | null {
+  return currentBubble;
+}
+
+function clearBubbleTimer(): void {
+  if (bubbleTimeout) {
+    clearTimeout(bubbleTimeout);
+    bubbleTimeout = null;
+  }
+}
+
+export function showBubble(
+  text: string,
+  animation: AnimationState,
+  durationMs: number
+): void {
+  clearBubbleTimer();
+  if (speechIdRef) {
+    voiceService.stop();
+    speechIdRef = null;
+  }
+
+  const bubble: SpeechBubbleEvent = {
+    id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    text,
+    animation,
+    durationMs,
+    timestamp: Date.now(),
+  };
+
+  currentBubble = bubble;
+  emitBubbleChange();
+
+  if (voiceService.isEnabled()) {
+    speechIdRef = bubble.id;
+    void voiceService
+      .speak(text, {
+        onDone: () => {
+          if (speechIdRef === bubble.id) {
+            speechIdRef = null;
+            currentBubble = null;
+            emitBubbleChange();
+          }
+        },
+        onStopped: () => {
+          if (speechIdRef === bubble.id) {
+            speechIdRef = null;
+            currentBubble = null;
+            emitBubbleChange();
+          }
+        },
+      })
+      .catch(() => {
+        if (speechIdRef === bubble.id) {
+          speechIdRef = null;
+          currentBubble = null;
+          emitBubbleChange();
+        }
+      });
+    bubbleTimeout = setTimeout(() => {
+      bubbleTimeout = null;
+      if (speechIdRef === bubble.id) {
+        speechIdRef = null;
+        currentBubble = null;
+        emitBubbleChange();
+      }
+    }, Math.max(durationMs, 15000));
+  } else {
+    bubbleTimeout = setTimeout(() => {
+      bubbleTimeout = null;
+      currentBubble = null;
+      emitBubbleChange();
+    }, durationMs);
+  }
+}
+
+export function dismissBubble(): void {
+  clearBubbleTimer();
+  if (speechIdRef) {
+    voiceService.stop();
+    speechIdRef = null;
+  }
+  currentBubble = null;
+  emitBubbleChange();
+}
+
+export function useSpeechBubble(): {
+  current: SpeechBubbleEvent | null;
+  show: typeof showBubble;
+  dismiss: typeof dismissBubble;
+} {
+  const current = useSyncExternalStore(subscribeBubble, getBubbleSnapshot);
+  return { current, show: showBubble, dismiss: dismissBubble };
+}
+
+export interface TodayInsightOverride {
+  card: { title: string } | null;
+  tier: 'seek_care' | 'recommendation' | 'maintenance' | 'motivation';
+}
+
+export interface EventEngineOptions {
+  /**
+   * Returns the shared "today's recommendation" snapshot (Phase 2). When it has
+   * a card and the tier is `motivation`/`recommendation`, the proactive bubble
+   * replaces the generic welcome-back / day_logged line. Never triggered on
+   * `seek_care` (reserved for DayDetailSheet).
+   */
+  getTodayInsight?: () => TodayInsightOverride;
+}
+
+const INSIGHT_ANIMATION: Record<string, AnimationState> = {
+  motivation: 'happy',
+  recommendation: 'idle',
+};
+
 export function initEventEngine(
-  showBubble: (text: string, animation: AnimationState, durationMs: number) => void,
-  showAchievementPopup?: (achievement: Achievement) => void
+  showBubbleFn: (
+    text: string,
+    animation: AnimationState,
+    durationMs: number
+  ) => void,
+  showAchievementPopup?: (achievement: Achievement) => void,
+  options?: EventEngineOptions
 ): () => void {
+  const show = showBubbleFn ?? showBubble;
+  const getTodayInsight = options?.getTodayInsight;
   const unsubscribers: (() => void)[] = [];
+
+  /**
+   * Proactive insight override. Returns true when the insight replaced the
+   * generic bubble; false otherwise (caller falls back to its default line).
+   */
+  const tryShowInsight = (durationMs: number): boolean => {
+    if (!getTodayInsight) return false;
+    const insight = getTodayInsight();
+    if (!insight?.card) return false;
+    if (insight.tier !== 'motivation' && insight.tier !== 'recommendation') return false;
+    const store = useCompanionStore.getState();
+    if (store.showInsights === false) return false;
+    show(insight.card.title, INSIGHT_ANIMATION[insight.tier] ?? 'happy', durationMs);
+    return true;
+  };
 
   const checkAchievements = (eventName: string, payload: any) => {
     const store = useCompanionStore.getState();
@@ -270,7 +346,7 @@ export function initEventEngine(
       store.updateMemory('moodHistory', result.history);
 
       if (result.recommendation) {
-        showBubble(result.recommendation, animation, 4000);
+        show(result.recommendation, animation, 4000);
         checkAchievements(eventName, payload);
         return;
       }
@@ -283,10 +359,18 @@ export function initEventEngine(
       }
     }
 
+    // ── Proactive insight override for day_logged (luna plan Phase 2) ──
+    // Shows the shared "today's recommendation" card instead of the generic
+    // day_logged line when it's a motivation/recommendation tier.
+    if (eventName === 'day_logged' && tryShowInsight(reaction.durationMs)) {
+      checkAchievements(eventName, payload);
+      return;
+    }
+
     const moodContext = reaction.getMoodContext ? reaction.getMoodContext(payload) : undefined;
     const dialog = dialogueEngine.get(reaction.dialogContext as any, moodContext);
 
-    showBubble(dialog, animation, reaction.durationMs);
+    show(dialog, animation, reaction.durationMs);
 
     checkAchievements(eventName, payload);
   };
@@ -313,7 +397,11 @@ export function initEventEngine(
       return;
     }
     lastForegroundTime = now;
-    const showWelcome = () => showBubble(dialogueEngine.getWelcomeBack(), 'wave', 3000);
+    const showWelcome = () => {
+      // Proactive insight replaces the generic welcome-back bubble (Phase 2).
+      if (tryShowInsight(4000)) return;
+      show(dialogueEngine.getWelcomeBack(), 'wave', 3000);
+    };
     if (store.userId) {
       memoryService
         .hydrateMemory(store.userId)

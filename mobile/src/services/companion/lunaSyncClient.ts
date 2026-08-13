@@ -327,6 +327,8 @@ export function buildLunaStatePayload(meta: CompanionMetadata): LunaStatePayload
   if (typeof meta.mute_sounds === 'boolean') preferences.muteSounds = meta.mute_sounds;
   if (typeof meta.reduce_animations === 'boolean') preferences.reduceAnimations = meta.reduce_animations;
   if (typeof meta.is_hidden === 'boolean') preferences.isHidden = meta.is_hidden;
+  if (typeof memory.insights === 'boolean') preferences.showInsights = memory.insights;
+  if (typeof memory.listen === 'boolean') preferences.listenAndSpeak = memory.listen;
 
   const client_updated_at = meta.updated_at ?? new Date().toISOString();
 
@@ -374,6 +376,8 @@ export function mergeServerMemory(
     pitch: typeof prefs.speechPitch === 'number' ? prefs.speechPitch : currentSpeech.pitch ?? 1,
     voiceId: typeof prefs.voiceId === 'string' ? prefs.voiceId : currentSpeech.voiceId ?? null,
   };
+  if (typeof prefs.showInsights === 'boolean') next.insights = prefs.showInsights;
+  if (typeof prefs.listenAndSpeak === 'boolean') next.listen = prefs.listenAndSpeak;
   if (Array.isArray(server.achievements) && server.achievements.length > 0) {
     next.achievements = server.achievements.map((a) => a.id);
   }
