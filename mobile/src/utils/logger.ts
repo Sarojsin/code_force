@@ -20,7 +20,9 @@ const SCRUB_KEYS = new Set([
   'lng',
 ]);
 
-function scrub(value: unknown): unknown {
+const CAUSE_CHAIN_MAX = 3;
+
+function scrub(value: unknown, depth = 0): unknown {
   if (value === null || typeof value !== 'object') return value;
   if (value instanceof Error) {
     const err = value as any;
@@ -30,6 +32,9 @@ function scrub(value: unknown): unknown {
     if (err.statusText) out.statusText = err.statusText;
     if (err.response) {
       out.response = { status: err.response.status, statusText: err.response.statusText };
+    }
+    if (err.cause && depth < CAUSE_CHAIN_MAX) {
+      out.cause = scrub(err.cause, depth + 1);
     }
     return out;
   }

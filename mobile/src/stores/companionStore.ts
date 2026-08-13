@@ -99,6 +99,9 @@ interface CompanionState {
   speechRate: number;
   speechPitch: number;
 
+  showInsights: boolean;
+  listenAndSpeak: boolean;
+
   isHidden: boolean;
   reduceAnimations: boolean;
   muteSounds: boolean;
@@ -118,6 +121,7 @@ interface CompanionState {
   setOutfit: (outfitId: string | null) => Promise<void>;
   updateMemory: (key: string, value: unknown) => Promise<void>;
   setSpeechPref: (partial: Partial<SpeechPrefs>) => Promise<void>;
+  setInsightsPref: (partial: { showInsights?: boolean; listenAndSpeak?: boolean }) => Promise<void>;
   setHidden: (hidden: boolean) => Promise<void>;
   setReduceAnimations: (reduce: boolean) => Promise<void>;
   setMuteSounds: (mute: boolean) => Promise<void>;
@@ -141,6 +145,8 @@ export const useCompanionStore = create<CompanionState>((set, get) => ({
   speechVoiceId: null,
   speechRate: 1,
   speechPitch: 1,
+  showInsights: true,
+  listenAndSpeak: false,
   isHidden: false,
   reduceAnimations: false,
   muteSounds: false,
@@ -156,6 +162,7 @@ export const useCompanionStore = create<CompanionState>((set, get) => ({
       const meta = await companionLocalService.getMetadata(userId);
       if (meta) {
         const speech = (meta.memory as { speech?: Partial<SpeechPrefs> })?.speech ?? {};
+        const mem = (meta.memory as Record<string, unknown>) ?? {};
         set({
           userId: meta.user_id,
           xp: meta.xp,
@@ -165,11 +172,13 @@ export const useCompanionStore = create<CompanionState>((set, get) => ({
           lastSeenAt: meta.last_seen_at,
           currentOutfitId: meta.current_outfit_id,
           ownedOutfits: meta.owned_outfits ?? [],
-          memory: (meta.memory as Record<string, unknown>) ?? {},
+          memory: mem,
           speakEnabled: speech.enabled ?? false,
           speechVoiceId: speech.voiceId ?? null,
           speechRate: speech.rate ?? 1,
           speechPitch: speech.pitch ?? 1,
+          showInsights: typeof mem.insights === 'boolean' ? mem.insights : true,
+          listenAndSpeak: typeof mem.listen === 'boolean' ? mem.listen : false,
           isHidden: meta.is_hidden,
           reduceAnimations: meta.reduce_animations,
           muteSounds: meta.mute_sounds,
@@ -213,6 +222,8 @@ export const useCompanionStore = create<CompanionState>((set, get) => ({
           speechVoiceId: null,
           speechRate: 1,
           speechPitch: 1,
+          showInsights: true,
+          listenAndSpeak: false,
           isHidden: false,
           reduceAnimations: false,
           muteSounds: false,
@@ -321,6 +332,28 @@ export const useCompanionStore = create<CompanionState>((set, get) => ({
     set({ isHidden: hidden });
   },
 
+  setInsightsPref: async (partial: { showInsights?: boolean; listenAndSpeak?: boolean }) => {
+    const { userId, memory, showInsights, listenAndSpeak } = get();
+    if (!userId) return;
+    const nextShowInsights = partial.showInsights ?? showInsights;
+    const nextListen = partial.listenAndSpeak ?? listenAndSpeak;
+    const updated = {
+      ...memory,
+      insights: nextShowInsights,
+      listen: nextListen,
+    };
+    await companionLocalService.upsertMetadata({
+      user_id: userId,
+      memory: updated,
+      updated_at: new Date().toISOString(),
+    } as any);
+    set({
+      memory: updated,
+      showInsights: nextShowInsights,
+      listenAndSpeak: nextListen,
+    });
+  },
+
   setReduceAnimations: async (reduce: boolean) => {
     const { userId } = get();
     if (!userId) return;
@@ -362,6 +395,8 @@ export const useCompanionStore = create<CompanionState>((set, get) => ({
       speechVoiceId: null,
       speechRate: 1,
       speechPitch: 1,
+      showInsights: true,
+      listenAndSpeak: false,
       isHidden: false,
       reduceAnimations: false,
       muteSounds: false,
