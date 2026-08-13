@@ -4,12 +4,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import * as Haptics from 'expo-haptics';
+import { useTodayRecommendation } from 'src/hooks/useTodayRecommendation';
+import { useCompanionStore } from 'src/stores/companionStore';
 import type { CurrentCycleState } from 'src/hooks/useCurrentCycleState';
 import type { WellnessInsights } from 'src/services/api/wellness';
 import type { CycleAnalytics, PredictionListResponse } from 'src/services/api/cycle';
 import type { HealthTipResponse } from 'src/services/api/wellness';
-import type { CycleDay } from 'src/db/schema';
-import { getRecommendations, getRecommendationInputFromDay } from 'src/utils/expertRecommendations';
 
 interface DynamicRecommendationsProps {
   cycleState: CurrentCycleState;
@@ -17,8 +17,6 @@ interface DynamicRecommendationsProps {
   analytics: CycleAnalytics | undefined;
   predictions: PredictionListResponse | undefined;
   healthTips: HealthTipResponse[];
-  /** Today's cycle day from local Db — drives the "For today" engine block. */
-  dayData?: CycleDay | null;
 }
 
 interface RecommendationItem {
@@ -29,21 +27,27 @@ interface RecommendationItem {
   actionable: boolean;
 }
 
-export function DynamicRecommendations({ cycleState, insights, analytics, predictions, healthTips, dayData }: DynamicRecommendationsProps) {
+export function DynamicRecommendations({ cycleState, insights, analytics, predictions, healthTips }: DynamicRecommendationsProps) {
   const theme = useTheme();
   const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const showInsights = useCompanionStore((s) => s.showInsights);
+  const { card } = useTodayRecommendation();
 
+  // "For today" — first engine card from the shared hook (luna plan Phase 1).
+  // The hook composes the same pure functions from today's saved CycleDay.
+  // Engine-only scoping (§7): hidden when Show health insights is OFF.
   const engineCards = useCallback((): RecommendationItem[] => {
-    if (!dayData) return [];
-    const input = getRecommendationInputFromDay(dayData, cycleState.phaseKey);
-    return getRecommendations(input).map((card) => ({
-      id: card.id,
-      icon: card.icon,
-      text: card.title,
-      badge: 'Today',
-      actionable: true,
-    }));
-  }, [dayData, cycleState.phaseKey]);
+    if (!showInsights || !card) return [];
+    return [
+      {
+        id: card.id,
+        icon: card.icon,
+        text: card.title,
+        badge: 'Today',
+        actionable: true,
+      },
+    ];
+  }, [card, showInsights]);
 
   const recommendations = useCallback((): RecommendationItem[] => {
     const recs: RecommendationItem[] = [];

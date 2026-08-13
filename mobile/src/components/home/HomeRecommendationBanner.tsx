@@ -1,42 +1,26 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { ChevronRight } from 'lucide-react-native';
 import { useTheme } from 'src/theme';
 import { Text } from 'src/components/ui';
-import {
-  getRecommendations,
-  getRecommendationInputFromDay,
-} from 'src/utils/expertRecommendations';
-import type { CycleDay } from 'src/db/schema';
-import type { PhaseRange } from 'src/utils/cyclePhases';
-
-interface HomeRecommendationBannerProps {
-  dayData: CycleDay | null;
-  phaseKey: PhaseRange['key'];
-}
+import { useTodayRecommendation } from 'src/hooks/useTodayRecommendation';
+import { useCompanionStore } from 'src/stores/companionStore';
 
 /**
  * Compact "Today's Insight" banner for the Home screen.
  * Shows a single recommendation or motivation card.
  * Tap → navigates to the Wellness tab for the full carousel.
  * NEVER shows seek_care (pain ≥ 7) — safety guardrail.
+ * Hidden when the "Show health insights" settings toggle is OFF.
  */
-export function HomeRecommendationBanner({
-  dayData,
-  phaseKey,
-}: HomeRecommendationBannerProps) {
+export function HomeRecommendationBanner() {
   const theme = useTheme();
   const navigation = useNavigation<any>();
+  const showInsights = useCompanionStore((s) => s.showInsights);
+  const { card } = useTodayRecommendation();
 
-  const card = useMemo(() => {
-    const input = getRecommendationInputFromDay(dayData, phaseKey);
-    if (input.painLevel >= 7) return null;
-    const cards = getRecommendations(input);
-    return cards.length > 0 ? cards[0] : null;
-  }, [dayData, phaseKey]);
-
-  if (!card) return null;
+  if (!showInsights || !card) return null;
 
   return (
     <Pressable

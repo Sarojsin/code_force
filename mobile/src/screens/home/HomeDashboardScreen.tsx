@@ -7,6 +7,7 @@ import Svg, { Circle as SvgCircle } from 'react-native-svg';
 import { Text, Skeleton, AnimatedSection } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useCurrentCycleState } from 'src/hooks/useCurrentCycleState';
+import { useTodayRecommendation } from 'src/hooks/useTodayRecommendation';
 import { getPhaseMeta } from 'src/utils';
 import { useAuthStore } from 'src/stores/authStore';
 import { useDiaryAssetStore } from 'src/stores/diaryAssetStore';
@@ -23,8 +24,8 @@ import { AchievementPopup } from '../../components/ui/AchievementPopup';
 import { CheckInCard } from '../../components/home/CheckInCard';
 import { CatchUpCard } from '../../components/home/CatchUpCard';
 import { eventBus } from '../../services/eventBus';
-import { useTodayDayData } from 'src/hooks/useTodayDayData';
 import { HomeRecommendationBanner } from 'src/components/home/HomeRecommendationBanner';
+import { HomeAlwaysListening } from '../../hooks/useHomeAlwaysListening';
 
 type Nav = any;
 
@@ -43,7 +44,6 @@ export function HomeDashboardScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
   const { cycleDay, hasCycleData, phaseKey, phaseLabel, phaseEmoji, phaseAccent, phaseDesc, nextPeriodDays, predictedCycleLength, calData, isLoading: loading, error, refetch } = useCurrentCycleState(3, 3);
-  const dayData = useTodayDayData();
   const user = useAuthStore((s) => s.user);
   const displayName = user?.display_name ?? '';
   const firstName = displayName.split(' ')[0] || '';
@@ -59,12 +59,17 @@ export function HomeDashboardScreen() {
   const lunaInitialized = useRef(false);
   const eventCleanupRef = useRef<(() => void) | null>(null);
   const { show: showBubble } = useSpeechBubble();
+  const todayInsight = useTodayRecommendation();
 
   // Inject a cycle-phase reader into the dialogue engine (luna2 phase5 §2).
   // Reads the current phase at dialogue-pick time via a ref so it stays fresh
   // without reaching into the cycle module's store from the companion layer.
   const phaseKeyRef = useRef<CyclePhase | undefined>(hasCycleData ? phaseKey : undefined);
   phaseKeyRef.current = hasCycleData ? phaseKey : undefined;
+
+  // Fresh-insight reader for the proactive override (luna plan Phase 2).
+  const insightRef = useRef(todayInsight);
+  insightRef.current = todayInsight;
 
   useEffect(() => {
     dialogueEngine.setCyclePhaseSource(() => phaseKeyRef.current);
@@ -78,9 +83,20 @@ export function HomeDashboardScreen() {
   useEffect(() => {
     if (!lunaInitialized.current) {
       lunaInitialized.current = true;
-      eventCleanupRef.current = initEventEngine(showBubble, (achievement) => {
-        showPopup(achievement);
-      });
+      eventCleanupRef.current = initEventEngine(
+        showBubble,
+        (achievement) => {
+          showPopup(achievement);
+        },
+        {
+          getTodayInsight: () => ({
+            card: insightRef.current.card
+              ? { title: insightRef.current.card.title }
+              : null,
+            tier: insightRef.current.tier,
+          }),
+        },
+      );
     }
     return () => {
       if (eventCleanupRef.current) {
@@ -263,7 +279,7 @@ export function HomeDashboardScreen() {
 
             {hasCycleData && (
               <AnimatedSection delay={staggerItems[2]}>
-                <HomeRecommendationBanner dayData={dayData} phaseKey={phaseKey} />
+                <HomeRecommendationBanner />
               </AnimatedSection>
             )}
 
@@ -378,6 +394,7 @@ export function HomeDashboardScreen() {
         />
       )}
       {lunaEnabled && <AchievementPopup achievement={currentPopup} onDismiss={dismissPopup} />}
+      {lunaEnabled && <HomeAlwaysListening />}
     </SafeAreaView>
   );
 }
