@@ -62,7 +62,15 @@
           "photosPermission": "SheCare needs access to your photos for memory diary images.",
           "cameraPermission": "SheCare needs camera access to capture photos and videos for your memory diary."
         }
-      ]
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "SheCare uses the microphone so you can talk to Luna.",
+          "speechRecognitionPermission": "SheCare uses speech recognition so you can talk to Luna.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ],
     ],
     "doctor": {
       "reactNativeDirectoryCheck": {

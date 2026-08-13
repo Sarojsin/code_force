@@ -191,3 +191,49 @@ jest.mock('expo-speech', () => {
     VoiceQuality,
   };
 });
+
+// expo-speech-recognition mock (luna plan Phase 7b/8 STT). The service binds
+// native events through `addListener`; tests drive recognition by firing
+// events via `__fireEvent(name, payload)` and assert start/stop/abort/permission
+// calls on the jest.fn module surface.
+jest.mock('expo-speech-recognition', () => {
+  const listeners = {};
+  const ExpoSpeechRecognitionModule = {
+    start: jest.fn(),
+    stop: jest.fn(),
+    abort: jest.fn(),
+    requestPermissionsAsync: jest.fn(async () => ({ granted: true, status: 'granted' })),
+    getPermissionsAsync: jest.fn(async () => ({ granted: true, status: 'granted' })),
+    isRecognitionAvailable: jest.fn(() => true),
+    supportsOnDeviceRecognition: jest.fn(() => false),
+    supportsRecording: jest.fn(() => false),
+    getStateAsync: jest.fn(async () => 'inactive'),
+    getSupportedLocales: jest.fn(async () => ({ locales: ['en-US'], installedLocales: [] })),
+    getSpeechRecognitionServices: jest.fn(() => []),
+    getDefaultRecognitionService: jest.fn(() => ({ packageName: '' })),
+    getAssistantService: jest.fn(() => ({ packageName: '' })),
+    androidTriggerOfflineModelDownload: jest.fn(async () => ({ status: 'download_success', message: '' })),
+    setCategoryIOS: jest.fn(),
+    getAudioSessionCategoryAndOptionsIOS: jest.fn(() => ({ category: 'playAndRecord', categoryOptions: [], mode: 'measurement' })),
+    setAudioSessionActiveIOS: jest.fn(),
+    addListener: jest.fn((eventName, cb) => {
+      (listeners[eventName] = listeners[eventName] || []).push(cb);
+      return {
+        remove: jest.fn(() => {
+          const list = listeners[eventName] || [];
+          const idx = list.indexOf(cb);
+          if (idx >= 0) list.splice(idx, 1);
+        }),
+      };
+    }),
+    __listeners: listeners,
+    __fireEvent: (eventName, payload) => {
+      const list = listeners[eventName] || [];
+      list.forEach((cb) => cb(payload));
+    },
+  };
+  return {
+    ExpoSpeechRecognitionModule,
+    useSpeechRecognitionEvent: jest.fn(),
+  };
+});

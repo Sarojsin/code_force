@@ -1,0 +1,14 @@
+env: load .env
+env: export EXPO_PUBLIC_API_URL
+Starting project at E:\her_care\mobile
+Logs: E:\her_care\mobile\.expo\dev\logs\start.log
+Using src/app as the root directory for Expo Router.
+Starting Metro Bundler
+
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8081
+
+An update for expo is available: 57.0.8 → ~57.0.12
+13 other packages may need updating. Run npx expo install --check for details.
+Logs for your project will appear below.
+Android Bundled 98951ms index.js (4849 modules)
