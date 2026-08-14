@@ -15,6 +15,7 @@ import { uninstallLuna } from '../../services/assetDownloader';
 import { useDiaryAssetStore } from '../../stores/diaryAssetStore';
 import { uninstallDiaryAssets } from '../../services/diaryAssetDownloader';
 import { useAnimationEngine, voiceService } from '../../services/companion';
+import { useVideoLibrarySettings } from '../../hooks/useVideoLibrarySettings';
 import { Luna3D } from '../../services/companion/3d/Luna3D';
 import Slider from '@react-native-community/slider';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -161,6 +162,7 @@ export function SettingsScreen() {
   const diaryHydrated = useDiaryAssetStore((s) => s.isHydrated);
   const companionHydrated = useCompanionStore((s) => s.isHydrated);
   const installStatus = useCompanionStore((s) => s.installStatus);
+  const { smartRecommendationsEnabled, setSmartRecommendationsEnabled } = useVideoLibrarySettings();
    const { currentAnim, rotation, rotationX } = useAnimationEngine();
   const assetsVersion = useCompanionStore((s) => s.assetsVersion);
 
@@ -323,6 +325,16 @@ export function SettingsScreen() {
           <SettingRow label="Day Logs" description="View your daily observations history" showDisclosure onPress={() => navigation.navigate('DailyLog')} accessibilityLabel="View day logs" />
         </SettingsSection>
 
+        <SettingsSection title="CONTENT & PERSONALIZATION">
+          <SettingRow
+            label="Smart recommendations"
+            description="Show personalized videos based on your logged symptoms"
+            value={smartRecommendationsEnabled}
+            onToggle={setSmartRecommendationsEnabled}
+            accessibilityLabel="Toggle smart recommendations"
+          />
+        </SettingsSection>
+
         <SettingsSection title="AI & MODELS">
           <SettingRow label="Offline AI Models" description="Enable on-device predictions" value={settings.offlineAI} onToggle={toggle('offlineAI')} accessibilityLabel="Toggle offline AI models" />
           <SettingRow label="Auto-download Updates" description="Keep models up to date" value={settings.autoUpdateModels} onToggle={toggle('autoUpdateModels')} accessibilityLabel="Toggle auto-update models" />
@@ -386,7 +398,7 @@ export function SettingsScreen() {
               <SettingRow label="Reduce Animations" description="Static cat only (no movement)" value={companionReduceAnimations} onToggle={handleLunaToggle('reduceAnimations')} accessibilityLabel="Toggle reduce Luna animations" />
               <SettingRow label="Mute Sounds" description="Disable meows and purrs" value={companionMuteSounds} onToggle={handleLunaToggle('muteSounds')} accessibilityLabel="Toggle mute Luna sounds" />
               <SettingRow label="Show Health Insights" description="Tips and recommendations on Home" value={companionShowInsights} onToggle={handleInsightsToggle} accessibilityLabel="Toggle Luna health insights" />
-              <SettingRow label="Listen & Speak" description="Active on the Home screen only. Other screens use Tap to Speak." value={companionListenAndSpeak} onToggle={handleListenAndSpeakToggle} accessibilityLabel="Toggle Luna listen and speak" />
+              <SettingRow label="Listen & Speak" description="Tap the mic on Luna to talk — no passive listening" value={companionListenAndSpeak} onToggle={handleListenAndSpeakToggle} accessibilityLabel="Toggle Luna listen and speak" />
               <SettingRow label="Luna Speaks" description="Read dialogue aloud (device voice)" value={companionSpeakEnabled} onToggle={handleLunaSpeakToggle} accessibilityLabel="Toggle Luna speaking" />
               {companionSpeakEnabled && (
                 <>

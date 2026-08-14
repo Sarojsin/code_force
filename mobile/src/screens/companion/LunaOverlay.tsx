@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { View, Pressable, StyleSheet, Dimensions, AppState } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, withRepeat, Easing, useReducedMotion } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, withRepeat, withDelay, cancelAnimation, Easing, useReducedMotion } from 'react-native-reanimated';
+import Svg, { Path, Line } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useCompanionStore } from '../../stores/companionStore';
@@ -13,6 +14,7 @@ import { getLunaContext, LunaScreen } from '../../services/companion/lunaContext
 import { getFallbackTip, type HealthTipCategory } from '../../services/healthTips';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useLunaMicSession } from '../../hooks/useLunaMicSession';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const LUNA_SIZE = 112;
@@ -57,6 +59,8 @@ export interface LunaOverlayProps {
   week?: number;
   trimester?: number;
   babySize?: string;
+  /** Today's recommendation card, used by the tap-to-speak reply path. */
+  recommendationCard?: { title: string; body: string; cta?: string | null } | null;
 }
 
 export function LunaOverlay({
@@ -76,6 +80,7 @@ export function LunaOverlay({
   week,
   trimester,
   babySize,
+  recommendationCard = null,
 }: LunaOverlayProps) {
   const theme = useTheme();
   const systemReducedMotion = useReducedMotion();
@@ -86,6 +91,10 @@ export function LunaOverlay({
   const level = useCompanionStore((s) => s.level);
   const xpToNext = useCompanionStore((s) => s.xpToNext);
   const installStatus = useCompanionStore((s) => s.installStatus);
+  const listenAndSpeak = useCompanionStore((s) => s.listenAndSpeak);
+
+  const reducedMotion = systemReducedMotion || reduceAnimations;
+  const mic = useLunaMicSession(recommendationCard);
 
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
@@ -393,25 +402,35 @@ export function LunaOverlay({
 
         {!expanded && speech && <SpeechBubble text={speech.text} />}
 
-        <Pressable
-          onPress={handleTap}
-          accessibilityLabel="Luna the companion cat. Tap for your next-period forecast or a health tip."
-          accessibilityRole="imagebutton"
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Animated.View style={[animatedStyle, floatAnim]}>
-            <Luna3D
-              size={reduceAnimations ? LUNA_SIZE - 8 : LUNA_SIZE}
-              currentAnim={currentAnim}
-              rotation={rotation}
-              rotationX={rotationX}
-              installed={installStatus === 'ready'}
-              reducedMotion={systemReducedMotion}
-              reduceAnimations={reduceAnimations}
-              talking={talking}
+        <View style={styles.avatarWrap}>
+          {!expanded && listenAndSpeak && installStatus === 'ready' && (
+            <LunaMicButton
+              isListening={mic.isListening}
+              isProcessing={mic.isProcessing}
+              reducedMotion={reducedMotion}
+              onPress={() => mic.start().catch(() => {})}
             />
-          </Animated.View>
-        </Pressable>
+          )}
+          <Pressable
+            onPress={handleTap}
+            accessibilityLabel="Luna the companion cat. Tap for your next-period forecast or a health tip."
+            accessibilityRole="imagebutton"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Animated.View style={[animatedStyle, floatAnim]}>
+              <Luna3D
+                size={reduceAnimations ? LUNA_SIZE - 8 : LUNA_SIZE}
+                currentAnim={currentAnim}
+                rotation={rotation}
+                rotationX={rotationX}
+                installed={installStatus === 'ready'}
+                reducedMotion={systemReducedMotion}
+                reduceAnimations={reduceAnimations}
+                talking={talking}
+              />
+            </Animated.View>
+          </Pressable>
+        </View>
 
         <View style={styles.groundShadow} />
 
@@ -444,6 +463,85 @@ function pickHealthTip(phaseKey: string | null | undefined): string {
     getFallbackTip(category ?? 'general') ??
     getFallbackTip('general') ??
     'Small consistent steps lead to big health changes.'
+  );
+}
+
+function LunaMicButton({
+  isListening,
+  isProcessing,
+  reducedMotion,
+  onPress,
+}: {
+  isListening: boolean;
+  isProcessing: boolean;
+  reducedMotion: boolean;
+  onPress: () => void;
+}) {
+  const glow = useSharedValue(0.55);
+
+  useEffect(() => {
+    if (reducedMotion) {
+      glow.value = 1;
+      return;
+    }
+    if (isListening) {
+      glow.value = 1;
+    } else {
+      glow.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease) }),
+          withDelay(1200, withTiming(0.55, { duration: 900, easing: Easing.inOut(Easing.ease) })),
+        ),
+        -1,
+        true,
+      );
+    }
+    return () => {
+      cancelAnimation(glow);
+    };
+  }, [glow, isListening, reducedMotion]);
+
+  const ringStyle = useAnimatedStyle(() => ({
+    opacity: isListening ? 1 : 0.55 * glow.value,
+    transform: [{ scale: isListening ? 1 + 0.12 * glow.value : 0.92 + 0.08 * glow.value }],
+  }));
+
+  const label = isProcessing
+    ? 'Processing your voice'
+    : isListening
+      ? 'Luna is listening. Tap to stop.'
+      : 'Tap to talk to Luna';
+
+  const hint = isProcessing
+    ? 'Please wait while Luna thinks'
+    : isListening
+      ? 'Stops the current voice session'
+      : 'Starts a short voice session';
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ busy: isListening || isProcessing }}
+      accessibilityHint={hint}
+      hitSlop={8}
+      style={styles.micHaloWrap}
+    >
+      <Animated.View style={[styles.micRing, ringStyle]} />
+      <View style={[styles.micButton, isListening && styles.micButtonActive]}>
+        {isProcessing ? (
+          <Loader size="small" color="#FFFFFF" />
+        ) : (
+          <Svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <Path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <Path d="M19 10v2a7 7 0 01-14 0v-2" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <Line x1="12" y1="19" x2="12" y2="23" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+            <Line x1="8" y1="23" x2="16" y2="23" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+          </Svg>
+        )}
+      </View>
+    </Pressable>
   );
 }
 
@@ -528,6 +626,45 @@ const styles = StyleSheet.create({
     height: LUNA_SIZE + 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarWrap: {
+    position: 'relative',
+    alignItems: 'center',
+  },
+  micHaloWrap: {
+    position: 'absolute',
+    top: -14,
+    right: -6,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  micRing: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#FF6B8A',
+    backgroundColor: 'rgba(255,107,138,0.18)',
+  },
+  micButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FF6B8A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF6B8A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  micButtonActive: {
+    backgroundColor: '#DC2626',
   },
   downloadStatus: {
     marginTop: 4,

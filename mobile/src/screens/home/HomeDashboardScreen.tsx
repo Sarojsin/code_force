@@ -25,7 +25,6 @@ import { CheckInCard } from '../../components/home/CheckInCard';
 import { CatchUpCard } from '../../components/home/CatchUpCard';
 import { eventBus } from '../../services/eventBus';
 import { HomeRecommendationBanner } from 'src/components/home/HomeRecommendationBanner';
-import { HomeAlwaysListening } from '../../hooks/useHomeAlwaysListening';
 
 type Nav = any;
 
@@ -391,10 +390,10 @@ export function HomeDashboardScreen() {
           predictedEndDate={calData?.predictions?.predicted_period_end ?? null}
           predictedCycleLength={predictedCycleLength}
           hasCycleData={hasCycleData}
+          recommendationCard={todayInsight.card}
         />
       )}
       {lunaEnabled && <AchievementPopup achievement={currentPopup} onDismiss={dismissPopup} />}
-      {lunaEnabled && <HomeAlwaysListening />}
     </SafeAreaView>
   );
 }

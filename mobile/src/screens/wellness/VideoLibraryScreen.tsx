@@ -1,23 +1,44 @@
 /**
- * VideoLibraryScreen — public health content library (videos + images + articles).
+ * VideoLibraryScreen — Smart Health Library (DayDetailSheet → VideoLibrary plan).
  *
- * Fetches approved educational content from the backend and renders a
- * FlatList of video thumbnails and image galleries. Uses React Query
- * for caching (rule 2.2) and FlatList for performance (rule 2.7).
+ * General health content library (videos + images + articles) with an optional
+ * "For You" mode: when enabled, content is prioritized by the user's recently
+ * logged symptoms (last-7-days `cycle_days` from local SQLite, offline-first),
+ * scored client-side by the pure `videoRecommendations` engine.
+ *
+ * "No Data, No Issue" (plan §7.4): no symptoms logged → friendly info banner +
+ * full general library, never an empty state. The global master switch
+ * (Settings → Smart recommendations) hides the For You toggle entirely.
  */
 
-import React from 'react';
-import { FlatList, Image, StyleSheet, View, TouchableOpacity, AppState } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  FlatList,
+  Image,
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  Pressable,
+  AppState,
+  ScrollView,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery, focusManager } from '@tanstack/react-query';
+import { focusManager } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Text as Txt, Card, EmptyState, Loader } from 'src/components/ui';
+import { Sparkles, ClipboardList } from 'lucide-react-native';
+
+import { Text as Txt, Card, EmptyState, HorizontalCardCarousel } from 'src/components/ui';
 import { useTheme } from 'src/theme';
-import { nurseContentService, type NurseContent } from 'src/services/api/nurse_content';
+import type { NurseContent } from 'src/services/api/nurse_content';
+import { useVideoRecommendations } from 'src/hooks/useVideoRecommendations';
+import { useVideoLibrarySettings } from 'src/hooks/useVideoLibrarySettings';
+import { ICON_BY_SYMPTOM } from 'src/utils/expertRecommendations';
+import { navigate } from 'src/navigation/rootNavigation';
 import type { WellnessStackParamList } from 'src/navigation/types';
 
 const CATEGORIES = ['all', 'wellness', 'pregnancy', 'cycle', 'nutrition', 'mental_health'] as const;
+const CAROUSEL_CARD_WIDTH = 280;
 
 focusManager.setEventListener((handleFocus) => {
   const onFocus = () => handleFocus(true);
@@ -30,54 +51,32 @@ focusManager.setEventListener((handleFocus) => {
 export function VideoLibraryScreen() {
   const theme = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<WellnessStackParamList>>();
-  const [activeCategory, setActiveCategory] = React.useState('all');
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [forYou, setForYou] = useState(false);
 
+  const { smartRecommendationsEnabled } = useVideoLibrarySettings();
   const {
-    data: contents,
+    all,
+    recommended,
+    general,
+    matchedSymptoms,
+    hasData,
     isLoading,
-    isFetching,
     isError,
     refetch,
-  } = useQuery<NurseContent[]>({
-    queryKey: ['nurse-contents', activeCategory],
-    queryFn: () =>
-      nurseContentService.getContents({
-        limit: 100,
-        category: activeCategory === 'all' ? undefined : activeCategory,
-      }),
-    staleTime: 60 * 1000,
-  });
+  } = useVideoRecommendations(forYou ? 'all' : activeCategory);
 
-  if (isLoading) {
+  const effectiveGeneral = useMemo(() => (forYou ? general : all), [forYou, general, all]);
+
+  if (isLoading && !forYou) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.header}>
-          <Txt variant="h1" style={styles.title}>Health Library</Txt>
-          <Txt variant="body" color="secondary" style={styles.subtitle}>
-            Videos, images, and articles from our health experts.
-          </Txt>
-        </View>
-        <View style={styles.categoryRow}>
-          {CATEGORIES.map((cat) => (
-            <View
-              key={cat}
-              style={[styles.categoryChip, activeCategory === cat && { backgroundColor: theme.colors.primary }]}
-            >
-              <Txt variant="caption" style={[styles.categoryLabel, activeCategory === cat && { color: theme.colors.textInverse }]}>
-                {cat.charAt(0).toUpperCase() + cat.slice(1).replace('_', ' ')}
-              </Txt>
-            </View>
-          ))}
-        </View>
-        {[1, 2, 3].map((i) => (
-          <View key={i} style={[styles.skeletonCard, { backgroundColor: theme.colors.border }]}>
-            <View style={[styles.skeletonThumb, { backgroundColor: theme.colors.surface }]} />
-            <View style={styles.skeletonBody}>
-              <View style={[styles.skeletonLine, { width: '70%', backgroundColor: theme.colors.surface }]} />
-              <View style={[styles.skeletonLine, { width: '40%', backgroundColor: theme.colors.surface }]} />
-            </View>
-          </View>
-        ))}
+        <LibraryHeader
+          forYou={forYou}
+          onToggle={smartRecommendationsEnabled ? setForYou : undefined}
+          theme={theme}
+        />
+        <SkeletonRows theme={theme} />
       </SafeAreaView>
     );
   }
@@ -97,39 +96,59 @@ export function VideoLibraryScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
-        <Txt variant="h1" style={styles.title}>Health Library</Txt>
-        <Txt variant="body" color="secondary" style={styles.subtitle}>
-          Videos, images, and articles from our health experts.
-        </Txt>
-      </View>
+      <LibraryHeader
+        forYou={smartRecommendationsEnabled && forYou}
+        onToggle={smartRecommendationsEnabled ? setForYou : undefined}
+        theme={theme}
+      />
 
-      <View style={styles.categoryRow}>
-        {CATEGORIES.map((cat) => (
-          <TouchableOpacity
-            key={cat}
-            onPress={() => setActiveCategory(cat)}
-            style={[
-              styles.categoryChip,
-              activeCategory === cat && { backgroundColor: theme.colors.primary },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={'Filter by ' + cat}
-          >
-            <Txt
-              variant="caption"
+      {forYou && !hasData ? (
+        <NoSymptomsBanner theme={theme} onLogToday={() => navigate('Main', { screen: 'Calendar' })} />
+      ) : null}
+
+      {forYou && hasData && recommended.length > 0 ? (
+        <RecommendedSection
+          theme={theme}
+          contents={recommended}
+          matchedSymptoms={matchedSymptoms}
+          onPress={(id) => navigation.navigate('ContentDetail', { id })}
+        />
+      ) : null}
+
+      {forYou && hasData && matchedSymptoms.length > 0 ? (
+        <View style={styles.sectionTitleRow}>
+          <Txt variant="h2" style={styles.sectionTitle}>Browse all videos</Txt>
+        </View>
+      ) : null}
+
+      {!forYou ? (
+        <View style={styles.categoryRow}>
+          {CATEGORIES.map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              onPress={() => setActiveCategory(cat)}
               style={[
-                styles.categoryLabel,
-                activeCategory === cat && { color: theme.colors.textInverse },
+                styles.categoryChip,
+                activeCategory === cat && { backgroundColor: theme.colors.primary },
               ]}
+              accessibilityRole="button"
+              accessibilityLabel={'Filter by ' + cat}
             >
-              {cat.charAt(0).toUpperCase() + cat.slice(1).replace('_', ' ')}
-            </Txt>
-          </TouchableOpacity>
-        ))}
-      </View>
+              <Txt
+                variant="caption"
+                style={[
+                  styles.categoryLabel,
+                  activeCategory === cat && { color: theme.colors.textInverse },
+                ]}
+              >
+                {cat.charAt(0).toUpperCase() + cat.slice(1).replace('_', ' ')}
+              </Txt>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
 
-      {contents && contents.length === 0 && !isFetching ? (
+      {effectiveGeneral && effectiveGeneral.length === 0 && !forYou ? (
         <EmptyState
           title="No content yet"
           message={
@@ -140,7 +159,7 @@ export function VideoLibraryScreen() {
         />
       ) : (
         <FlatList
-          data={contents ?? []}
+          data={effectiveGeneral ?? []}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <ContentCard
@@ -151,10 +170,160 @@ export function VideoLibraryScreen() {
           )}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          ListFooterComponent={isFetching && contents && contents.length > 0 ? <Loader /> : null}
+          ListFooterComponent={
+            forYou && !hasData && (all ?? []).length > 0 ? <Txt variant="caption" color="muted" style={styles.browseAllNote}>Browse the full library below.</Txt> : null
+          }
         />
       )}
+      {forYou && (all ?? []).length === 0 && !isLoading ? (
+        <EmptyState
+          title="No content yet"
+          message="Check back soon for new health content."
+        />
+      ) : null}
     </SafeAreaView>
+  );
+}
+
+function LibraryHeader({
+  forYou,
+  onToggle,
+  theme,
+}: {
+  forYou: boolean;
+  onToggle?: (v: boolean) => void;
+  theme: ReturnType<typeof useTheme>;
+}) {
+  return (
+    <View style={styles.header}>
+      <Txt variant="h1" style={styles.title}>Health Library</Txt>
+      <View style={styles.headerRow}>
+        <Txt variant="body" color="secondary" style={styles.subtitle}>
+          Videos, images, and articles from our health experts.
+        </Txt>
+        {onToggle ? (
+          <Pressable
+            onPress={() => onToggle(!forYou)}
+            style={[
+              styles.forYouPill,
+              forYou && { backgroundColor: theme.colors.primaryDeep },
+            ]}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: forYou }}
+            accessibilityLabel={forYou ? 'For You on — showing personalized videos' : 'Turn on For You to see personalized videos'}
+          >
+            <Sparkles size={14} color={forYou ? theme.colors.textInverse : theme.colors.primaryDeep} accessible={false} />
+            <Txt
+              variant="caption"
+              style={[styles.forYouLabel, forYou && { color: theme.colors.textInverse }]}
+            >
+              {forYou ? 'For You ✓' : 'For You'}
+            </Txt>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function RecommendedSection({
+  theme,
+  contents,
+  matchedSymptoms,
+  onPress,
+}: {
+  theme: ReturnType<typeof useTheme>;
+  contents: NurseContent[];
+  matchedSymptoms: string[];
+  onPress: (id: string) => void;
+}) {
+  return (
+    <View>
+      <View style={styles.sectionTitleRow}>
+        <Txt variant="h2" style={styles.sectionTitle}>Based on your recent symptoms</Txt>
+      </View>
+      {matchedSymptoms.length > 0 ? (
+        <View style={styles.symptomChipRow}>
+          {matchedSymptoms.slice(0, 4).map((s) => (
+            <View key={s} style={[styles.symptomChip, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.chip }]}>
+              <Txt variant="chip" style={{ color: theme.colors.primaryDeep }}>
+                {ICON_BY_SYMPTOM[s] ? `${ICON_BY_SYMPTOM[s]} ` : ''}{s}
+              </Txt>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      <HorizontalCardCarousel cardWidth={CAROUSEL_CARD_WIDTH} accessibilityLabel="Recommended videos">
+        {contents.map((item) => (
+          <RecommendedCard key={item.id} content={item} theme={theme} onPress={() => onPress(item.id)} />
+        ))}
+      </HorizontalCardCarousel>
+    </View>
+  );
+}
+
+function RecommendedCard({
+  content,
+  theme,
+  onPress,
+}: {
+  content: NurseContent;
+  theme: ReturnType<typeof useTheme>;
+  onPress: () => void;
+}) {
+  const isVideo = content.content_type === 'video';
+  const thumbnail = content.thumbnail_url || (content.images && content.images[0]?.url) || null;
+
+  return (
+    <Card
+      style={[styles.recoCard, { borderRadius: theme.radius.cardLg, borderColor: theme.colors.borderSubtle }]}
+      padded={false}
+      onPress={onPress}
+    >
+      {thumbnail ? (
+        <Image source={{ uri: thumbnail }} style={styles.recoThumb} resizeMode="cover" />
+      ) : (
+        <View style={[styles.recoThumb, styles.placeholder, { backgroundColor: theme.colors.border }]}>
+          <Txt variant="caption" color="muted">{isVideo ? 'Video' : 'Article'}</Txt>
+        </View>
+      )}
+      <View style={styles.recoBody}>
+        <Txt variant="h3" style={styles.recoTitle} numberOfLines={2}>{content.title}</Txt>
+        <View style={styles.recoFooter}>
+          <Txt variant="caption" color="muted">{content.category.replace('_', ' ')}</Txt>
+          {isVideo && content.video_duration_seconds ? (
+            <Txt variant="caption" color="muted">{Math.round(content.video_duration_seconds / 60)} min</Txt>
+          ) : null}
+        </View>
+      </View>
+    </Card>
+  );
+}
+
+function NoSymptomsBanner({
+  theme,
+  onLogToday,
+}: {
+  theme: ReturnType<typeof useTheme>;
+  onLogToday: () => void;
+}) {
+  return (
+    <View style={[styles.noSymptomsBanner, { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.lg }]}>
+      <View style={styles.noSymptomsRow}>
+        <ClipboardList size={18} color={theme.colors.primaryDeep} accessible={false} />
+        <Txt variant="bodySmall" color="secondary" style={styles.noSymptomsText}>
+          No recent symptoms logged. Explore our full library.
+        </Txt>
+      </View>
+      <Pressable
+        onPress={onLogToday}
+        style={[styles.logTodayBtn, { backgroundColor: theme.colors.primaryDeep, borderRadius: theme.radius.md }]}
+        accessibilityRole="button"
+        accessibilityLabel="Log today's symptoms"
+      >
+        <Txt variant="chip" style={{ color: theme.colors.textInverse }}>📝 Log Today's Symptoms</Txt>
+      </Pressable>
+    </View>
   );
 }
 
@@ -192,11 +361,41 @@ function ContentCard({ content, theme, onPress }: { content: NurseContent; theme
   );
 }
 
+function SkeletonRows({ theme }: { theme: any }) {
+  return (
+    <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+      {[1, 2, 3].map((i) => (
+        <View key={i} style={[styles.skeletonCard, { backgroundColor: theme.colors.border }]}>
+          <View style={[styles.skeletonThumb, { backgroundColor: theme.colors.surface }]} />
+          <View style={styles.skeletonBody}>
+            <View style={[styles.skeletonLine, { width: '70%', backgroundColor: theme.colors.surface }]} />
+            <View style={[styles.skeletonLine, { width: '40%', backgroundColor: theme.colors.surface }]} />
+          </View>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: { padding: 24, paddingBottom: 12 },
   title: { marginBottom: 4 },
-  subtitle: { marginTop: 4, opacity: 0.7 },
+  subtitle: { marginTop: 4, opacity: 0.7, flex: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
+  forYouPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#FFB3C6',
+    backgroundColor: 'transparent',
+    minHeight: 44,
+  },
+  forYouLabel: { fontWeight: '700' },
   categoryRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 24, marginBottom: 16, flexWrap: 'wrap' },
   categoryChip: {
     paddingHorizontal: 14,
@@ -218,4 +417,23 @@ const styles = StyleSheet.create({
   skeletonThumb: { width: '100%', height: 160 },
   skeletonBody: { padding: 12, gap: 8 },
   skeletonLine: { height: 14, borderRadius: 4 },
+  sectionTitleRow: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 4 },
+  sectionTitle: { fontWeight: '700' },
+  symptomChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 24, paddingBottom: 4 },
+  symptomChip: { paddingHorizontal: 10, paddingVertical: 4 },
+  recoCard: { width: CAROUSEL_CARD_WIDTH, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
+  recoThumb: { width: '100%', height: 140 },
+  recoBody: { padding: 12, gap: 6 },
+  recoTitle: { fontSize: 16 },
+  recoFooter: { flexDirection: 'row', justifyContent: 'space-between' },
+  noSymptomsBanner: { marginHorizontal: 24, padding: 16, gap: 12, marginBottom: 12 },
+  noSymptomsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  noSymptomsText: { flex: 1 },
+  logTodayBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    minHeight: 44,
+  },
+  browseAllNote: { textAlign: 'center', marginTop: 4 },
 });
