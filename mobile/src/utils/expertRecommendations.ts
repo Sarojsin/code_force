@@ -23,14 +23,15 @@ export interface RecommendationInput {
 export const MAX_CARDS = 3;
 
 /** Alias map — legacy names resolve to canonical master names (behavior fix
- *  plan3 §3.2: Lower Back Pain is NO LONGER a cramps alias; it has its own row). */
-const ALIAS_MAP: Record<string, string> = {
+ *  plan3 §3.2: Lower Back Pain is NO LONGER a cramps alias; it has its own row).
+ *  Shared across engines — videoRecommendations reuses it (plan sanity check #2). */
+export const ALIAS_MAP: Record<string, string> = {
   Cramps: 'Abdominal Cramps',
   'Low Energy': 'Fatigue',
 };
 
 /** Icons per canon name. Symbols only — the carousel maps them to Lucide. */
-const ICON_BY_SYMPTOM: Record<string, string> = {
+export const ICON_BY_SYMPTOM: Record<string, string> = {
   'Abdominal Cramps': '🔥',
   'Lower Back Pain': '🦴',
   Headache: '🤕',
