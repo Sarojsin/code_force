@@ -10,6 +10,7 @@ export * from './DayDetailSheet';
 export * from './dayDetail';
 export * from './DelayedBanner';
 export * from './EmptyState';
+export * from './HorizontalCardCarousel';
 export * from './EndDatePromptCard';
 export * from './FormField';
 export * from './KeyboardAvoidingWrapper';
