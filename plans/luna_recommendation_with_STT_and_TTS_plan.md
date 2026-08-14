@@ -49,13 +49,14 @@ Integrate the recommendation engine with Luna so that:
    foreground and after a day save, via speech bubble + optional TTS.
 2. **Reactive:** Luna answers explicit text/voice queries ("what's my health tip?") with the
    same card via the AI chat screen. Voice (STT) SHIPPED on `expo-speech-recognition`
-   plus Home always-on listening (§8).
+   plus **tap-to-speak on the Home overlay** (§8).
 3. **Insights toggle:** user can turn off recommendation **cards** in the UI without
    breaking Luna's ability to respond to explicit queries.
-4. **Listen & Speak toggle (Home-screen-only):** a separate toggle that puts Luna into
-   an **always-on listening** state while the Home dashboard is the focused screen.
-   On every other screen, Luna keeps "Tap to Speak" — she is NOT listening (privacy +
-   battery). Also used to surface the AI chat entry point from Settings.
+4. **Listen & Speak toggle (tap-to-speak):** a separate toggle that shows a **pulsing mic
+   halo on Luna's Home overlay**. Tapping it starts a short (≤10 s) one-shot voice
+   session — NOT passive/always-on listening. Battery + privacy first (see
+   `plans/luna_voice_listen_plan.md`, which replaces the old always-on §8 surface).
+   Also used to surface the AI chat entry point from Settings.
 5. **App size unchanged:** no offline STT models bundled; no new native dependency in
    this phase.
 
@@ -76,11 +77,12 @@ Integrate the recommendation engine with Luna so that:
 6. **`getMotivation()` naming** maps to the real `getMotivationForDay()`
    (`dayInsights.ts:125`) — not needed by the hook (motivation copy comes from
    `MOTIVATION_CARDS` body via the engine).
-7. **Listen & Speak is Home-screen-only.** When ON, Luna actively listens **only while
-   the Home dashboard is focused**. All other screens = standard "Tap to Speak". (Privacy:
-   no always-on surveillance; Battery: no continuous mic processing on other screens;
-   UX: Luna is physically rendered on Home via `LunaOverlay`, "I look at the cat, I talk
-   to the cat").
+7. **Listen & Speak = tap-to-speak.** When ON, Luna shows a pulsing mic halo on her Home
+   overlay; tapping it starts a short (≤10 s) one-shot voice session. She is NEVER in
+   a passive/always-on listening state (privacy: no always-on surveillance; battery: mic
+   powers on only for the explicit tap window; UX: Luna is physically rendered on Home
+   via `LunaOverlay`, "I look at the cat, I talk to the cat"). Replaces the original
+   always-on design (see `plans/luna_voice_listen_plan.md`).
 8. **AI chat access.** Since AIChatScreen has no entry point, Settings gains a
    "Chat with Luna" row that navigates to the AI chat screen.
 
@@ -236,45 +238,45 @@ Settings. Dead screen today.
 
 ---
 
-### Phase 0.6 — "Listen & Speak" Toggle (Home-screen-only active listening)
+### Phase 0.6 — "Listen & Speak" Toggle (tap-to-speak)
 
-**Purpose:** A companion toggle to "Show health insights". When ON, Luna actively
-"listens" **only while the Home dashboard is focused**. On every other screen she keeps
-standard **"Tap to Speak"** (button-initiated) — she is NOT continuously listening.
+**Purpose:** A companion toggle to "Show health insights". When ON, Luna's Home overlay
+shows a **pulsing mic halo**; tapping it starts a short (≤10 s) one-shot voice session.
+This is **tap-to-speak** — she is NOT in a passive/always-on listening state on any
+screen.
 
-**Why Home-only:**
-- **Privacy** — users are comfortable talking to a pet they are looking at; listening on
-  Calendar/Settings feels like surveillance.
-- **Battery & performance** — continuous mic processing is heavy; limiting it to one
-  focused screen cuts CPU/battery significantly.
-- **UX immersion** — Luna is physically rendered on Home via `LunaOverlay`; interaction
-  is "I look at the cat, I talk to the cat". On Wellness/Analytics the user isn't looking
-  at her, so they won't expect a response.
+**Why tap-to-speak (not always-on):**
+- **Privacy** — a women's health app passively listening is a red flag; the user must
+  explicitly opt into each session by tapping.
+- **Battery & performance** — the mic + recognizer run only for the explicit tap window
+  (≤10 s), never continuously.
+- **UX clarity** — the pulsing halo is a visible, discoverable affordance on the overlay.
 
 **Change** (`mobile/src/stores/companionStore.ts` + `SettingsScreen.tsx`):
-- Add `listenAndSpeak: boolean` (default `false`) + `setListenAndSpeakPref(partial)`.
+- Add `listenAndSpeak: boolean` (default `false`) + `setInsightsPref(partial)` (already
+  merged into the shared prefs setter).
 - Persist inside `companion_metadata.memory.listen` (JSON — same pattern as
   `memory.speech`), hydrate in `companionStore.hydrate` (line 158), reset in `reset`,
   mirror in `lunaSyncClient` (`lunaSyncClient.ts:321`).
-- Settings gets the switch: **🎤 Listen & Speak** [ON/OFF]. Show a caption:
-  "Active on the Home screen only. Other screens use Tap to Speak."
+- Settings gets the switch: **🎤 Listen & Speak** [ON/OFF]. Caption:
+  "Tap the mic on Luna to talk — no passive listening."
 
-**Behavior matrix (when STT ships; Phase 3 keeps this OFF/hidden until then):**
+**Behavior matrix (STT shipped; §8):**
 
-| State | Home dashboard focused | Any other screen |
-|-------|------------------------|------------------|
-| ON    | always-on listening — Luna responds to natural speech | Tap-to-speak only (button) |
-| OFF   | tap-to-speak only      | tap-to-speak only            |
+| State | Luna Home overlay | AI Chat |
+|-------|-------------------|---------|
+| ON    | pulsing mic halo → tap = ≤10 s one-shot session → STT → bubble reply (+TTS if enabled). Mic auto-closes. | input-bar mic (unchanged) |
+| OFF   | no halo; text-only bubbles | input-bar mic (unchanged) |
 
-**Enforcement (pure/focus-based, no global singleton):**
-- Reads the focused route via `useIsFocused()`/navigation state (same pattern as
-  `HomeDashboardScreen.tsx` + `LunaOverlay` rendering) — listening is enabled only when
-  `listenAndSpeak === true && focusedRoute === 'Home'`.
-- Permissions requested **at the moment of use** (on first toggle-on or first mic tap),
-  not at app start (matches frontend rule §2.8).
+**Enforcement (no global singleton):**
+- The halo renders only when `listenAndSpeak === true && installStatus === 'ready'`;
+  the mic session lives in `useLunaMicSession` (`src/hooks/useLunaMicSession.ts`).
+- Permissions requested **at the moment of use** (on first mic tap), never at app start
+  or toggle-on (matches frontend rule §2.8).
 
-> **Note:** STT is SHIPPED (§8). This phase ships the **toggle + persistence
-> + Home-screen gating hook**; the mic handoff uses `expo-speech-recognition` directly.
+> **Note:** STT is SHIPPED (§8). This phase ships the **toggle + persistence**
+> + **tap-to-speak session hook + mic halo**; the mic handoff uses
+> `expo-speech-recognition` directly.
 
 ---
 
@@ -375,9 +377,9 @@ exist — confirmed).
 - **Mic button** (`AIChatScreen.tsx:192`): real STT (SHIPPED §8) — press to listen,
   interim/final results stream into the input and auto-send; recording state colors the
   input + mic; permission requested at the moment of use.
-- **Listen & Speak interplay:** Phase 0.6's `listenAndSpeak` drives the Home-screen
-  always-on listening (STT shipped, §8) which uses the same `showBubble`-based reply
-  path shown above.
+- **Listen & Speak interplay:** Phase 0.6's `listenAndSpeak` shows the tap-to-speak mic
+  halo on Luna's Home overlay (STT shipped, §8) which uses the same `showBubble`-based
+  reply path shown above.
 
 ---
 
@@ -405,8 +407,8 @@ exist — confirmed).
 | ON (default)  | shown                                    | on             | on            |
 | OFF           | hidden                                   | never          | **still on** (explicit query) |
 
-**Gating (Listen & Speak):** see Phase 0.6 behavior matrix — active only when
-`listenAndSpeak === true && focusedRoute === 'Home'`; elsewhere tap-to-speak only.
+**Gating (Listen & Speak):** shows the tap-to-speak mic halo per the Phase 0.6 behavior
+matrix; all mic sessions are button-initiated.
 
 ---
 
@@ -416,12 +418,15 @@ exist — confirmed).
 |------|--------|--------|
 | `mobile/src/hooks/useTodayRecommendation.ts` | **NEW** | Shared hook composing `useTodayDayData` + `useCurrentCycleState` + `getRecommendations` + `getSafetyForDay`; subscribes to `day_logged` for refresh. |
 | `mobile/src/services/companion/EventEngine.ts` | MODIFY | Single bubble host (Phase 0); `initEventEngine` gains `getTodayInsight`; proactive override in `app_foregrounded` + `day_logged`. |
-| `mobile/src/screens/companion/LunaOverlay.tsx` | MODIFY | Reads the shared bubble host (no logic change to render). |
+| `mobile/src/screens/companion/LunaOverlay.tsx` | MODIFY | Reads the shared bubble host; adds the tap-to-speak mic halo (`LunaMicButton`) + `useLunaMicSession`. |
+| `mobile/src/hooks/useLunaMicSession.ts` | **NEW** | Tap-to-speak session engine (one-shot, TTS guard, 10 s auto-stop, keyword reply path). |
+| `mobile/src/hooks/useHomeAlwaysListening.ts` | **DELETE** | Replaced by `useLunaMicSession`; passive listening removed. |
+| `mobile/src/hooks/useShouldListen.ts` | **DELETE** | Dead after always-on removal. |
 | `mobile/src/screens/home/HomeDashboardScreen.tsx` | MODIFY | Pass `getTodayInsight` into `initEventEngine`. |
 | `mobile/src/components/home/HomeRecommendationBanner.tsx` | MODIFY | Use shared hook. |
 | `mobile/src/components/ui/wellness/DynamicRecommendations.tsx` | MODIFY | "For today" block uses shared hook. |
-| `mobile/src/screens/chat/AIChatScreen.tsx` | MODIFY | Keyword branch → recommendation reply; mic button focuses input (no STT). |
-| `mobile/src/stores/companionStore.ts` | MODIFY | `showInsights` + `setInsightsPref` + `listenAndSpeak` + `setListenAndSpeakPref`, hydrate/persist/reset. |
+| `mobile/src/screens/chat/AIChatScreen.tsx` | MODIFY | Keyword branch → recommendation reply; mic button does real STT (SHIPPED). |
+| `mobile/src/stores/companionStore.ts` | MODIFY | `showInsights` + `setInsightsPref` + `listenAndSpeak` + `setInsightsPref`, hydrate/persist/reset. |
 | `mobile/src/services/companion/lunaSyncClient.ts` | MODIFY | Map `memory.insights` + `memory.listen` in sync payload. |
 | `mobile/src/screens/profile/SettingsScreen.tsx` | MODIFY | "Show health insights" switch + "Listen & Speak" switch + "Chat with Luna" row. |
 | `mobile/src/navigation/HomeStack.tsx` / `types.ts` | VERIFY | `AIChat` already registered; confirm nested navigation params for Settings → chat. |
@@ -461,10 +466,11 @@ recommendation rows — data-quality nudge, mood-gap nudge, API health tips (see
 is "hide the entire Wellness recommendation list", the conditional must also cover the
 `recommendations()` output as a whole. *(Default this plan: engine-only scoping.)*
 
-**7b. Listen & Speak (ON):** active **only** while the Home dashboard is focused. On
-every other screen, tap-to-speak only. The Home-only gate is a route-focus check, not a
-global singleton. Mic handoff is **shipped** (§8): Home always-on listening starts
-continuous recognition when `useShouldListen()` is true and pauses while Luna speaks.
+**7b. Listen & Speak (ON):** shows the pulsing mic halo on the Home overlay. Tapping it
+runs a short, one-shot tap-to-speak session (`useLunaMicSession`). There is NO
+always-on/passive listening on any screen. Mic handoff is **shipped** (§8): the halo
+uses `expo-speech-recognition` directly; the session auto-closes after a final
+transcript, silence, error, or a 10 s safety timeout.
 
 ---
 
@@ -483,24 +489,29 @@ continuous recognition when `useShouldListen()` is true and pauses while Luna sp
   - `src/services/companion/speechRecognitionService.ts` — subscription API
     mirroring `voiceService` (`onTranscript` / `onListeningChange` / `onError`,
     `start` / `stop` / `abort`, `isAvailable`, `requestPermissions`). Events are
-    bridged from the native module exactly once (`bindNative`). One-shot by
-    default; `continuous: true` opt-in for Home always-on.
+    bridged from the native module exactly once (`bindNative`). One-shot by default.
   - `src/hooks/useSpeechRecognition.ts` — React binding with
     `isListening` / `lastTranscript` / `error` and `start` (requests permission
     at the moment of use — never at app start) / `stop` / `abort`.
-  - `src/hooks/useHomeAlwaysListening.ts` — Home always-on listener gated by the
-    existing `useShouldListen()` (Phase 0.6). Continuous recognition feeds final
-    transcripts through the SAME keyword path as the chat text branch
-    (`matchesInsightKeyword` + `buildInsightReply` in `src/utils/lunaReply.ts`)
-    and shows Luna's reply with `showBubble`. Feedback guard: the recognizer is
-    paused while `voiceService` speaks and resumes after.
+  - `src/hooks/useLunaMicSession.ts` — **tap-to-speak session engine** (replaces the
+    old always-on `useHomeAlwaysListening`). One-shot `continuous: false` sessions
+    driven by the mic halo on Luna's overlay; `voiceService.stop()` before starting so
+    Luna's own TTS is never transcribed; 10 s safety auto-stop; final transcripts fed
+    through the SHARED keyword path (`matchesInsightKeyword` + `buildInsightReply` in
+    `src/utils/lunaReply.ts`) then `showBubble`. Locked fallbacks: no-keyword →
+    "I heard you 💕…"; silence → "I didn't catch that — tap the mic and try again."
+  - `LunaOverlay.tsx` — pulsing mic halo (`LunaMicButton`, idle pulse / listening ring /
+    processing spinner, honors `useReducedMotion`), rendered when
+    `listenAndSpeak && installStatus === 'ready'`.
   - `AIChatScreen.tsx` mic button — replaced `inputRef.current?.focus()` (system
     dictation) with real STT; interim/final results auto-send into the chat,
     listening state colors the input + mic, STT errors surface as a banner.
-- **When STT lands keeps working:** Home-screen always-on listening (Phase 0.6
-  `listenAndSpeak` state) routes speech → same keyword path as the text branch
-  (Phase 3). Mic on AIChatScreen now does real STT instead of dictation-keyboard
-  fallback.
+- **When STT lands keeps working:** the Home tap-to-speak halo (Phase 0.6
+  `listenAndSpeak` state) routes speech → the same keyword path as the text branch
+  (Phase 3). Mic on AIChatScreen does real STT instead of dictation-keyboard fallback.
+- **Always-on is REMOVED:** `useHomeAlwaysListening.ts` and `useShouldListen.ts` no
+  longer exist — passive/continuous mic is gone everywhere. See
+  `plans/luna_voice_listen_plan.md`.
 
 ---
 
@@ -524,17 +535,18 @@ continuous recognition when `useShouldListen()` is true and pauses while Luna sp
       with toggle OFF.
 - [x] Show-insights OFF: banner + Wellness "For today" hidden; Luna proactive stops;
       Luna reactive still responds.
-- [x] Listen & Speak: pref persists; gating hook (`useShouldListen`) returns true only
-      on Home focus; no mic permission requested at app start (permissions at moment
-      of use).
+- [x] Listen & Speak: pref persists; mic halo shows on the Home overlay when ON; tapping
+      it starts a one-shot session; no mic permission at app start (permissions at moment
+      of use); halo hidden when OFF / not installed. No passive/always-on listening
+      anywhere (`useHomeAlwaysListening` / `useShouldListen` deleted).
 - [x] `npx tsc --noEmit` green; ESLint on changed files has **no new** errors (only
       pre-existing inline-style debt in AIChatScreen/SettingsScreen at unchanged lines).
 - [x] Jest green: `companion`, `expertRecommendations`, `DynamicRecommendations`,
       `useCurrentCycleState`, plus new `useTodayRecommendation` consumers (177 tests).
 - [x] **STT shipped:** `speechRecognitionService` + `useSpeechRecognition` +
-      `useHomeAlwaysListening` + AIChat mic wiring; `expo-speech-recognition` jest mock
-      in `jest.setup.js`; unit tests (`speechRecognitionService.test.ts`,
-      `lunaReply.test.ts`) green.
+      `useLunaMicSession` (tap-to-speak) + AIChat mic wiring; `expo-speech-recognition`
+      jest mock in `jest.setup.js`; unit tests (`speechRecognitionService.test.ts`,
+      `lunaReply.test.ts`, `useLunaMicSession.test.ts`) green.
 - [x] No new native dependencies; app size unchanged.
 - [x] `plans/30-mobile-api-contract.md` unchanged (no request/response shape change).
 
