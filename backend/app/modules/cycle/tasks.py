@@ -58,6 +58,49 @@ async def _update_all_predictions() -> int:
 
 
 @celery_app.task(
+    name="app.modules.cycle.tasks.generate_cycle_report",
+    soft_time_limit=60,
+    time_limit=120,
+    bind=True,
+)
+def generate_cycle_report(self, user_id: str, cycle_entry_id: str) -> None:
+    """Generate + store a per-cycle report (Groq, else rule-based fallback).
+
+    Idempotent via business-key task_id ``generate_cycle_report_{entry_id}``
+    plus the unique cycle_entry_id DB constraint (AGENTS §1.8).
+    """
+    import asyncio
+
+    logger.info(
+        "cycle.report_started",
+        extra={"user_id": user_id, "cycle_entry_id": cycle_entry_id},
+    )
+
+    async def _run() -> None:
+        from uuid import UUID
+
+        from app.core.database import AsyncSessionLocal
+        from app.modules.cycle.services import CycleService
+
+        async with AsyncSessionLocal() as session:
+            svc = CycleService(session)
+            try:
+                await svc.generate_report(UUID(user_id), UUID(cycle_entry_id))
+                logger.info(
+                    "cycle.report_generated",
+                    extra={"user_id": user_id, "cycle_entry_id": cycle_entry_id},
+                )
+            except Exception as exc:
+                logger.error(
+                    "cycle.report_failed",
+                    extra={"user_id": user_id, "cycle_entry_id": cycle_entry_id, "error": str(exc)},
+                )
+                raise
+
+    asyncio.run(_run())
+
+
+@celery_app.task(
     name="app.modules.cycle.tasks.train_global_model",
     soft_time_limit=1800,
     time_limit=3600,

@@ -120,6 +120,51 @@ class AnalyticsResponse(BaseModel):
     common_symptoms: list[dict[str, str | int]]
     common_moods: list[dict[str, str | int]]
     total_entries: int
+    avg_period_length_days: float | None = None
+    cycle_length_std_dev_days: float | None = None
+    avg_ovulation_day: float | None = None
+    avg_sleep_hours: float | None = None
+    avg_pain_level: float | None = None
+    avg_energy_level: float | None = None
+
+
+# ---- Cycle reports (Cycle_Report-as-a-Service plan) ----
+
+
+class ReportData(BaseModel):
+    """Validated JSON that the LLM (or rule-based fallback) must return."""
+
+    summary: str
+    regularity_score: int = Field(ge=0, le=100)
+    top_symptoms: list[str] = Field(default_factory=list, max_length=10)
+    correlation_found: str
+    doctor_note: str
+    avg_cycle_length_days: float | None = None
+    avg_period_length_days: float | None = None
+    avg_sleep_hours: float | None = None
+    avg_pain_level: float | None = None
+    common_moods: list[dict[str, str | int]] = Field(default_factory=list)
+
+
+class CycleReportResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    cycle_entry_id: uuid.UUID
+    status: str
+    report_data: ReportData | None = None
+    generated_at: datetime | None = None
+
+
+class ReportGenerateRequest(BaseModel):
+    cycle_entry_id: uuid.UUID
+
+
+class ReportEmptyResponse(BaseModel):
+    """Empty-state payload so mobile has ONE shape and never parses 404."""
+
+    report: None = None
+    message: str = "No report yet"
 
 
 # ---- Phase 2: Calendar & Prediction schemas ----

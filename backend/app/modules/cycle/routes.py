@@ -29,6 +29,7 @@ from app.modules.cycle.schemas import (
     CycleEntryCreate,
     CycleEntryResponse,
     CycleEntryUpdate,
+    CycleReportResponse,
     DayResponse,
     DayUpsert,
     MedicationResponse,
@@ -36,6 +37,8 @@ from app.modules.cycle.schemas import (
     NextPredictionResponse,
     PredictionDetail,
     PredictionHistoryResponse,
+    ReportEmptyResponse,
+    ReportGenerateRequest,
     SnoozeCreate,
     SnoozeResponse,
     SymptomResponse,
@@ -217,6 +220,71 @@ async def get_analytics(
 
 
 @router.post(
+    "/reports",
+    response_model=CycleReportResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Enqueue cycle report generation for a closed cycle",
+    responses={202: {"description": "Generation enqueued (returns report row)"}},
+)
+async def create_report(
+    payload: ReportGenerateRequest,
+    current_user: CurrentUser,
+    svc: CycleServiceDep,
+    sync: bool = Query(False, description="Generate synchronously (Groq) when no stored report exists"),
+) -> CycleReportResponse:
+    if sync:
+        existing = await svc.get_report_for_entry(current_user.id, payload.cycle_entry_id)
+        if existing is not None and existing.status == "ready" and existing.report_data:
+            return CycleReportResponse.model_validate(existing)
+        # No stored report for this cycle => generate now (Groq, fallback rule-based).
+        report = await svc.generate_report(current_user.id, payload.cycle_entry_id)
+        return CycleReportResponse.model_validate(report)
+
+    from app.modules.cycle.tasks import generate_cycle_report
+
+    generate_cycle_report.apply_async(
+        kwargs={
+            "user_id": str(current_user.id),
+            "cycle_entry_id": str(payload.cycle_entry_id),
+        },
+        task_id=f"generate_cycle_report_{payload.cycle_entry_id}",
+    )
+    report = await svc.get_or_create_pending_report(current_user.id, payload.cycle_entry_id)
+    return CycleReportResponse.model_validate(report)
+
+
+@router.get(
+    "/reports/latest",
+    response_model=CycleReportResponse | ReportEmptyResponse,
+    summary="Get the user's latest stored cycle report",
+)
+async def get_latest_report(
+    current_user: CurrentUser,
+    svc: CycleServiceDep,
+) -> CycleReportResponse | ReportEmptyResponse:
+    report = await svc.get_latest_report(current_user.id)
+    if report is None:
+        return ReportEmptyResponse()
+    return CycleReportResponse.model_validate(report)
+
+
+@router.get(
+    "/reports/{cycle_entry_id}",
+    response_model=CycleReportResponse | ReportEmptyResponse,
+    summary="Get the stored report for one cycle (DB-only; no LLM invoked)",
+)
+async def get_report_for_entry(
+    cycle_entry_id: uuid.UUID,
+    current_user: CurrentUser,
+    svc: CycleServiceDep,
+) -> CycleReportResponse | ReportEmptyResponse:
+    report = await svc.get_report_for_entry(current_user.id, cycle_entry_id)
+    if report is None:
+        return ReportEmptyResponse()
+    return CycleReportResponse.model_validate(report)
+
+
+@router.post(
     "/corrections",
     response_model=CorrectionResponse,
     status_code=status.HTTP_201_CREATED,
@@ -373,10 +441,38 @@ async def download_model(
     filename: str,
     current_user: CurrentUser,
 ) -> FileResponse:
-    filepath = os.path.join(PROD_DIR, filename)
-    if not os.path.exists(filepath) or ".." in filename:
+    if ".." in filename:
         raise HTTPException(status_code=404, detail="Model file not found")
-    return FileResponse(filepath, media_type="application/json", filename=filename)
+    filepath = os.path.join(PROD_DIR, filename)
+    if os.path.exists(filepath):
+        return FileResponse(filepath, media_type="application/json", filename=filename)
+
+    # Config/artifact drift: a client may request a stale version. Fall back to
+    # the configured current model path, then to the newest artifact on disk.
+    from sqlalchemy import select
+
+    from app.core.database import AsyncSessionLocal
+    from app.modules.cycle.models import SystemConfig
+
+    async with AsyncSessionLocal() as session:
+        stmt = select(SystemConfig.value).where(SystemConfig.key == "global_model_path")
+        resolved = (await session.execute(stmt)).scalar_one_or_none()
+    candidates = [resolved] if resolved else []
+    try:
+        artifacts = sorted(
+            (f for f in os.listdir(PROD_DIR) if f.startswith("global_model_") and f.endswith(".json")),
+            reverse=True,
+        )
+        candidates.extend(artifacts)
+    except OSError:
+        pass
+    for candidate in candidates:
+        if not candidate or ".." in candidate:
+            continue
+        fallback = os.path.join(PROD_DIR, candidate)
+        if os.path.exists(fallback):
+            return FileResponse(fallback, media_type="application/json", filename=candidate)
+    raise HTTPException(status_code=404, detail="Model file not found")
 
 
 # ---- Day observations (cycle_days) ----
@@ -479,4 +575,20 @@ def init_module(app, event_bus) -> None:
                     extra={"user_id": user_id},
                 )
 
+    async def _on_cycle_closed(user_id: str, cycle_entry_id: str) -> None:
+        """Enqueue report generation when a cycle closes (RaaS plan)."""
+        import logging
+
+        from app.modules.cycle.tasks import generate_cycle_report
+
+        logging.getLogger(__name__).info(
+            "cycle.report_enqueued",
+            extra={"user_id": user_id, "cycle_entry_id": cycle_entry_id},
+        )
+        generate_cycle_report.apply_async(
+            kwargs={"user_id": user_id, "cycle_entry_id": cycle_entry_id},
+            task_id=f"generate_cycle_report_{cycle_entry_id}",
+        )
+
     event_bus.subscribe_sync("onboarding_completed", _on_onboarding_completed)
+    event_bus.subscribe_sync("cycle_closed", _on_cycle_closed)

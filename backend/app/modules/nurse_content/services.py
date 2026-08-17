@@ -13,16 +13,23 @@ Content status state machine (Phase 1.6 / plans/13-nurse-content-upgrade.md):
     - reject:   pending           -> rejected  (admin)
     - publish:  unpublished       -> approved  (admin; re-sets published_at)
     - unpublish: approved         -> unpublished (admin; clears published_at)
+    - edit (in place): draft | rejected -> draft ; approved | unpublished keep
+      their status. Editing a published item refreshes published_at. Replaced
+      or removed Cloudinary media (video/thumbnail) is deleted from Cloudinary.
+    - delete: any status (owner); content is soft-deleted and its Cloudinary
+      media is removed.
 """
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.integrations.cloudinary_client import CloudinaryClient, CloudinaryError
 from app.modules.nurse_content.exceptions import (
     ContentNotFoundError,
     ContentStateError,
@@ -30,6 +37,8 @@ from app.modules.nurse_content.exceptions import (
 )
 from app.modules.nurse_content.models import EducationalContent, NurseProfile
 from app.modules.nurse_content.schemas import ContentCreate, ContentUpdate
+
+logger = logging.getLogger("app.modules.nurse_content")
 
 STATUS_DRAFT = "draft"
 STATUS_PENDING = "pending"
@@ -41,8 +50,13 @@ _ALL_STATUSES = (STATUS_DRAFT, STATUS_PENDING, STATUS_APPROVED, STATUS_REJECTED,
 
 
 class NurseContentService:
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(
+        self,
+        db: AsyncSession,
+        cloudinary: CloudinaryClient | None = None,
+    ) -> None:
         self.db = db
+        self.cloudinary = cloudinary
 
     @staticmethod
     def _ensure_transition(content: EducationalContent, *allowed: str) -> None:
@@ -50,6 +64,16 @@ class NurseContentService:
             raise ContentStateError(
                 f"Invalid status transition from {content.status!r}; allowed from: {list(allowed)}"
             )
+
+    def _delete_cloudinary_assets(self, *urls: str | None) -> None:
+        """Best-effort removal of Cloudinary media; never fails the mutation."""
+        if self.cloudinary is None or not self.cloudinary.configured:
+            return
+        for url in urls:
+            try:
+                self.cloudinary.delete_by_url(url)
+            except CloudinaryError:
+                logger.exception("nurse_content.cloudinary_delete_failed", extra={"url": url})
 
     async def get_or_create_profile(self, user_id: uuid.UUID) -> NurseProfile:
         stmt = select(NurseProfile).where(NurseProfile.user_id == user_id)
@@ -116,13 +140,34 @@ class NurseContentService:
         content = await self.get_content(content_id)
         if content.nurse_id != nurse_id:
             raise UnauthorizedContentError("Not your content")
-        # Only drafts and rejected items may be edited in place.
-        self._ensure_transition(content, STATUS_DRAFT, STATUS_REJECTED)
+        # Drafts, rejected, and already-published (approved/unpublished) items
+        # may be edited in place; rejected edits fall back to draft.
+        self._ensure_transition(
+            content,
+            STATUS_DRAFT,
+            STATUS_REJECTED,
+            STATUS_APPROVED,
+            STATUS_UNPUBLISHED,
+        )
         update_data = data.model_dump(exclude_unset=True)
+
+        # Capture URLs before mutation so replaced Cloudinary media is removed.
+        old_video_url = content.video_url
+        old_thumbnail_url = content.thumbnail_url
         for key, value in update_data.items():
             setattr(content, key, value)
+
+        if "video_url" in update_data and update_data["video_url"] != old_video_url:
+            self._delete_cloudinary_assets(old_video_url)
+        if "thumbnail_url" in update_data and update_data["thumbnail_url"] != old_thumbnail_url:
+            self._delete_cloudinary_assets(old_thumbnail_url)
+
         if content.status == STATUS_REJECTED:
             content.status = STATUS_DRAFT
+        elif content.status in {STATUS_APPROVED, STATUS_UNPUBLISHED}:
+            # A published item keeps its public status; bump published_at so the
+            # refreshed content surfaces at the top of the public list.
+            content.published_at = datetime.now(tz=UTC)
         await self.db.commit()
         await self.db.refresh(content)
         return content
@@ -131,6 +176,8 @@ class NurseContentService:
         content = await self.get_content(content_id)
         if content.nurse_id != nurse_id:
             raise UnauthorizedContentError("Not your content")
+        # Remove Cloudinary media (video + thumbnail) before soft-deleting.
+        self._delete_cloudinary_assets(content.video_url, content.thumbnail_url)
         content.is_active = False
         await self.db.commit()
 

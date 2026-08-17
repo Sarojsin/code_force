@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import uuid
 from contextlib import suppress
 from datetime import UTC, date, datetime, timedelta
 from itertools import pairwise
-from statistics import median
+from statistics import median, pstdev
+from typing import Any
 
+from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +21,7 @@ from sqlalchemy.orm import selectinload
 from app.core.config import get_settings
 from app.core.encryption import EncryptionError, EncryptionService, get_encryption_service
 from app.core.event_bus import event_bus
+from app.integrations.groq_client import GroqClient, GroqError
 from app.integrations.prediction_engine import (
     PROD_DIR,
     PredictionResult,
@@ -35,6 +39,7 @@ from app.modules.cycle.exceptions import (
 from app.modules.cycle.models import (
     CycleDay,
     CycleEntry,
+    CycleReport,
     DayMedication,
     DaySymptom,
     Medication,
@@ -44,7 +49,12 @@ from app.modules.cycle.models import (
     SystemConfig,
 )
 from app.modules.cycle.phase_utils import calculate_cycle_phases, compute_period_length
-from app.modules.cycle.schemas import CycleEntryCreate, CycleEntryUpdate, DayUpsert
+from app.modules.cycle.schemas import (
+    CycleEntryCreate,
+    CycleEntryUpdate,
+    DayUpsert,
+    ReportData,
+)
 
 logger = logging.getLogger("app.modules.cycle")
 
@@ -141,6 +151,7 @@ class CycleService:
             with suppress(InsufficientDataError):
                 await self.compute_predictions(user_id)
 
+            await self._emit_cycle_closed(existing)
             return existing
         await self.db.refresh(entry)
         await self._try_auto_link_prediction(user_id, entry)
@@ -152,7 +163,19 @@ class CycleService:
         with suppress(InsufficientDataError):
             await self.compute_predictions(user_id)
 
+        await self._emit_cycle_closed(entry)
         return entry
+
+    async def _emit_cycle_closed(self, entry: CycleEntry) -> None:
+        """Emit ``cycle_closed`` AFTER the DB commit so the subscriber reads
+        committed state (RaaS plan: Celery task aggregates + stores report)."""
+        if entry.period_end_date is None:
+            return
+        await event_bus.emit(
+            "cycle_closed",
+            user_id=str(entry.user_id),
+            cycle_entry_id=str(entry.id),
+        )
 
     async def apply_correction_if_needed(
         self, entry: CycleEntry, prediction: PredictedCycle
@@ -271,6 +294,7 @@ class CycleService:
             setattr(entry, key, value)
         await self.db.commit()
         await self.db.refresh(entry)
+        await self._emit_cycle_closed(entry)
         return entry
 
     async def delete_entry(self, entry_id: uuid.UUID, user_id: uuid.UUID) -> None:
@@ -956,18 +980,56 @@ class CycleService:
                 except (ValueError, TypeError):
                     pass
 
-        entry = CycleEntry(
-            user_id=user_id,
-            period_start_date=period_start_date,
-            period_end_date=period_end_date,
-            symptoms=symptoms or [],
-            is_correction=corrected_prediction_id is not None,
-            corrected_prediction_id=corrected_prediction_id,
-            cycle_type=cycle_type,
-            idempotency_key=idempotency_key,
+        existing_stmt = (
+            select(CycleEntry)
+            .where(CycleEntry.user_id == user_id)
+            .where(CycleEntry.period_start_date == period_start_date)
+            .where(CycleEntry.is_active.is_(True))
         )
-        self.db.add(entry)
-        await self.db.flush()
+        existing = (await self.db.execute(existing_stmt)).scalar_one_or_none()
+
+        def _apply_to(existing_entry: CycleEntry) -> None:
+            if period_end_date is not None:
+                existing_entry.period_end_date = period_end_date
+            existing_entry.symptoms = symptoms or []
+            existing_entry.cycle_type = cycle_type
+            if corrected_prediction_id is not None:
+                existing_entry.is_correction = True
+                existing_entry.corrected_prediction_id = corrected_prediction_id
+            if idempotency_key:
+                existing_entry.idempotency_key = idempotency_key
+
+        entry: CycleEntry
+        if existing is not None:
+            entry = existing
+            _apply_to(entry)
+            try:
+                await self.db.flush()
+            except IntegrityError:
+                await self.db.rollback()
+                entry = (await self.db.execute(existing_stmt)).scalar_one()
+                _apply_to(entry)
+                await self.db.flush()
+        else:
+            entry = CycleEntry(
+                user_id=user_id,
+                period_start_date=period_start_date,
+                period_end_date=period_end_date,
+                symptoms=symptoms or [],
+                is_correction=corrected_prediction_id is not None,
+                corrected_prediction_id=corrected_prediction_id,
+                cycle_type=cycle_type,
+                idempotency_key=idempotency_key,
+            )
+            self.db.add(entry)
+            try:
+                await self.db.flush()
+            except IntegrityError:
+                await self.db.rollback()
+                existing = (await self.db.execute(existing_stmt)).scalar_one()
+                entry = existing
+                _apply_to(entry)
+                await self.db.flush()
 
         await self._auto_close_open_entry(user_id, period_start_date)
 
@@ -988,6 +1050,7 @@ class CycleService:
         with suppress(InsufficientDataError):
             await self.compute_predictions(user_id)
 
+        await self._emit_cycle_closed(entry)
         return entry
 
     async def _auto_close_open_entry(self, user_id: uuid.UUID, period_start: date) -> None:
@@ -1118,13 +1181,25 @@ class CycleService:
                 "common_symptoms": [],
                 "common_moods": [],
                 "total_entries": 0,
+                "avg_period_length_days": None,
+                "cycle_length_std_dev_days": None,
+                "avg_ovulation_day": None,
+                "avg_sleep_hours": None,
+                "avg_pain_level": None,
+                "avg_energy_level": None,
             }
 
         cycle_lengths = []
+        period_lengths = []
         for i in range(1, len(entries)):
             diff = (entries[i].period_start_date - entries[i - 1].period_start_date).days
             if 20 <= diff <= 45:
                 cycle_lengths.append(diff)
+        for e in entries:
+            if e.period_end_date:
+                period_lengths.append(
+                    compute_period_length(e.period_start_date, e.period_end_date, 5)
+                )
 
         symptom_counts: dict[str, int] = {}
         mood_counts: dict[str, int] = {}
@@ -1137,6 +1212,29 @@ class CycleService:
         sorted_symptoms = sorted(symptom_counts.items(), key=lambda x: -x[1])[:10]
         sorted_moods = sorted(mood_counts.items(), key=lambda x: -x[1])[:10]
 
+        # Day-observation aggregations over the same closed-cycle window.
+        start = min(e.period_start_date for e in entries)
+        day_stmt = (
+            select(CycleDay)
+            .where(
+                CycleDay.user_id == user_id,
+                CycleDay.log_date >= start,
+            )
+        )
+        days = list((await self.db.execute(day_stmt)).scalars().all())
+        sleep_minutes = [d.sleep_minutes for d in days if d.sleep_minutes is not None]
+        pain_levels = [d.pain_level for d in days if d.pain_level is not None]
+        energy_levels = [d.energy_level for d in days if d.energy_level is not None]
+
+        if cycle_lengths:
+            std_dev = pstdev(cycle_lengths)
+            ovulation_day = median(
+                max(1, cl - 14) for cl in cycle_lengths
+            )
+        else:
+            std_dev = None
+            ovulation_day = None
+
         return {
             "average_cycle_length_days": median(cycle_lengths) if cycle_lengths else None,
             "shortest_cycle_days": min(cycle_lengths) if cycle_lengths else None,
@@ -1144,7 +1242,504 @@ class CycleService:
             "common_symptoms": [{"symptom": k, "count": v} for k, v in sorted_symptoms],
             "common_moods": [{"mood": k, "count": v} for k, v in sorted_moods],
             "total_entries": len(entries),
+            "avg_period_length_days": (
+                round(sum(period_lengths) / len(period_lengths), 1) if period_lengths else None
+            ),
+            "cycle_length_std_dev_days": round(std_dev, 1) if std_dev is not None else None,
+            "avg_ovulation_day": round(ovulation_day, 1) if ovulation_day is not None else None,
+            "avg_sleep_hours": (
+                round(sum(sleep_minutes) / len(sleep_minutes) / 60, 1) if sleep_minutes else None
+            ),
+            "avg_pain_level": (
+                round(sum(pain_levels) / len(pain_levels), 1) if pain_levels else None
+            ),
+            "avg_energy_level": (
+                round(sum(energy_levels) / len(energy_levels), 1) if energy_levels else None
+            ),
         }
+
+    # ------------------------------------------------------------------
+    # Cycle reports (Cycle_Report-as-a-Service plan: generate once, store
+    # forever, read many times). Report data is stored per closed cycle.
+    # ------------------------------------------------------------------
+
+    MAX_REPORT_CYCLES = 6
+    REPORT_LLM_TOP_SYMPTOMS = 5
+    REPORT_TOP_OVERALL_SYMPTOMS = 3
+
+    async def get_aggregated_stats(
+        self,
+        user_id: uuid.UUID,
+        entry: CycleEntry,
+    ) -> dict[str, Any]:
+        """Build a privacy-safe aggregate blob for the report prompt.
+
+        Aggregates the latest up-to-``MAX_REPORT_CYCLES`` closed cycles
+        (``period_end_date`` set) PLUS their overlapping day observations.
+        NEVER emits dates, notes, latitudes, or PII — only counts/means/freqs.
+        ``cycle_days.notes`` stays encrypted and is never read here.
+        """
+        closed = (
+            await self.db.execute(
+                select(CycleEntry)
+                .where(CycleEntry.user_id == user_id)
+                .where(CycleEntry.is_active.is_(True))
+                .where(CycleEntry.period_end_date.isnot(None))
+                .order_by(CycleEntry.period_start_date.desc())
+                .limit(self.MAX_REPORT_CYCLES)
+            )
+        ).scalars().all()
+        if not closed:
+            closed = [entry]
+        closed_sorted = sorted(closed, key=lambda e: e.period_start_date)
+
+        cycle_lengths: list[float] = []
+        for prev, curr in pairwise(closed_sorted):
+            diff = (curr.period_start_date - prev.period_start_date).days
+            if 20 <= diff <= 45:
+                cycle_lengths.append(float(diff))
+
+        period_lengths = [
+            float(compute_period_length(e.period_start_date, e.period_end_date))
+            for e in closed_sorted
+        ]
+
+        start = min(e.period_start_date for e in closed_sorted)
+        end = max(e.period_end_date or e.period_start_date for e in closed_sorted)
+
+        day_stmt = (
+            select(CycleDay)
+            .where(
+                CycleDay.user_id == user_id,
+                CycleDay.log_date >= start,
+                CycleDay.log_date <= end,
+            )
+            .options(
+                selectinload(CycleDay.day_symptoms).selectinload(DaySymptom.symptom),
+                selectinload(CycleDay.day_medications),
+            )
+            .order_by(CycleDay.log_date)
+        )
+        days = list((await self.db.execute(day_stmt)).scalars().all())
+
+        sleep_minutes: list[int] = []
+        pain_levels: list[int] = []
+        energy_levels: list[int] = []
+        moods: dict[str, int] = {}
+        symptoms_by_phase: dict[str, dict[str, int]] = {
+            "menstrual": {},
+            "follicular": {},
+            "ovulation": {},
+            "luteal": {},
+        }
+
+        for day in days:
+            if day.sleep_minutes is not None:
+                sleep_minutes.append(day.sleep_minutes)
+            if day.pain_level is not None:
+                pain_levels.append(day.pain_level)
+            if day.energy_level is not None:
+                energy_levels.append(day.energy_level)
+            if day.mood:
+                moods[day.mood] = moods.get(day.mood, 0) + 1
+
+            anchor = self._entry_anchoring(day.log_date, closed_sorted)
+            if anchor is None:
+                continue
+            start_date, _cycle_len = anchor
+            cycle_day = (day.log_date - start_date).days + 1
+            phase = self._phase_key_for_cycle_day(cycle_day)
+            for ds in day.day_symptoms:
+                name = ds.symptom.name if ds.symptom else None
+                if not name:
+                    continue
+                bucket = symptoms_by_phase[phase]
+                bucket[name] = bucket.get(name, 0) + 1
+
+        def _top_n(counter: dict[str, int], n: int, key: str = "symptom") -> list[dict[str, Any]]:
+            top = sorted(counter.items(), key=lambda kv: -kv[1])[:n]
+            return [{key: k, "count": v} for k, v in top]
+
+        return {
+            "cycles_count": len(closed_sorted),
+            "avg_cycle_length_days": (
+                round(sum(cycle_lengths) / len(cycle_lengths), 1) if cycle_lengths else None
+            ),
+            "avg_period_length_days": (
+                round(sum(period_lengths) / len(period_lengths), 1) if period_lengths else None
+            ),
+            "avg_sleep_hours": (
+                round(sum(sleep_minutes) / len(sleep_minutes) / 60, 1) if sleep_minutes else None
+            ),
+            "avg_pain_level": (
+                round(sum(pain_levels) / len(pain_levels), 1) if pain_levels else None
+            ),
+            "avg_energy_level": (
+                round(sum(energy_levels) / len(energy_levels), 1) if energy_levels else None
+            ),
+            "common_moods": _top_n(moods, 5, key="mood"),
+            "symptoms_by_phase": {
+                phase: _top_n(bucket, self.REPORT_LLM_TOP_SYMPTOMS)
+                for phase, bucket in symptoms_by_phase.items()
+            },
+            "cycle_length_std_dev_days": (
+                round(pstdev(cycle_lengths), 1) if len(cycle_lengths) >= 2 else None
+            ),
+        }
+
+    async def get_cycle_scoped_stats(
+        self,
+        user_id: uuid.UUID,
+        entry: CycleEntry,
+    ) -> dict[str, Any]:
+        """Privacy-safe aggregate blob scoped to ONE cycle.
+
+        Day observations (sleep/pain/energy/mood/symptoms) are aggregated only
+        from THIS cycle's window ``[period_start_date, next_period_start)`` so
+        each cycle report is individual. Period length is this entry's own.
+        Regularity uses the last up-to-``MAX_REPORT_CYCLES`` intervals ending at
+        this cycle (neighborhood), giving a meaningful score vs. std-dev.
+        Never emits dates, notes, latitudes, or PII (rules §1.11-1.12).
+        """
+        closed = (
+            (await self.db.execute(
+                select(CycleEntry)
+                .where(CycleEntry.user_id == user_id)
+                .where(CycleEntry.is_active.is_(True))
+                .where(CycleEntry.period_end_date.isnot(None))
+                .order_by(CycleEntry.period_start_date.asc())
+            ))
+            .scalars()
+            .all()
+        )
+
+        before_entry = [e for e in closed if e.period_start_date <= entry.period_start_date]
+        neighbors = before_entry[-self.MAX_REPORT_CYCLES :]
+        if not neighbors:
+            neighbors = [entry]
+
+        prev = before_entry[-2] if len(before_entry) >= 2 else None
+        cycle_len: float | None = None
+        if prev is not None:
+            diff = (entry.period_start_date - prev.period_start_date).days
+            if 20 <= diff <= 45:
+                cycle_len = float(diff)
+
+        next_start = next(
+            (e.period_start_date for e in closed if e.period_start_date > entry.period_start_date),
+            None,
+        )
+        window_start = entry.period_start_date
+        window_end = next_start or (entry.period_end_date or entry.period_start_date) + timedelta(days=1)
+
+        day_stmt = (
+            select(CycleDay)
+            .where(
+                CycleDay.user_id == user_id,
+                CycleDay.log_date >= window_start,
+                CycleDay.log_date < window_end,
+            )
+            .options(
+                selectinload(CycleDay.day_symptoms).selectinload(DaySymptom.symptom),
+                selectinload(CycleDay.day_medications),
+            )
+            .order_by(CycleDay.log_date)
+        )
+        days = list((await self.db.execute(day_stmt)).scalars().all())
+
+        sleep_minutes: list[int] = []
+        pain_levels: list[int] = []
+        energy_levels: list[int] = []
+        moods: dict[str, int] = {}
+        symptoms_by_phase: dict[str, dict[str, int]] = {
+            "menstrual": {},
+            "follicular": {},
+            "ovulation": {},
+            "luteal": {},
+        }
+
+        for day in days:
+            if day.sleep_minutes is not None:
+                sleep_minutes.append(day.sleep_minutes)
+            if day.pain_level is not None:
+                pain_levels.append(day.pain_level)
+            if day.energy_level is not None:
+                energy_levels.append(day.energy_level)
+            if day.mood:
+                moods[day.mood] = moods.get(day.mood, 0) + 1
+
+            cycle_day = (day.log_date - window_start).days + 1
+            phase = self._phase_key_for_cycle_day(cycle_day)
+            for ds in day.day_symptoms:
+                name = ds.symptom.name if ds.symptom else None
+                if not name:
+                    continue
+                bucket = symptoms_by_phase[phase]
+                bucket[name] = bucket.get(name, 0) + 1
+
+        neighborhood_lengths: list[float] = []
+        for prev_e, curr_e in pairwise(neighbors):
+            diff = (curr_e.period_start_date - prev_e.period_start_date).days
+            if 20 <= diff <= 45:
+                neighborhood_lengths.append(float(diff))
+
+        this_period_length = compute_period_length(
+            entry.period_start_date,
+            entry.period_end_date,
+        )
+
+        def _top_n(counter: dict[str, int], n: int, key: str = "symptom") -> list[dict[str, Any]]:
+            top = sorted(counter.items(), key=lambda kv: -kv[1])[:n]
+            return [{key: k, "count": v} for k, v in top]
+
+        return {
+            "cycles_count": len(neighbors),
+            "avg_cycle_length_days": (
+                round(sum(neighborhood_lengths) / len(neighborhood_lengths), 1)
+                if neighborhood_lengths
+                else cycle_len
+            ),
+            "avg_period_length_days": (
+                round(this_period_length, 1) if this_period_length else None
+            ),
+            "avg_sleep_hours": (
+                round(sum(sleep_minutes) / len(sleep_minutes) / 60, 1) if sleep_minutes else None
+            ),
+            "avg_pain_level": (
+                round(sum(pain_levels) / len(pain_levels), 1) if pain_levels else None
+            ),
+            "avg_energy_level": (
+                round(sum(energy_levels) / len(energy_levels), 1) if energy_levels else None
+            ),
+            "common_moods": _top_n(moods, 5, key="mood"),
+            "symptoms_by_phase": {
+                phase: _top_n(bucket, self.REPORT_LLM_TOP_SYMPTOMS)
+                for phase, bucket in symptoms_by_phase.items()
+            },
+            "cycle_length_std_dev_days": (
+                round(pstdev(neighborhood_lengths), 1)
+                if len(neighborhood_lengths) >= 2
+                else None
+            ),
+        }
+
+    @staticmethod
+    def _entry_anchoring(
+        log_date: date,
+        closed_sorted: list[CycleEntry],
+    ) -> tuple[date, int] | None:
+        """Return (period_start, cycle_length) anchoring the day to its cycle.
+
+        Finds the closed cycle whose [start, next_start) window contains
+        ``log_date`` and uses that pair's inter-start interval as its length.
+        """
+        if not closed_sorted:
+            return None
+        cycle_len = 28
+        found: CycleEntry | None = None
+        for i, entry in enumerate(closed_sorted):
+            next_start = (
+                closed_sorted[i + 1].period_start_date
+                if i + 1 < len(closed_sorted)
+                else None
+            )
+            window_end = next_start or (entry.period_end_date or entry.period_start_date)
+            if entry.period_start_date <= log_date < window_end + timedelta(days=1):
+                found = entry
+                if next_start is not None:
+                    diff = (next_start - entry.period_start_date).days
+                    if 20 <= diff <= 45:
+                        cycle_len = diff
+                break
+        if found is None:
+            return None
+        return found.period_start_date, cycle_len
+
+    @staticmethod
+    def _phase_key_for_cycle_day(cycle_day: int) -> str:
+        """Match mobile cyclePhases.ts canonical keys (menstrual 1-5, follicular
+        6-13, ovulation 14-15, luteal 16-28)."""
+        if cycle_day <= 5:
+            return "menstrual"
+        if cycle_day <= 13:
+            return "follicular"
+        if cycle_day <= 15:
+            return "ovulation"
+        return "luteal"
+
+    async def build_rule_based_report(self, stats: dict[str, Any]) -> ReportData:
+        """Deterministic fallback — usable with zero API keys/cost."""
+        n = int(stats.get("cycles_count") or 0)
+        avg = stats.get("avg_cycle_length_days")
+        std = stats.get("cycle_length_std_dev_days")
+
+        if std is not None:
+            regularity_score = max(0, min(100, round(100 - std * 5)))
+        elif avg is not None and n >= 2:
+            regularity_score = 70
+        else:
+            regularity_score = min(100, n * 20)
+
+        merged_symptoms: dict[str, int] = {}
+        for bucket in (stats.get("symptoms_by_phase") or {}).values():
+            for item in bucket:
+                name = item.get("symptom")
+                if name:
+                    merged_symptoms[name] = merged_symptoms.get(name, 0) + int(item.get("count", 0))
+        top_symptoms = [
+            k for k, _ in sorted(merged_symptoms.items(), key=lambda kv: -kv[1])
+        ][: self.REPORT_TOP_OVERALL_SYMPTOMS]
+
+        if n == 0:
+            summary = "Not enough cycle data yet to identify patterns."
+        elif avg is None:
+            summary = f"Over your last {n} cycle(s), no consistent length has emerged yet."
+        else:
+            summary = (
+                f"Your last {n} cycle(s) average {avg} days "
+                + ("with a regular rhythm." if (std is not None and std <= 2) else "with some variability.")
+            )
+        if top_symptoms:
+            summary += f" Frequent symptoms include {', '.join(top_symptoms)}."
+
+        avg_sleep = stats.get("avg_sleep_hours")
+        avg_pain = stats.get("avg_pain_level")
+        if avg_sleep is not None and avg_pain is not None and avg_pain >= 4 and avg_sleep < 6.5:
+            correlation = "Higher pain days tended to pair with less sleep."
+        elif avg_sleep is not None and avg_sleep < 6.5:
+            correlation = "Average sleep was under 6.5h; consider earlier wind-down."
+        elif avg_pain is not None and avg_pain >= 4:
+            correlation = "Average pain was elevated; gentle movement may help."
+        else:
+            correlation = "No strong sleep-energy correlation found yet."
+
+        return ReportData(
+            summary=summary,
+            regularity_score=regularity_score,
+            top_symptoms=top_symptoms,
+            correlation_found=correlation,
+            doctor_note=(
+                "These are informational observations, not medical advice. "
+                "Consult a healthcare provider for any persistent symptoms."
+            ),
+            avg_cycle_length_days=stats.get("avg_cycle_length_days"),
+            avg_period_length_days=stats.get("avg_period_length_days"),
+            avg_sleep_hours=avg_sleep,
+            avg_pain_level=avg_pain,
+            common_moods=stats.get("common_moods") or [],
+        )
+
+    @staticmethod
+    def _build_llm_prompt(stats: dict[str, Any]) -> str:
+        return (
+            "Here is the user's aggregated cycle data (no dates, notes, or PII):\n"
+            + json.dumps(stats)
+            + "\nReturn ONLY valid JSON matching keys: summary, regularity_score "
+            "(integer 0-100), top_symptoms (array), correlation_found, doctor_note, "
+            "and optionally avg_cycle_length_days, avg_period_length_days, "
+            "avg_sleep_hours, avg_pain_level, common_moods (array of "
+            '{"mood": "<name>", "count": <int>}).'
+        )
+
+    async def generate_report(self, user_id: uuid.UUID, cycle_entry_id: uuid.UUID) -> CycleReport:
+        """Orchestrate aggregation -> LLM (or rule-based fallback) -> store.
+
+        Idempotent on unique ``cycle_entry_id``: a second run upserts the same
+        row. LLM/validation failures never store partial/garbage — they fall
+        back to the rule-based generator (rule §1.6).
+        """
+        entry = await self.get_entry(cycle_entry_id, user_id)
+        stats = await self.get_cycle_scoped_stats(user_id, entry)
+
+        report_data: ReportData
+        try:
+            text = await GroqClient(get_settings().groq).generate_report(
+                self._build_llm_prompt(stats)
+            )
+            if text:
+                report_data = ReportData.model_validate_json(text)
+            else:
+                report_data = await self.build_rule_based_report(stats)
+        except (GroqError, PydanticValidationError, ValueError, TypeError) as exc:
+            logger.warning(
+                "cycle.report_llm_fallback",
+                extra={"user_id": str(user_id), "cycle_entry_id": str(cycle_entry_id), "error": str(exc)},
+            )
+            report_data = await self.build_rule_based_report(stats)
+
+        existing = await self._get_report_for_entry(user_id, cycle_entry_id)
+        if existing is None:
+            existing = CycleReport(
+                user_id=user_id,
+                cycle_entry_id=cycle_entry_id,
+                status="ready",
+                report_data=report_data.model_dump(mode="json"),
+                generated_at=datetime.now(UTC),
+            )
+            self.db.add(existing)
+        else:
+            existing.status = "ready"
+            existing.report_data = report_data.model_dump(mode="json")
+            existing.generated_at = datetime.now(UTC)
+            existing.is_active = True
+        await self.db.commit()
+        await self.db.refresh(existing)
+        return existing
+
+    async def get_report_for_entry(
+        self,
+        user_id: uuid.UUID,
+        cycle_entry_id: uuid.UUID,
+    ) -> CycleReport | None:
+        """Return the stored report for one cycle — pure DB read, no LLM."""
+        return await self._get_report_for_entry(user_id, cycle_entry_id)
+
+    async def _get_report_for_entry(
+        self,
+        user_id: uuid.UUID,
+        cycle_entry_id: uuid.UUID,
+    ) -> CycleReport | None:
+        stmt = (
+            select(CycleReport)
+            .where(CycleReport.user_id == user_id)
+            .where(CycleReport.cycle_entry_id == cycle_entry_id)
+            .order_by(CycleReport.generated_at.desc())
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def get_latest_report(self, user_id: uuid.UUID) -> CycleReport | None:
+        stmt = (
+            select(CycleReport)
+            .where(CycleReport.user_id == user_id)
+            .where(CycleReport.is_active.is_(True))
+            .where(CycleReport.status == "ready")
+            .order_by(CycleReport.generated_at.desc())
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def get_or_create_pending_report(
+        self,
+        user_id: uuid.UUID,
+        cycle_entry_id: uuid.UUID,
+    ) -> CycleReport:
+        """Return an existing report row, else create a ``pending`` stub.
+
+        Used by POST /reports so the route never touches the DB directly.
+        """
+        existing = await self._get_report_for_entry(user_id, cycle_entry_id)
+        if existing is not None:
+            return existing
+        report = CycleReport(
+            user_id=user_id,
+            cycle_entry_id=cycle_entry_id,
+            status="pending",
+        )
+        self.db.add(report)
+        await self.db.commit()
+        await self.db.refresh(report)
+        return report
 
     # ---- Day observations (cycle_days) ----
 
