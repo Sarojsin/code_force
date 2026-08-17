@@ -250,3 +250,28 @@ class DayMedication(Base):
 
     day: Mapped[CycleDay] = relationship(back_populates="day_medications")
     medication: Mapped[Medication] = relationship(lazy="selectin")
+
+
+class CycleReport(Base):
+    """AI-generated (or rule-based) analytics report for one closed cycle.
+
+    One validated report per cycle (unique cycle_entry_id, AGENTS §1.4).
+    ``report_data`` holds the validated ``ReportData`` payload for long-term
+    "generate once, store forever, read many times" semantics (RaaS plan).
+    """
+
+    __tablename__ = "cycle_reports"
+    __table_args__ = (UniqueConstraint("cycle_entry_id", name="unique_cycle_report_entry"),)
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    cycle_entry_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("cycle_entries.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+    report_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)

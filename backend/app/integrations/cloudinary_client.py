@@ -7,6 +7,7 @@ rest of the codebase free of Cloudinary-specific types.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from typing import Any, cast
 
@@ -39,6 +40,60 @@ class CloudinaryClient:
     @property
     def cloud_name(self) -> str:
         return self._settings.cloud_name or ""
+
+    @property
+    def configured(self) -> bool:
+        """True when credentials are present; deletes are skipped otherwise."""
+        return bool(
+            self._settings.cloud_name
+            and self._settings.api_key
+            and self._settings.api_secret
+        )
+
+    @staticmethod
+    def parse_url(url: str | None) -> tuple[str, str] | None:
+        """Extract ``(public_id, resource_type)`` from a Cloudinary delivery URL.
+
+        Returns ``None`` for external links or non-media content so callers can
+        skip Cloudinary cleanup safely. Example input:
+        ``https://res.cloudinary.com/<cloud>/video/upload/v1653838283/health_content/<id>.mp4``
+        """
+        if not url:
+            return None
+        match = re.match(
+            r"^https?://res\.cloudinary\.com/[^/]+/(image|video|raw)/upload/(.+)$",
+            url.strip(),
+        )
+        if not match:
+            return None
+        resource_type, rest = match.groups()
+        # Everything before the version marker (v<digits>/) — present in both
+        # raw and transformed delivery URLs — is the transformation batch and is
+        # not part of the public_id. If there is no version, keep the whole path.
+        version = re.search(r"(?:^|/)v\d+/", rest)
+        if version:
+            rest = rest[version.end() :]
+        # public_id keeps the folder prefix but not the file extension.
+        last_slash = rest.rfind("/")
+        last_dot = rest.rfind(".")
+        if last_dot > last_slash:
+            rest = rest[:last_dot]
+        return rest, resource_type
+
+    def delete_by_url(self, url: str | None) -> None:
+        """Delete the asset referenced by a delivery URL.
+
+        No-op for external/non-Cloudinary URLs and when credentials are
+        missing. Raises ``CloudinaryError`` on real failures.
+        """
+        if not self.configured:
+            logger.info("cloudinary.delete_skipped_not_configured")
+            return
+        parsed = self.parse_url(url)
+        if parsed is None:
+            return
+        public_id, resource_type = parsed
+        self.delete_by_public_id(public_id, resource_type=resource_type)
 
     def signed_upload_payload(
         self,

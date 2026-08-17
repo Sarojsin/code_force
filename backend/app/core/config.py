@@ -81,6 +81,15 @@ class HuggingFaceSettings(BaseSettings):
     inference_url: str = "https://api-inference.huggingface.co/models"
 
 
+class GroqSettings(BaseSettings):
+    api_key: str = ""
+    model: str = "llama-3.3-70b-versatile"  # faster/cheaper: llama-3.1-8b-instant
+    inference_url: str = "https://api.groq.com/openai/v1/chat/completions"
+    max_tokens: int = 900
+    temperature: float = 0.3
+    enabled: bool = False  # off => deterministic rule-based cycle reports
+
+
 class CloudinarySettings(BaseSettings):
     cloud_name: str = ""
     api_key: str = ""
@@ -139,6 +148,7 @@ class Settings(BaseSettings):
     s3: S3Settings = Field(default_factory=S3Settings)
     admin: AdminSettings = Field(default_factory=AdminSettings)
     huggingface: HuggingFaceSettings = Field(default_factory=HuggingFaceSettings)
+    groq: GroqSettings = Field(default_factory=GroqSettings)
     cloudinary: CloudinarySettings = Field(default_factory=CloudinarySettings)
     encryption: EncryptionSettings = Field(default_factory=EncryptionSettings)
     safety: SafetySettings = Field(default_factory=SafetySettings)

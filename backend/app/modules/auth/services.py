@@ -25,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.core.encryption import EncryptionService
+from app.core.encryption import EncryptionError, EncryptionService
 from app.core.exceptions import ConflictError
 from app.core.security import create_access_token, create_refresh_token
 from app.core.token_revocation import TokenRevocationStore
@@ -465,6 +465,23 @@ class AuthService:
             raise InvalidCredentialsError("User not found or inactive")
         return user
 
+    def _decrypt_mfa_secret(self, user: User) -> str:
+        """Return the TOTP secret in plaintext.
+
+        Legacy rows predating per-user encryption stored the secret in
+        plaintext; when decryption fails (or no salt is set) the stored value
+        is returned as-is.
+        """
+        secret = user.mfa_secret
+        if not secret:
+            raise MFAMissingError("MFA secret is not set")
+        if not user.encryption_key_salt:
+            return secret
+        try:
+            return self.encryption.decrypt_for_user(secret, user.encryption_key_salt)
+        except EncryptionError:
+            return secret
+
     async def _issue_token_pair(
         self,
         user: User,
@@ -512,7 +529,7 @@ class AuthService:
     async def _revoke_user_sessions(self, user_id: uuid.UUID) -> None:
         stmt = select(UserSession).where(
             UserSession.user_id == user_id,
-            UserSession.is_active == True,
+            UserSession.is_active == True,  # noqa: E712  (SQLAlchemy SQL literal)
         )
         result = await self.db.execute(stmt)
         sessions = result.scalars().all()

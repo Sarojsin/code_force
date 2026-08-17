@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, ClassVar
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -55,10 +54,6 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
-
-    __mapper_args__: ClassVar[dict[str, Any]] = {
-        "polymorphic_on": role,
-    }
 
 
 class UserSession(Base):
