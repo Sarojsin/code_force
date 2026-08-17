@@ -812,3 +812,163 @@ for rendering is the client engine's persisted `wellness.recs.done.${id}` keys.
 
 **No request/response *shape* changed** by the recommendation feature — only the
 master content grew (57 rows).
+
+## 15. Cycle Reports (Cycle_Report-as-a-Service)
+
+Generated **once per closed cycle** (background Celery task), stored, and read
+many times — no LLM latency on the Analytics tab. Mobile distinguishes
+"no report yet" via the `report: null` empty shape (never a 404).
+
+### `GET /api/v1/cycle/reports/latest`
+
+- **Auth:** `Authorization: Bearer <access_token>` (row-scoped by `current_user.id`)
+- **200 — report ready:**
+```json
+{
+  "data": {
+    "id": "uuid",
+    "cycle_entry_id": "uuid",
+    "status": "ready",
+    "report_data": {
+      "summary": "Your last 3 cycle(s) average 28.0 days with a regular rhythm.",
+      "regularity_score": 85,
+      "top_symptoms": ["Cramps", "Bloating"],
+      "correlation_found": "Higher pain days tended to pair with less sleep.",
+      "doctor_note": "These are informational observations, not medical advice."
+    },
+    "generated_at": "2026-08-15T10:00:00Z"
+  },
+  "message": "ok"
+}
+```
+- **200 — no report yet:**
+```json
+{ "data": { "report": null, "message": "No report yet" }, "message": "ok" }
+```
+- `ReportData` is always a validated shape (`summary`, `regularity_score` 0–100
+  int, `top_symptoms[]`, `correlation_found`, `doctor_note`) — rule-based
+  fallback guarantees the same shape even when Groq is disabled.
+- Mobile: `report === null` ⇒ no insights card (`ReportEmptyResponse`), the
+  existing empty-state governs.
+
+### `POST /api/v1/cycle/reports`
+
+- **Auth:** `Authorization: Bearer <access_token>`
+- **Body:** `{ "cycle_entry_id": "<uuid>" }`
+- **202 Accepted:** returns the existing report row if one already exists for
+  this cycle, else a `status: "pending"` stub:
+```json
+{
+  "data": {
+    "id": "uuid",
+    "cycle_entry_id": "uuid",
+    "status": "pending",
+    "report_data": null,
+    "generated_at": null
+  },
+  "message": "ok"
+}
+```
+- **Idempotency:** Celery task uses a fixed business-key `task_id`
+  (`generate_cycle_report_{cycle_entry_id}`) + a UNIQUE `cycle_entry_id` DB
+  constraint — re-POSTing the same cycle never creates a duplicate report. No
+  `Idempotency-Key` header required (project invariant §5 applies to SOS/payments).
+
+### `POST /api/v1/cycle/reports?sync=true` — on-demand synchronous generation
+
+Same body `{ "cycle_entry_id": "<uuid>" }`, same `202` status, but:
+- **If a ready report already exists for this cycle in `cycle_reports`, it is
+  returned immediately — a plain DB read, NO Groq/LLM call.**
+- **If no stored report exists, the backend generates one inline (Groq Llama 3,
+  falling back to the rule-based generator) and returns `status: "ready"`.**
+
+```json
+{
+  "data": {
+    "id": "uuid",
+    "cycle_entry_id": "uuid",
+    "status": "ready",
+    "report_data": {
+      "summary": "…",
+      "regularity_score": 85,
+      "top_symptoms": ["Cramps"],
+      "correlation_found": "…",
+      "doctor_note": "…",
+      "avg_cycle_length_days": 28.0,
+      "avg_period_length_days": 5.0,
+      "avg_sleep_hours": 7.0,
+      "avg_pain_level": 6.0,
+      "common_moods": [{ "mood": "happy", "count": 3 }]
+    },
+    "generated_at": "2026-08-15T10:00:00Z"
+  },
+  "message": "ok"
+}
+```
+
+**Read strategy:** always prefer the DB. `GET /reports/latest` and
+`GET /reports/{cycle_entry_id}` never invoke Groq. Groq is hit **only** on the
+`sync=true` miss path (and by the background `cycle_closed` Celery task).
+
+### `GET /api/v1/cycle/reports/{cycle_entry_id}` — per-cycle read (DB-only)
+
+- **Auth:** `Authorization: Bearer <access_token>` (row-scoped by `current_user.id`)
+- **200 — report ready:** same `CycleReportResponse` shape as `/reports/latest`.
+- **200 — no report yet:** `{ "data": { "report": null, "message": "No report yet" }, "message": "ok" }`.
+- **No LLM call is ever made on this endpoint** — it is a pure database read.
+
+### ReportData (enriched, optional fields)
+
+| Key | Type | Notes |
+|-----|------|-------|
+| `summary` | `string` | required |
+| `regularity_score` | `int` 0–100 | required |
+| `top_symptoms` | `string[]` | required |
+| `correlation_found` | `string` | required |
+| `doctor_note` | `string` | required |
+| `avg_cycle_length_days` | `float \| null` | optional derived metric |
+| `avg_period_length_days` | `float \| null` | optional derived metric |
+| `avg_sleep_hours` | `float \| null` | optional derived metric |
+| `avg_pain_level` | `float \| null` | optional derived metric |
+| `common_moods` | `{ mood: string; count: int }[]` | optional |
+
+All optional fields are backward-compatible — older stored payloads parse fine.
+
+---
+
+## 16. Cycle Analytics (enriched)
+
+`GET /api/v1/cycle/analytics` — row-scoped by `current_user.id`. Existing fields
+unchanged; the following are **new and optional** (`null` until enough data):
+
+```json
+{
+  "data": {
+    "average_cycle_length_days": 28.0,
+    "shortest_cycle_days": 27,
+    "longest_cycle_days": 30,
+    "common_symptoms": [{ "symptom": "Bloating", "count": 3 }],
+    "common_moods": [{ "mood": "happy", "count": 2 }],
+    "total_entries": 5,
+    "avg_period_length_days": 5.0,
+    "cycle_length_std_dev_days": 1.2,
+    "avg_ovulation_day": 14.0,
+    "avg_sleep_hours": 7.1,
+    "avg_pain_level": 3.5,
+    "avg_energy_level": 2.3
+  },
+  "message": "ok"
+}
+```
+
+| Field | Source | Null when |
+|-------|--------|-----------|
+| `avg_period_length_days` | mean of `period_end - period_start + 1` over closed entries | no closed entries |
+| `cycle_length_std_dev_days` | `pstdev` of inter-start gaps (20–45 filter) | < 2 gaps |
+| `avg_ovulation_day` | median of `cycle_length - 14` (min 1) | no closed entries |
+| `avg_sleep_hours` | mean `CycleDay.sleep_minutes / 60` in the analytics window | no logged days |
+| `avg_pain_level` | mean `CycleDay.pain_level` | no logged days |
+| `avg_energy_level` | mean `CycleDay.energy_level` | no logged days |
+
+Mobile may use these to build the Cycle Overview stat cards; when a field is
+`null` the card shows `--` and the widget is kept but empty (no fake data).
