@@ -1,7 +1,7 @@
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getNativeDb } from '../../db/connection';
+import { getNativeDb, runExclusive } from '../../db/connection';
 import { pruneLocalDb } from '../localDb/pruneLocalDb';
 import { logger } from '../../utils';
 
@@ -20,7 +20,12 @@ TaskManager.defineTask(TASK_NAME, async () => {
     }
 
     await pruneLocalDb();
-    (await getNativeDb()).execAsync('VACUUM');
+    // VACUUM needs an exclusive lock — run it inside the same serialization
+    // queue as the Drizzle proxy, otherwise a concurrent mood/journal upsert
+    // can hit "database is locked" mid-statement.
+    await runExclusive(async () => {
+      await (await getNativeDb()).execAsync('VACUUM');
+    });
 
     await AsyncStorage.setItem(LAST_RUN_KEY, new Date().toISOString()).catch(() => {});
     logger.info('db_maintenance.complete');

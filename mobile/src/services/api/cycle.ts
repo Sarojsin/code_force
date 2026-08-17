@@ -52,6 +52,12 @@ export interface CycleAnalytics {
   common_symptoms: Array<{ symptom: string; count: number }>;
   common_moods: Array<{ mood: string; count: number }>;
   total_entries: number;
+  avg_period_length_days?: number | null;
+  cycle_length_std_dev_days?: number | null;
+  avg_ovulation_day?: number | null;
+  avg_sleep_hours?: number | null;
+  avg_pain_level?: number | null;
+  avg_energy_level?: number | null;
 }
 
 export interface PredictionHistoryItem {
@@ -165,6 +171,40 @@ export interface MedicationMaster {
   display_order: number;
 }
 
+// ---------------------------------------------------------------------------
+// Cycle reports (Cycle_Report-as-a-Service) — mirrors backend ReportData /
+// CycleReportResponse / ReportEmptyResponse.
+// ---------------------------------------------------------------------------
+
+export interface CycleReportData {
+  summary: string;
+  regularity_score: number;
+  top_symptoms: string[];
+  correlation_found: string;
+  doctor_note: string;
+  avg_cycle_length_days?: number | null;
+  avg_period_length_days?: number | null;
+  avg_sleep_hours?: number | null;
+  avg_pain_level?: number | null;
+  common_moods?: Array<{ mood: string; count: number }>;
+}
+
+export interface CycleReport {
+  id: string;
+  cycle_entry_id: string;
+  status: 'pending' | 'ready';
+  report_data: CycleReportData | null;
+  generated_at: string | null;
+}
+
+/** Empty-state payload: `report === null` means "no report yet" (never 404). */
+export interface ReportEmptyResponse {
+  report: null;
+  message: string;
+}
+
+export type LatestReportResponse = CycleReport | ReportEmptyResponse;
+
 function unwrap<T>(payload: ApiSuccess<T> | T): T {
   if (payload && typeof payload === 'object' && 'data' in payload) {
     return (payload as ApiSuccess<T>).data;
@@ -264,5 +304,43 @@ export const cycleService = {
   async getMedications(): Promise<MedicationMaster[]> {
     const res = await api.get('/cycle/medications');
     return unwrap(res.data);
+  },
+
+  /** POST /cycle/reports — enqueue generation for a closed cycle (202). */
+  async requestReport(cycleEntryId: string): Promise<CycleReport> {
+    const res = await api.post('/cycle/reports', { cycle_entry_id: cycleEntryId });
+    return unwrap(res.data);
+  },
+
+  /**
+   * POST /cycle/reports?sync=true — DB-first on-demand generation.
+   * Returns the stored report immediately when one exists (no LLM call);
+   * otherwise generates inline (Groq / rule-based) and returns status: "ready".
+   */
+  async requestReportSync(cycleEntryId: string): Promise<CycleReport> {
+    const res = await api.post('/cycle/reports', { cycle_entry_id: cycleEntryId }, { params: { sync: true } });
+    return unwrap(res.data);
+  },
+
+  /**
+   * GET /cycle/reports/{cycle_entry_id} — per-cycle read (DB-only, no LLM).
+   * Returns null when no report is stored (ReportEmptyResponse.report === null).
+   */
+  async getReportForEntry(cycleEntryId: string): Promise<CycleReport | null> {
+    const res = await api.get(`/cycle/reports/${cycleEntryId}`);
+    const payload = unwrap(res.data) as LatestReportResponse;
+    if (payload === null || payload === undefined) return null;
+    return 'report' in payload ? payload.report : (payload as CycleReport);
+  },
+
+  /**
+   * GET /cycle/reports/latest.
+   * Returns null when no report is ready yet (ReportEmptyResponse.report === null).
+   */
+  async getLatestReport(): Promise<CycleReport | null> {
+    const res = await api.get('/cycle/reports/latest');
+    const payload = unwrap(res.data) as LatestReportResponse;
+    if (payload === null || payload === undefined) return null;
+    return 'report' in payload ? payload.report : (payload as CycleReport);
   },
 };

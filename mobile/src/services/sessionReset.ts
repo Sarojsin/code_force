@@ -117,10 +117,12 @@ async function purgeSQLite(): Promise<void> {
 
   // Fallback: trim all rows (PRAGMA foreign_keys off during cascade-free wipe).
   try {
-    const { getNativeDb } = await import('src/db/connection');
-    const db = await getNativeDb();
-    const deletes = ALL_TABLES.map((t) => `DELETE FROM "${t}";`).join('\n');
-    await db.execAsync(`PRAGMA foreign_keys = OFF;\n${deletes}\nPRAGMA foreign_keys = ON;`);
+    const { getNativeDb, runExclusive } = await import('src/db/connection');
+    await runExclusive(async () => {
+      const db = await getNativeDb();
+      const deletes = ALL_TABLES.map((t) => `DELETE FROM "${t}";`).join('\n');
+      await db.execAsync(`PRAGMA foreign_keys = OFF;\n${deletes}\nPRAGMA foreign_keys = ON;`);
+    });
     logger.info('sessionReset.sqlite.truncated');
   } catch (err) {
     logger.error('sessionReset.sqlite.fallback_failed', err);

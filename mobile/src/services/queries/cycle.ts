@@ -39,6 +39,7 @@ export interface CycleKeys {
   days: readonly string[];
   symptoms: readonly string[];
   medications: readonly string[];
+  reports: readonly string[];
 }
 
 export function getCycleKeys(userId?: string | null): CycleKeys {
@@ -53,7 +54,16 @@ export function getCycleKeys(userId?: string | null): CycleKeys {
     days: ['cycle', id, 'days'],
     symptoms: ['cycle', id, 'symptoms'],
     medications: ['cycle', id, 'medications'],
+    reports: ['cycle', id, 'reports'],
   };
+}
+
+/** Per-entry report key: `['cycle', id, 'reports', entryId]`. */
+export function getCycleReportKey(
+  userId: string | null | undefined,
+  entryId: string | null,
+): readonly string[] {
+  return [...getCycleKeys(userId).reports, entryId ?? 'none'];
 }
 
 /** Scoped keys for the currently-authenticated user (mutation/invalidation use). */
@@ -229,6 +239,77 @@ export function useCycleAnalytics() {
     queryKey: keys.analytics,
     queryFn: () => cycleService.getAnalytics(),
     staleTime: 10 * 60 * 1000,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Cycle reports (Cycle_Report-as-a-Service)
+// ---------------------------------------------------------------------------
+
+/** Latest stored report; `null` until one is ready (ReportEmptyResponse). */
+export function useLatestCycleReport() {
+  const keys = useCycleKeys();
+  return useQuery({
+    queryKey: keys.reports,
+    queryFn: () => cycleService.getLatestReport(),
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  });
+}
+
+/** Enqueue report generation for a closed cycle; invalidate the report cache. */
+export function useRequestCycleReport() {
+  const qc = useQueryClient();
+  const keys = useCycleKeys();
+  return useMutation({
+    mutationFn: (cycleEntryId: string) => cycleService.requestReport(cycleEntryId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.reports });
+    },
+    onError: (error) => {
+      Toast.show({ type: 'error', text1: error instanceof Error ? error.message : 'Failed to generate report' });
+    },
+  });
+}
+
+/**
+ * Stored report for ONE cycle (DB-only read — no LLM). Returns `null` until a
+ * report exists for that entry. Keyed per entry so each history row caches
+ * independently. When ``cycleEntryId`` is null the query is disabled — no
+ * HTTP request is fired for an unselected cycle.
+ */
+export function useCycleReport(cycleEntryId: string | null) {
+  const userId = useAuthStore((s) => s.user?.id);
+  return useQuery({
+    queryKey: getCycleReportKey(userId, cycleEntryId),
+    queryFn: () => cycleService.getReportForEntry(cycleEntryId as string),
+    enabled: !!userId && !!cycleEntryId,
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  });
+}
+
+/**
+ * On-demand DB-first generation for one cycle. If a ready report already
+ * exists the backend returns it without calling Groq; only a miss triggers
+ * inline LLM generation. Invalidates both the per-entry and latest caches.
+ */
+export function useRequestCycleReportSync() {
+  const qc = useQueryClient();
+  const keys = useCycleKeys();
+  const userId = useAuthStore((s) => s.user?.id);
+  return useMutation({
+    mutationFn: (cycleEntryId: string) => cycleService.requestReportSync(cycleEntryId),
+    onSuccess: (report, cycleEntryId) => {
+      qc.setQueryData(getCycleReportKey(userId, cycleEntryId), report);
+      qc.invalidateQueries({ queryKey: keys.reports });
+    },
+    onError: (error) => {
+      Toast.show({
+        type: 'error',
+        text1: error instanceof Error ? error.message : 'Failed to generate report',
+      });
+    },
   });
 }
 

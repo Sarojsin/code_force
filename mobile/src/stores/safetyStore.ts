@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import { safetyService, SosAlert } from 'src/services/api';
-import { getNativeDb } from 'src/db/connection';
+import { getNativeDb, runExclusive } from 'src/db/connection';
 import { logger } from 'src/utils';
 
 interface SafetyState {
@@ -15,11 +15,15 @@ interface SafetyState {
 
 async function readActiveSosFromLocal(): Promise<SosAlert | null> {
   try {
-    const db = await getNativeDb();
-    const row = await db.getFirstAsync<SosAlert>(
-      "SELECT * FROM sos_alerts WHERE is_active = 1 AND cancelled_at IS NULL AND resolved_at IS NULL ORDER BY triggered_at DESC LIMIT 1",
-    );
-    return (row ?? null) as SosAlert | null;
+    // Route through the serialized queue so this read never overlaps a
+    // queued write and trips a SQLITE_BUSY in the Drizzle proxy.
+    return await runExclusive(async () => {
+      const db = await getNativeDb();
+      const row = await db.getFirstAsync<SosAlert>(
+        "SELECT * FROM sos_alerts WHERE is_active = 1 AND cancelled_at IS NULL AND resolved_at IS NULL ORDER BY triggered_at DESC LIMIT 1",
+      );
+      return (row ?? null) as SosAlert | null;
+    });
   } catch {
     return null;
   }
