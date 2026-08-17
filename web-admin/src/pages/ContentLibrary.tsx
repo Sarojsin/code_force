@@ -19,6 +19,9 @@ import type { ContentItem, ContentPayload } from 'src/types/api';
 
 const CATEGORIES = ['wellness', 'pregnancy', 'cycle', 'nutrition', 'mental_health'];
 
+/** Statuses whose content can be edited and soft-deleted in place. */
+const EDITABLE_STATUSES = ['draft', 'rejected', 'approved', 'unpublished'];
+
 const contentSchema = z.object({
   title: z.string().min(3, 'Title is required').max(200),
   category: z.string().min(1, 'Choose a category'),
@@ -38,6 +41,7 @@ function formatDate(iso: string | null | undefined): string {
 export function ContentLibrary() {
   const queryClient = useQueryClient();
   const [editor, setEditor] = useState<ContentItem | 'new' | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ContentItem | null>(null);
 
   const own = useQuery({ queryKey: ['own-content'], queryFn: nurseContentApi.listOwn, retry: 1 });
   const pending = useQuery({ queryKey: ['pending-content'], queryFn: adminApi.listPendingContents, retry: 1 });
@@ -84,6 +88,7 @@ export function ContentLibrary() {
     mutationFn: (id: string) => nurseContentApi.remove(id),
     onSuccess: () => {
       toast.success('Content deleted');
+      setDeleteTarget(null);
       invalidate();
     },
     onError: err => toast.error('Delete failed', extractError(err)),
@@ -115,15 +120,15 @@ export function ContentLibrary() {
       header: 'Actions',
       render: c => (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {EDITABLE_STATUSES.includes(c.status) && (
+            <Button size="sm" variant="secondary" onClick={() => setEditor(c)}>
+              Edit
+            </Button>
+          )}
           {(c.status === 'draft' || c.status === 'rejected') && (
-            <>
-              <Button size="sm" variant="secondary" onClick={() => setEditor(c)}>
-                Edit
-              </Button>
-              <Button size="sm" onClick={() => submit.mutate(c.id)}>
-                Submit
-              </Button>
-            </>
+            <Button size="sm" onClick={() => submit.mutate(c.id)}>
+              Submit
+            </Button>
           )}
           {c.status === 'pending' && (
             <>
@@ -145,8 +150,8 @@ export function ContentLibrary() {
               Publish
             </Button>
           )}
-          {c.status === 'draft' && (
-            <Button size="sm" variant="ghost" onClick={() => remove.mutate(c.id)}>
+          {EDITABLE_STATUSES.includes(c.status) && (
+            <Button size="sm" variant="danger" onClick={() => setDeleteTarget(c)}>
               Delete
             </Button>
           )}
@@ -177,6 +182,34 @@ export function ContentLibrary() {
             setEditor(null);
           }}
         />
+      )}
+
+      {deleteTarget && (
+        <Modal
+          open
+          title="Delete content"
+          onClose={() => setDeleteTarget(null)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                loading={remove.isPending}
+                onClick={() => remove.mutate(deleteTarget.id)}
+              >
+                Delete
+              </Button>
+            </>
+          }
+        >
+          <p>
+            Permanently delete “
+            <strong>{deleteTarget.title}</strong>
+            ”? Its video, thumbnail and any associated Cloudinary media will be removed from the library.
+          </p>
+        </Modal>
       )}
     </div>
   );

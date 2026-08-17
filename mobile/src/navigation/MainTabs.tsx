@@ -1,6 +1,6 @@
 /**
  * Main tab navigator — bottom tabs per UI_UX design spec.
- * Tabs: Home | Calendar | Analytics | AI Chat | Profile
+ * Tabs: Home | Calendar | Analytics | Wellness | Profile
  */
 
 import React from 'react';

@@ -431,18 +431,6 @@ export function SettingsScreen() {
                   />
                 </>
               )}
-              <SettingRow
-                label="Chat with Luna"
-                description="Ask Luna about your health, cycle and mood"
-                showDisclosure
-                onPress={() =>
-                  navigation.navigate('Main', {
-                    screen: 'Home',
-                    params: { screen: 'AIChat' },
-                  })
-                }
-                accessibilityLabel="Open AI chat with Luna"
-              />
             </>
           )}
         </SettingsSection>
