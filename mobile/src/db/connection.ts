@@ -23,7 +23,16 @@ export async function getNativeDb(): Promise<SQLiteDatabase> {
   if (!openPromise) {
     openPromise = openDatabaseAsync('shecare.db');
   }
-  nativeDb = await openPromise;
+  const db = await openPromise;
+  if (!nativeDb) {
+    // WAL mode (single writer + concurrent readers) and a busy_timeout so a
+    // queued write waits up to 5s instead of failing instantly with
+    // SQLITE_BUSY ("database is locked") — e.g. when a raw-native caller
+    // (VACUUM, FTS rebuild, session purge) overlaps the Drizzle proxy queue.
+    await db.execAsync('PRAGMA journal_mode = WAL;');
+    await db.execAsync('PRAGMA busy_timeout = 5000;');
+    nativeDb = db;
+  }
   return nativeDb;
 }
 
@@ -44,7 +53,14 @@ const remoteCallback: AsyncRemoteCallback = (sql, params, method) =>
       const rows = await result.getAllAsync();
       return { rows };
     } finally {
-      await statement.finalizeAsync();
+      // The statement may already be invalid if the DB was torn down
+      // concurrently (logout/session reset). Guard so a rejected
+      // finalizeAsync does not surface as ERR_INTERNAL_SQLITE_ERROR.
+      try {
+        await statement.finalizeAsync();
+      } catch {
+        // statement handle already invalidated — safe to ignore
+      }
     }
   });
 
@@ -56,14 +72,21 @@ export function getDb(): SqliteRemoteDatabase {
 }
 
 export async function closeDb(): Promise<void> {
-  if (nativeDb) {
-    try {
-      await nativeDb.closeAsync();
-    } catch {
-      // ignore close errors
+  // Run through the same serialized queue that owns every native statement, so
+  // an in-flight query/transaction (e.g. DayMasterLocalService.replaceAll)
+  // completes BEFORE the connection is closed. Otherwise a queued statement's
+  // finalizeAsync is rejected against the torn-down DB.
+  await runExclusive(async () => {
+    dbInstance = null;
+    const db = nativeDb;
+    nativeDb = null;
+    openPromise = null;
+    if (db) {
+      try {
+        await db.closeAsync();
+      } catch {
+        // ignore close errors
+      }
     }
-  }
-  dbInstance = null;
-  nativeDb = null;
-  openPromise = null;
+  });
 }

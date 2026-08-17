@@ -74,7 +74,6 @@ export type HomeStackParamList = {
   CyclePredictions: undefined;
   Videos: undefined;
   ContentDetail: { id: string };
-  AIChat: undefined;
   JournalList: undefined;
   JournalEntry: { id: string };
   DiaryLibrary: { diaryId?: string } | undefined;
@@ -109,10 +108,6 @@ export type CalendarStackParamList = {
 export type AnalyticsStackParamList = {
   AnalyticsMain: undefined;
   AnalyticsDetail: { section: string };
-};
-
-export type AIChatStackParamList = {
-  AIChatMain: undefined;
 };
 
 export type OnboardingStackParamList = {

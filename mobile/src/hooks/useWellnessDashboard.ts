@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { format } from 'date-fns';
 
 import { useCurrentCycleState } from 'src/hooks/useCurrentCycleState';
 import { useMoodLogs, useInsights } from 'src/services/queries/wellness';
-import { useCycleAnalytics, useCyclePredictions } from 'src/services/queries/cycle';
-import { useAuthStore } from 'src/stores/authStore';
-import { localDb } from 'src/services/localDb';
+import { useCycleAnalytics, useCyclePredictions, useCycleDays } from 'src/services/queries/cycle';
 import { useHealthTips } from 'src/services/queries/useHealthTips';
 import { computeReadiness, computeReadinessBreakdown } from 'src/utils/readinessScore';
 import { filterTipsByPhase } from 'src/utils/filterRecommendations';
@@ -40,28 +38,15 @@ export function useWellnessDashboard(): UseWellnessDashboardReturn {
   const analyticsResult = useCycleAnalytics();
   const predictionsResult = useCyclePredictions();
   const healthTipsResult = useHealthTips(undefined, 10);
-  const userId = useAuthStore((s) => s.user?.id);
-
-  const [dayData, setDayData] = useState<CycleDay | null>(null);
-  const [dayDataLoading, setDayDataLoading] = useState(true);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
-
-  useEffect(() => {
-    if (!userId) {
-      setDayData(null);
-      setDayDataLoading(false);
-      return;
-    }
-    setDayDataLoading(true);
-    localDb.cycleDay.getByDate(userId, todayStr).then((data: CycleDay | null) => {
-      setDayData(data);
-      setDayDataLoading(false);
-    }).catch(() => {
-      setDayData(null);
-      setDayDataLoading(false);
-    });
-  }, [userId, todayStr]);
+  // Today's day observation. Driven through the `useCycleDays` query (NOT a
+  // one-shot localDb read) so `useUpsertDay`'s `keys.days` invalidation
+  // refreshes it the moment the DayDetailSheet is saved — otherwise the
+  // Wellness tab keeps showing the stale/null day it read on first mount.
+  // Offline-first: the queryFn falls back to local SQLite when offline.
+  const todayDaysResult = useCycleDays({ start: todayStr, end: todayStr });
+  const dayData = (todayDaysResult.data?.find((d) => d.log_date === todayStr) ?? null) as CycleDay | null;
 
   const moodLogs = moodLogsResult.data ?? [];
 
@@ -95,7 +80,7 @@ export function useWellnessDashboard(): UseWellnessDashboardReturn {
     [moodLogs, cycle.phaseKey, cycle.phaseLabel, cycle.phaseDesc, cycle.hasCycleData, cycle.cycleDay],
   );
 
-  const isLoading = cycle.isLoading || moodLogsResult.isLoading || insightsResult.isLoading || dayDataLoading;
+  const isLoading = cycle.isLoading || moodLogsResult.isLoading || insightsResult.isLoading || todayDaysResult.isLoading;
 
   return {
     cycle,
