@@ -22,6 +22,7 @@ def _compile_jsonb_sqlite(type_, compiler, **kw):
     return "JSON"
 
 from app.core.database import Base
+from app.integrations.cloudinary_client import CloudinaryClient
 from app.modules.nurse_content.exceptions import ContentNotFoundError, UnauthorizedContentError
 from app.modules.nurse_content.schemas import ContentCreate, ContentUpdate
 from app.modules.nurse_content.services import NurseContentService
@@ -177,3 +178,157 @@ async def test_list_approved_by_category(svc: NurseContentService) -> None:
     wellness = await svc.list_approved(category="wellness")
     assert len(wellness) == 1
     assert wellness[0].category == "wellness"
+
+
+class FakeCloudinary:
+    """Stands in for CloudinaryClient without network access."""
+
+    def __init__(self) -> None:
+        self.configured = True
+        self.deleted_urls: list[str | None] = []
+
+    def delete_by_url(self, url: str | None) -> None:
+        if CloudinaryClient.parse_url(url) is not None:
+            self.deleted_urls.append(url)
+
+
+def _cloudy_service(db_session: AsyncSession) -> tuple[NurseContentService, FakeCloudinary]:
+    fake = FakeCloudinary()
+    return NurseContentService(db=db_session, cloudinary=fake), fake
+
+
+VIDEO_URL = "https://res.cloudinary.com/demo/video/upload/v1653838283/health_content/demo.mp4"
+THUMB_URL = "https://res.cloudinary.com/demo/image/upload/v1653838283/health_content/demo.jpg"
+
+
+def test_cloudinary_parse_url_video() -> None:
+    parsed = CloudinaryClient.parse_url(VIDEO_URL)
+    assert parsed == ("health_content/demo", "video")
+
+
+def test_cloudinary_parse_url_no_version() -> None:
+    parsed = CloudinaryClient.parse_url("https://res.cloudinary.com/demo/image/upload/health_content/a.png")
+    assert parsed == ("health_content/a", "image")
+
+
+def test_cloudinary_parse_url_with_transformations() -> None:
+    parsed = CloudinaryClient.parse_url(
+        "https://res.cloudinary.com/demo/image/upload/w_400,c_fill,q_auto,f_auto/v1653838283/health_content/demo.jpg"
+    )
+    assert parsed == ("health_content/demo", "image")
+
+
+def test_cloudinary_parse_url_external_returns_none() -> None:
+    assert CloudinaryClient.parse_url("https://cdn.example.com/v.mp4") is None
+    assert CloudinaryClient.parse_url(None) is None
+    assert CloudinaryClient.parse_url("") is None
+
+
+@pytest.mark.asyncio
+async def test_edit_approved_content_keeps_status_and_refreshes_published_at(
+    db_session: AsyncSession,
+) -> None:
+    svc, _ = _cloudy_service(db_session)
+    content = await svc.create_content(nurse_id, ContentCreate(title="Live", category="wellness"))
+    submitted = await svc.submit_content(content.id, nurse_id)
+    approved = await svc.approve_content(submitted.id, admin_id)
+    created_at_published = approved.published_at
+
+    updated = await svc.update_content(approved.id, nurse_id, ContentUpdate(title="Live v2"))
+    assert updated.status == "approved"
+    assert updated.title == "Live v2"
+    assert updated.published_at is not None
+    assert updated.published_at >= created_at_published
+
+
+@pytest.mark.asyncio
+async def test_edit_unpublished_content_keeps_status(db_session: AsyncSession) -> None:
+    svc, _ = _cloudy_service(db_session)
+    content = await svc.create_content(nurse_id, ContentCreate(title="Draft", category="wellness"))
+    submitted = await svc.submit_content(content.id, nurse_id)
+    approved = await svc.approve_content(submitted.id, admin_id)
+    unpublished = await svc.unpublish_content(approved.id, admin_id)
+
+    updated = await svc.update_content(unpublished.id, nurse_id, ContentUpdate(title="Edits unpublished"))
+    assert updated.status == "unpublished"
+
+
+@pytest.mark.asyncio
+async def test_update_replacing_video_deletes_old_cloudinary_asset(
+    db_session: AsyncSession,
+) -> None:
+    svc, fake = _cloudy_service(db_session)
+    content = await svc.create_content(
+        nurse_id, ContentCreate(title="Vid", category="wellness", video_url=VIDEO_URL)
+    )
+    new_url = "https://res.cloudinary.com/demo/video/upload/v9999/health_content/new.mp4"
+
+    updated = await svc.update_content(content.id, nurse_id, ContentUpdate(video_url=new_url))
+    assert updated.video_url == new_url
+    assert fake.deleted_urls == [VIDEO_URL]
+
+
+@pytest.mark.asyncio
+async def test_update_replacing_thumbnail_deletes_old_cloudinary_asset(
+    db_session: AsyncSession,
+) -> None:
+    svc, fake = _cloudy_service(db_session)
+    content = await svc.create_content(
+        nurse_id, ContentCreate(title="With thumb", category="wellness", thumbnail_url=THUMB_URL)
+    )
+    new_thumb = "https://res.cloudinary.com/demo/image/upload/v9999/health_content/new.jpg"
+
+    await svc.update_content(content.id, nurse_id, ContentUpdate(thumbnail_url=new_thumb))
+    assert fake.deleted_urls == [THUMB_URL]
+
+
+@pytest.mark.asyncio
+async def test_update_without_media_change_does_not_delete(db_session: AsyncSession) -> None:
+    svc, fake = _cloudy_service(db_session)
+    content = await svc.create_content(
+        nurse_id, ContentCreate(title="Vid", category="wellness", video_url=VIDEO_URL)
+    )
+
+    await svc.update_content(content.id, nurse_id, ContentUpdate(title="Renamed only"))
+    assert fake.deleted_urls == []
+
+
+@pytest.mark.asyncio
+async def test_update_replacing_external_video_does_not_delete(db_session: AsyncSession) -> None:
+    svc, fake = _cloudy_service(db_session)
+    content = await svc.create_content(
+        nurse_id,
+        ContentCreate(title="Ext", category="wellness", video_url="https://cdn.example.com/v.mp4"),
+    )
+
+    await svc.update_content(
+        content.id, nurse_id, ContentUpdate(video_url="https://cdn.example.com/new.mp4")
+    )
+    assert fake.deleted_urls == []
+
+
+@pytest.mark.asyncio
+async def test_delete_content_removes_cloudinary_media(db_session: AsyncSession) -> None:
+    svc, fake = _cloudy_service(db_session)
+    content = await svc.create_content(
+        nurse_id,
+        ContentCreate(title="Del", category="wellness", video_url=VIDEO_URL, thumbnail_url=THUMB_URL),
+    )
+
+    await svc.delete_content(content.id, nurse_id)
+    assert sorted(fake.deleted_urls) == sorted([VIDEO_URL, THUMB_URL])
+    assert content.is_active is False
+
+
+@pytest.mark.asyncio
+async def test_update_pending_content_raises(db_session: AsyncSession) -> None:
+    svc, _ = _cloudy_service(db_session)
+    content = await svc.create_content(nurse_id, ContentCreate(title="Pad", category="wellness"))
+    submitted = await svc.submit_content(content.id, nurse_id)
+
+    from app.modules.nurse_content.exceptions import ContentStateError
+
+    with pytest.raises(ContentStateError):
+        await svc.update_content(
+            submitted.id, nurse_id, ContentUpdate(title="Pending edit forbidden")
+        )

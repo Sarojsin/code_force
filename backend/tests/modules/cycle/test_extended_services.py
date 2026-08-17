@@ -14,6 +14,7 @@ from datetime import date, timedelta
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
@@ -238,6 +239,37 @@ async def test_log_correction_corrected_prediction_none(svc: CycleService, user:
     )
     assert entry.is_correction is False
     assert entry.symptoms == ["headache"]
+
+
+@pytest.mark.asyncio
+async def test_log_correction_same_date_upserts_not_duplicates(
+    svc: CycleService, user: User, cycle_entry: CycleEntry,
+) -> None:
+    """A correction for a date that already has an entry must UPDATE that entry,
+    never hit the unique (user_id, period_start_date) violation (regression for
+    the 500 on POST /api/v1/cycle/corrections)."""
+    first = await svc.log_correction(
+        user_id=user.id,
+        period_start_date=date(2026, 8, 13),
+        symptoms=["cramps"],
+    )
+    second = await svc.log_correction(
+        user_id=user.id,
+        period_start_date=date(2026, 8, 13),
+        period_end_date=date(2026, 8, 17),
+        symptoms=["cramps", "fatigue"],
+    )
+    assert second.id == first.id
+    assert second.period_end_date == date(2026, 8, 17)
+    assert second.symptoms == ["cramps", "fatigue"]
+
+    rows = await svc.db.execute(
+        select(CycleEntry)
+        .where(CycleEntry.user_id == user.id)
+        .where(CycleEntry.period_start_date == date(2026, 8, 13))
+        .where(CycleEntry.is_active.is_(True))
+    )
+    assert len(list(rows.scalars().all())) == 1
 
 
 @pytest.mark.asyncio

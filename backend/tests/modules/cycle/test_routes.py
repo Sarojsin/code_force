@@ -15,6 +15,7 @@ os.environ.setdefault("JWT__SECRET_KEY", "test-secret-key-1234567890")
 os.environ.setdefault("JWT__REFRESH_SECRET_KEY", "test-refresh-secret-key-1234567890")
 os.environ.setdefault("ENCRYPTION__MASTER_KEY", "test-master-key-for-tests-only-32b")
 
+import uuid as _uuid
 from contextlib import asynccontextmanager
 
 import pytest
@@ -35,9 +36,9 @@ def _compile_array_sqlite(type_, compiler, **kw):
     return "JSON"
 
 
+from app.core.config import get_settings
 from app.core.database import Base, get_db
 from app.core.security import create_access_token
-from app.core.config import get_settings
 from app.modules.auth.models import User
 
 
@@ -146,6 +147,7 @@ async def app_client() -> AsyncClient:
         client.test_token = token1
         client.test_user2 = user2
         client.test_token2 = token2
+        client.test_session_factory = Session
         yield client
 
     await engine.dispose()
@@ -282,6 +284,110 @@ async def test_get_analytics_empty_200(app_client: AsyncClient) -> None:
     body = resp.json()
     assert body["total_entries"] == 0
     assert body["average_cycle_length_days"] is None
+    assert body["avg_period_length_days"] is None
+
+
+# ---- Cycle reports: DB-first read + sync generation ----
+
+
+@pytest.mark.asyncio
+async def test_get_report_for_entry_empty(app_client: AsyncClient) -> None:
+    resp = await app_client.get(f"/api/v1/cycle/reports/{_uuid.uuid4()}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["report"] is None
+    assert body["message"] == "No report yet"
+
+
+@pytest.mark.asyncio
+async def test_get_latest_report_route_not_shadowed(app_client: AsyncClient) -> None:
+    """Regression: GET /reports/latest must NOT be captured by
+    /reports/{cycle_entry_id} (FastAPI matches in declaration order)."""
+    resp = await app_client.get("/api/v1/cycle/reports/latest")
+    assert resp.status_code == 200  # was 422 (UUID validation on "latest")
+    body = resp.json()
+    assert body["report"] is None
+
+
+@pytest.mark.asyncio
+async def test_sync_report_generates_on_miss(app_client: AsyncClient) -> None:
+    create = await app_client.post(
+        "/api/v1/cycle/entries",
+        json={"period_start_date": "2026-05-01", "period_end_date": "2026-05-05"},
+    )
+    entry_id = create.json()["id"]
+
+    resp = await app_client.post(
+        "/api/v1/cycle/reports",
+        json={"cycle_entry_id": entry_id},
+        params={"sync": "true"},
+    )
+    assert resp.status_code == 202
+    body = resp.json()
+    assert body["status"] == "ready"
+    assert body["report_data"] is not None
+    assert body["cycle_entry_id"] == entry_id
+
+    # Same call again => returns existing report (no duplicate).
+    resp2 = await app_client.post(
+        "/api/v1/cycle/reports",
+        json={"cycle_entry_id": entry_id},
+        params={"sync": "true"},
+    )
+    assert resp2.status_code == 202
+    assert resp2.json()["id"] == body["id"]
+
+
+@pytest.mark.asyncio
+async def test_sync_report_reuses_stored_report_without_groq(
+    app_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+
+    from app.modules.cycle.models import CycleReport
+    from app.modules.cycle.schemas import CycleEntryCreate, ReportData
+    from app.modules.cycle.services import CycleService
+
+    # Plant a stored report for a real entry via the SAME test session factory.
+    async with app_client.test_session_factory() as session:
+        svc = CycleService(session)
+        entry = await svc.create_entry(
+            app_client.test_user.id,
+            CycleEntryCreate(period_start_date="2026-06-01", period_end_date="2026-06-05"),
+        )
+        report = CycleReport(
+            user_id=app_client.test_user.id,
+            cycle_entry_id=entry.id,
+            status="ready",
+            report_data=ReportData(
+                summary="Stored report.",
+                regularity_score=90,
+                top_symptoms=["Cramps"],
+                correlation_found="none",
+                doctor_note="note",
+            ).model_dump(mode="json"),
+        )
+        session.add(report)
+        await session.commit()
+        entry_id = entry.id
+
+    # Groq MUST NOT be called: sync path returns the DB row directly.
+    calls: list = []
+
+    async def _boom_generate(self_fn, user_id, cycle_entry_id):
+        calls.append(str(cycle_entry_id))
+        raise AssertionError("Groq/generate_report should not be called when a report exists")
+
+    monkeypatch.setattr(CycleService, "generate_report", _boom_generate)
+    resp = await app_client.post(
+        "/api/v1/cycle/reports",
+        json={"cycle_entry_id": str(entry_id)},
+        params={"sync": "true"},
+    )
+    assert resp.status_code == 202
+    assert resp.json()["status"] == "ready"
+    assert resp.json()["report_data"]["summary"] == "Stored report."
+    assert calls == []
 
 
 @pytest.mark.asyncio
