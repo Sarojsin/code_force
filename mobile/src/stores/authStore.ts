@@ -41,7 +41,10 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isHydrated: false,
-  setUser: (user) => set({ user }),
+  setUser: (user) => {
+    set({ user });
+    void setCachedUser(user);
+  },
   hydrate: async () => {
     const access = await tokenStore.getAccess();
     if (!access) {

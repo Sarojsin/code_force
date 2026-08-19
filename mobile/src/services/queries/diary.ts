@@ -9,12 +9,14 @@ export function useDiaries() {
   return useQuery({
     queryKey: ['diaries'],
     queryFn: () => diaryService.getDiaries(),
+    staleTime: 5 * 60_000,
   });
 }
 
 export function useDiary(id: string) {
   return useQuery({
     queryKey: ['diary', id],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       try {
         return await diaryService.getDiary(id);
@@ -57,6 +59,7 @@ export function useDiaryPages(diaryId: string) {
   return useQuery({
     queryKey: ['diary_pages', diaryId],
     queryFn: () => diaryService.getPages(diaryId),
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -64,6 +67,7 @@ export function useDiaryPage(diaryId: string, pageId: string) {
   return useQuery({
     queryKey: ['diary_page', pageId],
     queryFn: () => diaryService.getPage(diaryId, pageId),
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -90,6 +94,7 @@ export function useDiarySearch(params: {
     queryKey: ['diary_search', params],
     queryFn: () => diaryService.search(params as Record<string, string | undefined>),
     enabled: Object.values(params).some(v => v !== undefined && v !== ''),
+    staleTime: 60_000,
   });
 }
 
@@ -97,6 +102,7 @@ export function useDiaryTimeline(year: number, month: number) {
   return useQuery({
     queryKey: ['diary_timeline', year, month],
     queryFn: () => diaryService.getTimeline(year, month),
+    staleTime: 5 * 60_000,
   });
 }
 

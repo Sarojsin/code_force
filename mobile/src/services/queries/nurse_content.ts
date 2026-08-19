@@ -20,6 +20,7 @@ export function useContents(params?: ContentListParams) {
   return useQuery({
     queryKey: [...nurseContentKeys.list, params],
     queryFn: () => nurseContentService.getContents(params),
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -28,5 +29,6 @@ export function useContentDetail(id: string) {
     queryKey: nurseContentKeys.detail(id),
     queryFn: () => nurseContentService.getContentDetail(id),
     enabled: !!id,
+    staleTime: 5 * 60_000,
   });
 }

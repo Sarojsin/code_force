@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
@@ -57,6 +58,15 @@ export function getCycleKeys(userId?: string | null): CycleKeys {
     reports: ['cycle', id, 'reports'],
   };
 }
+
+/**
+ * Shared base params for `useCycleEntries` (Phase D.2.3). Callers intentionally
+ * pass different limits, so each distinct params object is its own cache entry
+ * under `[...entries, params]` — keep the parameter sets bounded and reused
+ * where the screen needs the same window (Calendar + Analytics overlap on the
+ * 6-month window; CycleHistory needs more history; useCatchUp only the latest).
+ */
+export const CYCLE_ENTRIES_WINDOW = { months_back: 6, limit: 60 } as const;
 
 /** Per-entry report key: `['cycle', id, 'reports', entryId]`. */
 export function getCycleReportKey(
@@ -516,16 +526,42 @@ function mergeCycleDaysByDate(local: CycleDay[] | DailyDay[], server: DailyDay[]
  * when online; local SQLite rows cover offline reopen. Query key is
  * user-scoped via the `days` factory (never a static prefix).
  */
-export function useCycleDays(range?: { start?: string; end?: string }) {
+export function useCycleDays(
+  range?: { start?: string; end?: string },
+  options: { enabled?: boolean } = {},
+) {
   const keys = useCycleKeys();
   const userId = useAuthStore((s) => s.user?.id);
+  const enabled = options.enabled ?? !!range?.start;
+  // Bound the query so a caller that omits a range never reads the user's full
+  // local day history (Phase D.2.4). Callers pass a 1-day window when a date is
+  // selected (CalendarScreen) or a month range (DailyLogScreen); an empty range
+  // falls back to a 90-day default instead of an unbounded read.
+  const DEFAULT_DAYS_WINDOW_DAYS = 90;
+  const boundedRange = useMemo(() => {
+    if (range?.start && range?.end) return range;
+    if (range?.start) {
+      const start = parseISODateLocal(range.start);
+      return { start: range.start, end: toLocalDateStr(start) };
+    }
+    if (range?.end) {
+      const end = parseISODateLocal(range.end);
+      return { start: toLocalDateStr(new Date(end.getTime() - DEFAULT_DAYS_WINDOW_DAYS * 86400000)), end: range.end };
+    }
+    const today = new Date();
+    return {
+      start: toLocalDateStr(new Date(today.getTime() - DEFAULT_DAYS_WINDOW_DAYS * 86400000)),
+      end: toLocalDateStr(today),
+    };
+  }, [range]);
   return useQuery({
     queryKey: [...keys.days, range],
+    enabled,
     queryFn: async (): Promise<DailyDay[]> => {
       let server: DailyDay[] = [];
-      if (range?.start && range?.end) {
+      if (boundedRange?.start && boundedRange?.end) {
         try {
-          server = await cycleService.getDays(range.start, range.end);
+          server = await cycleService.getDays(boundedRange.start, boundedRange.end);
         } catch {
           server = [];
         }
@@ -534,7 +570,7 @@ export function useCycleDays(range?: { start?: string; end?: string }) {
         localDb.cycleDay.upsertMany(server as unknown as CycleDay[]);
       }
       const local = userId
-        ? (await localDb.cycleDay.getByRange(userId, range?.start, range?.end)) as unknown as CycleDay[]
+        ? (await localDb.cycleDay.getByRange(userId, boundedRange?.start, boundedRange?.end)) as unknown as CycleDay[]
         : [];
       return mergeCycleDaysByDate(local, server);
     },
