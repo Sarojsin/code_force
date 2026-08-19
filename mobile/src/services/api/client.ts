@@ -49,7 +49,28 @@ export const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
+  validateStatus: (status) => (status >= 200 && status < 300) || status === 304,
 });
+
+// ETag store (Phase D.3). Scoped to GETs: keep the raw response body + ETag per
+// request identity so a 304 reuses the cached body instead of re-downloading
+// the full payload. Only endpoints that emit ETag participate (calendar).
+const etagCache = new Map<string, { etag: string | null; body: unknown }>();
+const ETAG_CACHE_MAX = 200;
+
+function etagKey(method: string | undefined, url: string | undefined, params: unknown): string | null {
+  if (!url) return null;
+  if (method && method.toLowerCase() !== 'get') return null;
+  let paramsStr = '';
+  if (params) {
+    try {
+      paramsStr = JSON.stringify(params, Object.keys(params as object).sort());
+    } catch {
+      paramsStr = '';
+    }
+  }
+  return `GET ${url}?${paramsStr}`;
+}
 
 api.interceptors.request.use(async config => {
   const token = await tokenStore.getAccess();
@@ -59,6 +80,14 @@ api.interceptors.request.use(async config => {
   }
   // X-Request-ID for log correlation (project invariant §10)
   config.headers['X-Request-ID'] = config.headers['X-Request-ID'] ?? generateId();
+  // Attach If-None-Match when we have a cached ETag for this GET (Phase D.3).
+  const key = etagKey(config.method, config.url, config.params);
+  if (key) {
+    const cached = etagCache.get(key);
+    if (cached?.etag) {
+      config.headers['If-None-Match'] = cached.etag;
+    }
+  }
   return config;
 });
 
@@ -134,7 +163,25 @@ const SESSION_EXPIRED_DETAILS = [
 ];
 
 api.interceptors.response.use(
-  resp => resp,
+  resp => {
+    // 200 → store ETag + body; 304 → serve the cached body (Phase D.3).
+    const key = etagKey(resp.config.method, resp.config.url, resp.config.params);
+    if (key) {
+      if (resp.status === 304) {
+        const cached = etagCache.get(key);
+        if (cached) {
+          (resp as any).data = cached.body;
+        }
+      } else {
+        const etag = typeof resp.headers?.etag === 'string' ? resp.headers.etag : null;
+        if (etagCache.size >= ETAG_CACHE_MAX) {
+          etagCache.clear();
+        }
+        etagCache.set(key, { etag, body: resp.data });
+      }
+    }
+    return resp;
+  },
   async (error: AxiosError) => {
     const status = error.response?.status;
     const responseData = error.response?.data as any;

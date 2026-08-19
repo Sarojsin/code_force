@@ -1,4 +1,4 @@
-import { getDb } from '../../db/connection';
+import { getDb, withTransaction } from '../../db/connection';
 import { symptoms, medications } from '../../db/schema';
 import type { Symptom, Medication } from '../../db/schema';
 import type { SymptomMaster, MedicationMaster } from '../api/cycle';
@@ -62,32 +62,49 @@ export class DayMasterLocalService {
   ): Promise<void> {
     try {
       const db = getDb();
-      await db.transaction(async (tx) => {
-        await tx.delete(symptoms);
-        await tx.delete(medications);
-        if (symptomRows.length > 0) {
-          await tx.insert(symptoms).values(
-            symptomRows.map((s) => ({
-              id: s.id,
-              name: s.name,
-              category: s.category,
-              icon: s.icon ?? null,
-              icon_kind: s.icon_kind ?? null,
-              display_order: s.display_order,
-              synced_at: new Date().toISOString(),
-            })),
-          );
-        }
-        if (medicationRows.length > 0) {
-          await tx.insert(medications).values(
-            medicationRows.map((m) => ({
-              id: m.id,
-              name: m.name,
-              category: m.category,
-              display_order: m.display_order,
-              synced_at: new Date().toISOString(),
-            })),
-          );
+      const syncedAt = new Date().toISOString();
+      // Build all statements first (drizzle `.toSQL()`), then execute inside a
+      // single queue-turn transaction — one commit instead of N (Phase D.1.2).
+      const statements: { sql: string; params: unknown[] }[] = [];
+      statements.push(db.delete(symptoms).toSQL());
+      statements.push(db.delete(medications).toSQL());
+      if (symptomRows.length > 0) {
+        statements.push(
+          db
+            .insert(symptoms)
+            .values(
+              symptomRows.map((s) => ({
+                id: s.id,
+                name: s.name,
+                category: s.category,
+                icon: s.icon ?? null,
+                icon_kind: s.icon_kind ?? null,
+                display_order: s.display_order,
+                synced_at: syncedAt,
+              })),
+            )
+            .toSQL(),
+        );
+      }
+      if (medicationRows.length > 0) {
+        statements.push(
+          db
+            .insert(medications)
+            .values(
+              medicationRows.map((m) => ({
+                id: m.id,
+                name: m.name,
+                category: m.category,
+                display_order: m.display_order,
+                synced_at: syncedAt,
+              })),
+            )
+            .toSQL(),
+        );
+      }
+      await withTransaction(async (nativeDb) => {
+        for (const statement of statements) {
+          await nativeDb.runAsync(statement.sql, statement.params as any[]);
         }
       });
     } catch (error) {

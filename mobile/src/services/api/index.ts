@@ -6,7 +6,6 @@ export * from './pregnancy';
 export * from './safety';
 export * from './family';
 export * from './nurse_content';
-export * from './chat';
 export * from './voice';
 export * from './onboarding';
 export * from './diary';

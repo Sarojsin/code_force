@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { getDb } from '../../db/connection';
+import { getDb, withTransaction } from '../../db/connection';
 import { featureFlags } from '../../db/schema';
 import type { FeatureFlag } from '../../db/schema';
 import { logger } from '../../utils';
@@ -51,15 +51,21 @@ export class FeatureFlagLocalService {
     try {
       const db = getDb();
       const syncedAt = new Date().toISOString();
-      await db.transaction(async (tx) => {
-        for (const record of records) {
-          await tx
-            .insert(featureFlags)
-            .values({ ...record, synced_at: syncedAt })
-            .onConflictDoUpdate({
-              target: featureFlags.key,
-              set: { ...record, synced_at: syncedAt },
-            });
+      // Build all statements first, then execute in one queue-turn transaction
+      // (single commit instead of N autocommits — Phase D.1.3).
+      const statements = records.map((record) =>
+        db
+          .insert(featureFlags)
+          .values({ ...record, synced_at: syncedAt })
+          .onConflictDoUpdate({
+            target: featureFlags.key,
+            set: { ...record, synced_at: syncedAt },
+          })
+          .toSQL(),
+      );
+      await withTransaction(async (nativeDb) => {
+        for (const statement of statements) {
+          await nativeDb.runAsync(statement.sql, statement.params as any[]);
         }
       });
     } catch (error) {

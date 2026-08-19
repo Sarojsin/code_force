@@ -1,5 +1,5 @@
 import { eq, lt } from 'drizzle-orm';
-import { getDb } from '../../db/connection';
+import { getDb, withTransaction } from '../../db/connection';
 import { logger } from '../../utils';
 import * as Sentry from '@sentry/react-native';
 
@@ -40,16 +40,25 @@ export abstract class BaseLocalService<T extends { id: string }> {
     try {
       const db = getDb();
       const target = this.idColumn ?? this.table.id;
-      for (const record of records) {
+      // Build all statements first via drizzle (no execution), then run them
+      // through withTransaction so a whole batch is one write transaction —
+      // a single fsync instead of N autocommits (Phase D.1.1).
+      const statements = records.map((record) => {
         const values = this.normalize(record);
-        await db
+        return db
           .insert(this.table)
           .values(values)
           .onConflictDoUpdate({
             target,
             set: values,
-          });
-      }
+          })
+          .toSQL();
+      });
+      await withTransaction(async (nativeDb) => {
+        for (const statement of statements) {
+          await nativeDb.runAsync(statement.sql, statement.params as any[]);
+        }
+      });
     } catch (error) {
       this.handleError('upsertMany', error);
     }

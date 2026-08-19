@@ -3,6 +3,7 @@ import { cycleDays } from '../../db/schema';
 import type { CycleDay } from '../../db/schema';
 import type { DailyDay } from '../api/cycle';
 import { eq, and, gte, lte, desc } from 'drizzle-orm';
+import { toLocalDateStr } from '../../utils/date';
 import { BaseLocalService } from './BaseLocalService';
 
 /**
@@ -68,9 +69,15 @@ export class DayLocalService extends BaseLocalService<CycleDay> {
   async getByRange(userId: string, start?: string, end?: string): Promise<CycleDay[]> {
     try {
       const db = getDb();
+      // Never read the full history: a 90-day window is the defensive default
+      // when callers omit bounds (Phase D.2.4).
+      const NOW = new Date();
+      const DEFAULT_DAYS_WINDOW_DAYS = 90;
+      const from = start ?? toLocalDateStr(new Date(NOW.getTime() - DEFAULT_DAYS_WINDOW_DAYS * 86400000));
+      const to = end ?? toLocalDateStr(NOW);
       const conditions = [eq(cycleDays.user_id, userId), eq(cycleDays.is_active, true)];
-      if (start) conditions.push(gte(cycleDays.log_date, start));
-      if (end) conditions.push(lte(cycleDays.log_date, end));
+      conditions.push(gte(cycleDays.log_date, from));
+      conditions.push(lte(cycleDays.log_date, to));
       return (await db
         .select()
         .from(cycleDays)
