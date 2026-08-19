@@ -105,6 +105,7 @@ export function LunaOverlay({
   const { play, animatedStyle, isAnimating, scale, opacity, rotation, rotationX, currentAnim } = useAnimationEngine();
   const { current: speech, show: showBubble } = useSpeechBubble();
   const talking = useSharedValue(false);
+  const backgroundPaused = useSharedValue(false);
 
   useEffect(() => {
     const unsubscribe = voiceService.onSpeaking((speaking) => {
@@ -145,10 +146,13 @@ export function LunaOverlay({
     } else {
       walkX.value = 0;
     }
+    return () => {
+      cancelAnimation(walkX);
+    };
   }, [context.animation, walkX]);
 
   const floatAnim = useAnimatedStyle(() => {
-    if (reduceAnimations) return {};
+    if (reduceAnimations || backgroundPaused.value) return {};
     switch (context.animation) {
       case 'walk-right':
       case 'walk-left':
@@ -292,13 +296,24 @@ export function LunaOverlay({
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
+        backgroundPaused.value = false;
+        cancelAnimation(walkX);
+        walkX.value = 0;
+        if (!isHidden && !reduceAnimations) {
+          startIdleCycle();
+        }
         resetInactivityTimer();
       } else if (state === 'background') {
+        backgroundPaused.value = true;
+        cancelAnimation(walkX);
         voiceService.stop();
+        if (idleTimer.current) clearInterval(idleTimer.current);
+        if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+        if (turnTimer.current) clearTimeout(turnTimer.current);
       }
     });
     return () => sub.remove();
-  }, [resetInactivityTimer]);
+  }, [backgroundPaused, walkX, resetInactivityTimer, startIdleCycle, isHidden, reduceAnimations]);
 
   // Hydrate on-device memory on mount + foreground so dialogue is memory-aware
   useEffect(() => {

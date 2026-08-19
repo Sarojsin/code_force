@@ -451,7 +451,7 @@ function CycleHistoryRow({
 export function AnalyticsDashboardScreen() {
   const theme = useTheme();
 
-  const { data: entries, isLoading: entriesLoading } = useCycleEntries({ limit: 50, months_back: 12 });
+  const { data: entries, isLoading: entriesLoading } = useCycleEntries({ limit: 24, months_back: 6 });
   const { data: analytics, isLoading: analyticsLoading } = useCycleAnalytics();
 
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);

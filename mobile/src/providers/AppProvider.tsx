@@ -1,7 +1,9 @@
-import React, { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View, Text, useColorScheme } from 'react-native';
 
 import { EncryptedStorage } from 'src/services/storage';
+import { prefetchAppData } from 'src/services/queries/prefetch';
+import { useAuthStore } from 'src/stores/authStore';
 
 const PREWARM_KEYS = [
   'shecare.user',
@@ -16,6 +18,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
+  const readyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,13 +33,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await Promise.allSettled(
           PREWARM_KEYS.map((key) => EncryptedStorage.getItem(key)),
         );
+        // Fire-and-forget query pre-warm for the first Home paint. Never
+        // blocks `ready` — TTI must not wait on the network.
+        const storedUser = await EncryptedStorage.getItem('shecare.user');
+        const userId = (() => {
+          try {
+            const parsed = storedUser ? JSON.parse(storedUser) : null;
+            return parsed?.id ?? parsed?.user?.id ?? null;
+          } catch {
+            return null;
+          }
+        })();
+        prefetchAppData(userId ?? useAuthStore.getState().user?.id ?? null).catch(() => {});
       })();
 
       await Promise.race([prewarmPromise, timeoutPromise]);
 
       // Give the UI a moment to settle
       if (!cancelled) {
-        setTimeout(() => setReady(true), 150);
+        readyTimerRef.current = setTimeout(() => setReady(true), 150);
       }
     };
 
@@ -44,6 +59,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      if (readyTimerRef.current) {
+        clearTimeout(readyTimerRef.current);
+        readyTimerRef.current = null;
+      }
     };
   }, []);
 
