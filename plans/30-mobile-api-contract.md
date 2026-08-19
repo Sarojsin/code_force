@@ -318,6 +318,69 @@ Auth: Bearer <access_token>
 
 **Response `204`:** No content
 
+### 3.13 Change Password (with old-password verification)
+
+```
+POST /auth/password/change
+Auth: Bearer <access_token>
+```
+
+**Request:**
+```json
+{
+  "old_password": "currentPassword123",
+  "new_password": "newSecurePassword456"
+}
+```
+
+**Response `204`:** No content. Rotates `user_secret_key` and revokes ALL sessions — the client's tokens become invalid and the user must re-login on every device (`ChangePasswordScreen` shows this note).
+
+**Errors:** `401 INVALID_CREDENTIALS` (old password wrong), `422 VALIDATION_FAILED` (weak new password), `400` when the account is not `provider == "local"`.
+
+### 3.14 Get / Update / Delete Profile
+
+```
+GET    /auth/me                 → 200 UserResponse (server-authoritative hydration)
+PUT    /auth/me                 → 200 UserResponse (update display_name / phone_number)
+DELETE /auth/me                 → 204 No content (soft-delete account, password required)
+Auth: Bearer <access_token> (all three)
+```
+
+**PUT request:**
+```json
+{
+  "display_name": "Jane Doe",      // optional
+  "phone_number": "+14155552671"   // optional; E.164, must be unique
+}
+```
+
+**PUT response `200`:**
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "phone_number": "+14155552671",
+  "display_name": "Jane Doe",
+  "role": "user",
+  "is_active": true,
+  "is_verified": false,
+  "provider": "local",
+  "created_at": "2024-01-01T00:00:00Z",
+  "last_login_at": "2024-01-01T00:00:00Z",
+  "onboarding_completed": true
+}
+```
+
+**DELETE request:**
+```json
+{ "password": "currentPassword123" }
+```
+
+**DELETE behavior:** verifies the password, revokes all sessions, flips `is_active = false` (soft delete, backend rule §1.4). Any further request returns 401/404 immediately.
+
+**PUT errors:** `409 CONFLICT` (phone already in use), `422 VALIDATION_FAILED`.
+**DELETE errors:** `401 INVALID_CREDENTIALS` (password wrong).
+
 ---
 
 ## 4. Feature Flags
@@ -462,8 +525,9 @@ Returns a dictionary-encoded calendar grid with cycle day types, the next predic
 
 **Query params:** `?months_back=3&months_forward=3&today=2026-08-01`
 
-- `months_back` / `months_forward`: horizontal window in months (default 3).
+- `months_back` / `months_forward`: horizontal window in months (default 3, range 1–12). Server caps the returned history with a hard lower bound of `months_back` (31 days per month) so the payload cannot grow with account age; the recent-window entries drive the day grid while prediction statistics use an internal wider history.
 - `today` (optional): client-local `YYYY-MM-DD`. The server anchors the `T` day marker and the `needs_checkin` window to it (falls back to server date when omitted). This keeps the calendar aligned with the phone's calendar day across timezones.
+- `If-None-Match` (header, optional): ETag from a previous response. Server revalidates and returns `304 Not Modified` (empty body) when the body is unchanged.
 
 **Response `200`:**
 
@@ -503,7 +567,46 @@ Returns a dictionary-encoded calendar grid with cycle day types, the next predic
 | `next_period_in_days` | `int \| null` | Days until next predicted period (clamped to ≥ 0) |
 | `needs_checkin` | `bool` | Whether the check-in card should show. `true` only when the prediction is unconfirmed, no recent period entry exists, and today is within the check-in window: `[pred − max(3, window), pred + max(6, window + 1)]` when `window = prediction_window_days`, else `[pred − 3, pred + 6]` |
 
-**ETag:** Backend computes a SHA-256 ETag on the response body. Mobile sends `If-None-Match`; server returns `304 Not Modified` when unchanged.
+**ETag:** Backend computes a SHA-256 ETag on the response body. Mobile sends `If-None-Match`; server returns `304 Not Modified` when unchanged. Mobile keeps a small in-memory ETag cache in `src/services/api/client.ts`: it attaches `If-None-Match` on GET and, on `304 Not Modified`, serves the previously cached body (no reparse, no refetch payload). ETag caching is GET-scoped and only active for endpoints that emit `ETag` (calendar).
+
+---
+
+### `GET /api/v1/cycle/entries`
+
+Returns the list of cycle (period) entries, used by Analytics, Calendar and history screens.
+
+**Query params:** `?limit=60&months_back=6&offset=0`
+
+The mobile client keeps these bounded so cached responses (and the shared React Query `entries` cache in `getCycleKeys`) stay small (Phase D.2):
+
+| Param | Default | Notes |
+|-------|---------|-------|
+| `limit` | `100` | Page size. Client uses `60` (calendar), `24` (analytics), `1` (catch-up). |
+| `months_back` | `3` | History window in months (server applies a `months_back` lower bound, mirroring `GET /cycle/calendar`). Analytics passes `6`, calendar `6`, history `6`. |
+| `offset` | `0` | Admin/older reads; user-facing lists typically paginate by cursor (see pagination, project invariant 3). |
+
+Because different screens pass different `limit`/`months_back`, each combination is a **separate cache entry** (the query key embeds the params). This is intentional; the params are bounded so the union of cached entry sets stays small.
+
+**Response `200`:**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "period_start_date": "2026-05-01",
+      "period_end_date": "2026-05-05",
+      "flow_intensity": "medium",
+      "notes": "…",
+      "is_active": true,
+      "created_at": "2026-05-01T09:00:00Z"
+    }
+  ],
+  "message": "ok"
+}
+```
+
+**ETag:** supports `If-None-Match` / `304 Not Modified` (see §9), exercised by the shared `api` client interceptors.
 
 ---
 

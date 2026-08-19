@@ -16,12 +16,16 @@ import { FeatureFlagLocalService } from '../FeatureFlagLocalService';
 
 jest.mock('../../../db/connection', () => ({
   getDb: jest.fn(),
+  withTransaction: jest.fn(),
 }));
 
-const { getDb } = jest.requireMock('../../../db/connection');
+const { getDb, withTransaction } = jest.requireMock('../../../db/connection');
+
+let rawSqlite: InstanceType<typeof Database> | null = null;
 
 function createTestDb() {
   const sqlite = new Database(':memory:');
+  rawSqlite = sqlite;
   const db = drizzle(sqlite, { schema });
 
   migrate(db, {
@@ -32,6 +36,18 @@ function createTestDb() {
   // transactions are synchronous and reject promise-returning callbacks, so
   // shim the async contract here for parity.
   (db as any).transaction = async (cb: (tx: any) => Promise<void>) => cb(db);
+
+  // Production withTransaction spans a single queue turn and hands the native
+  // db (runAsync) to the callback. Here the same contract is served by the
+  // raw better-sqlite3 handle so toSQL-built statements actually execute.
+  withTransaction.mockImplementation(
+    async (fn: (nativeDb: { runAsync: (sql: string, params?: any[]) => Promise<void> }) => Promise<void>) =>
+      fn({
+        runAsync: async (sql: string, params?: any[]) => {
+          rawSqlite!.prepare(sql).run(...(params ?? []));
+        },
+      }),
+  );
 
   return db;
 }
