@@ -155,6 +155,32 @@ async def test_get_calendar_with_entries_and_predictions(svc: CycleService, user
 
 
 @pytest.mark.asyncio
+async def test_get_calendar_months_back_bounds_history(svc: CycleService, user: User) -> None:
+    # Phase D.4: get_calendar must honor months_back as a hard lower bound so
+    # the payload cannot grow with account age.
+    old_start = date.today() - timedelta(days=400)
+    old_end = old_start + timedelta(days=4)
+    await svc.create_entry(
+        user.id,
+        CycleEntryCreate(period_start_date=old_start, period_end_date=old_end),
+    )
+    recent_start = date.today() - timedelta(days=10)
+    await svc.create_entry(
+        user.id,
+        CycleEntryCreate(period_start_date=recent_start, period_end_date=recent_start + timedelta(days=4)),
+    )
+    cal = await svc.get_calendar(user.id, months_back=1, months_forward=0)
+    # The 400-day-old period must NOT show up in the returned day grid.
+    for d in (old_start + timedelta(days=i) for i in range(5)):
+        assert d.isoformat() not in cal["days"]
+    # The recent period is inside the window and must be present.
+    assert any(
+        recent_start <= date.fromisoformat(k) <= recent_start + timedelta(days=4)
+        for k in cal["days"]
+    )
+
+
+@pytest.mark.asyncio
 async def test_get_calendar_no_predictions(svc: CycleService, user: User) -> None:
     cal = await svc.get_calendar(user.id, months_back=1, months_forward=1)
     assert cal["predictions"] is not None

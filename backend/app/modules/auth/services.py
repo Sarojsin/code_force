@@ -362,6 +362,47 @@ class AuthService:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def update_profile(
+        self,
+        user_id: uuid.UUID,
+        display_name: str | None = None,
+        phone_number: str | None = None,
+    ) -> User:
+        """Update the current user's editable profile fields (PUT /auth/me).
+
+        ``display_name`` / ``phone_number``: only applied when not ``None``
+        (PATCH semantics — mobile sends the full form each save).
+        """
+        user = await self._load_user(user_id)
+        if display_name is not None:
+            user.display_name = display_name
+        if phone_number is not None:
+            # Enforce uniqueness like register/login (rule §1.12 row-permission).
+            dup = (
+                await self.db.execute(
+                    select(User).where(User.phone_number == phone_number, User.id != user_id)
+                )
+            ).scalar_one_or_none()
+            if dup is not None:
+                raise ConflictError("Phone number is already in use")
+            user.phone_number = phone_number
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
+    async def delete_account(self, user_id: uuid.UUID, password: str) -> None:
+        """Soft-delete the account (rule §1.4) after verifying the password.
+
+        Flips ``is_active`` off and revokes all sessions so every outstanding
+        JWT stops working immediately.
+        """
+        user = await self._load_user(user_id)
+        if user.hashed_password is None or not verify_password(password, user.hashed_password):
+            raise InvalidCredentialsError("Password is incorrect")
+        await self._revoke_user_sessions(user_id)
+        user.is_active = False
+        await self.db.commit()
+
     async def change_password(
         self,
         user_id: uuid.UUID,

@@ -55,6 +55,7 @@ async def app_client(monkeypatch) -> AsyncClient:
     async with engine.begin() as conn:
         from app.modules.auth import models  # noqa: F401
         from app.modules.users import models as users_models  # noqa: F401
+        from app.modules.onboarding import models as onboarding_models  # noqa: F401
         await conn.run_sync(Base.metadata.create_all)
 
     Session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -119,6 +120,9 @@ async def app_client(monkeypatch) -> AsyncClient:
     app.dependency_overrides[auth_deps.get_twilio_client] = _override_twilio
     # Revocation store
     app.dependency_overrides[auth_deps.get_revocation_store] = lambda: _NoopRevocation()  # type: ignore[arg-type]
+    from app.core.security import get_token_revocation_store
+
+    app.dependency_overrides[get_token_revocation_store] = lambda: _NoopRevocation()  # type: ignore[arg-type]
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -296,3 +300,88 @@ async def test_health_live_ok(app_client: AsyncClient) -> None:
     r = await app_client.get("/health/live")
     assert r.status_code == 200
     assert r.json() == {"status": "ok"}
+
+
+async def _register_and_token(app_client: AsyncClient, email: str, password: str) -> str:
+    """Register a user and return its access token."""
+    r = await app_client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": password, "display_name": "Test User"},
+    )
+    assert r.status_code == 201
+    return r.json()["tokens"]["access_token"]
+
+
+def _auth(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.mark.asyncio
+async def test_get_me_returns_profile(app_client: AsyncClient) -> None:
+    token = await _register_and_token(app_client, "me@test.com", "MyPassword1!")
+    r = await app_client.get("/api/v1/auth/me", headers=_auth(token))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["email"] == "me@test.com"
+    assert body["display_name"] == "Test User"
+
+
+@pytest.mark.asyncio
+async def test_update_me_changes_display_name(app_client: AsyncClient) -> None:
+    token = await _register_and_token(app_client, "edit@test.com", "MyPassword1!")
+    r = await app_client.put(
+        "/api/v1/auth/me",
+        json={"display_name": "Jane Doe", "phone_number": "+14155552671"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["display_name"] == "Jane Doe"
+    assert body["phone_number"] == "+14155552671"
+
+
+@pytest.mark.asyncio
+async def test_update_me_409_duplicate_phone(app_client: AsyncClient) -> None:
+    token_first = await _register_and_token(app_client, "first@test.com", "MyPassword1!")
+    r_first = await app_client.put(
+        "/api/v1/auth/me",
+        json={"phone_number": "+14155552671"},
+        headers=_auth(token_first),
+    )
+    assert r_first.status_code == 200
+    token = await _register_and_token(app_client, "second@test.com", "MyPassword1!")
+    r = await app_client.put(
+        "/api/v1/auth/me",
+        json={"phone_number": "+14155552671"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 409
+    assert r.json()["error"]["code"] == "CONFLICT"
+
+
+@pytest.mark.asyncio
+async def test_delete_me_soft_deletes_account(app_client: AsyncClient) -> None:
+    token = await _register_and_token(app_client, "delete@test.com", "MyPassword1!")
+    r = await app_client.request(
+        "DELETE",
+        "/api/v1/auth/me",
+        json={"password": "MyPassword1!"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 204
+    # Subsequent requests must fail — account is inactive.
+    r2 = await app_client.get("/api/v1/auth/me", headers=_auth(token))
+    assert r2.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_delete_me_wrong_password_401(app_client: AsyncClient) -> None:
+    token = await _register_and_token(app_client, "delwrong@test.com", "MyPassword1!")
+    r = await app_client.request(
+        "DELETE",
+        "/api/v1/auth/me",
+        json={"password": "WrongPassword1!"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 401
+    assert r.json()["error"]["code"] == "INVALID_CREDENTIALS"

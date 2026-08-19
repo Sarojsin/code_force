@@ -95,6 +95,28 @@ class PasswordChangeCreate(BaseModel):
         return _validate_password_strength(v)
 
 
+class ProfileUpdateCreate(BaseModel):
+    """Fields a user may update on their own profile (PUT /auth/me)."""
+
+    display_name: str | None = Field(None, max_length=100)
+    phone_number: str | None = Field(None)
+
+    @field_validator("phone_number")
+    @classmethod
+    def validate_phone(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not PHONE_RE.match(v):
+            raise ValueError("phone_number must be E.164 format (e.g. +14155552671)")
+        return v
+
+
+class AccountDeleteCreate(BaseModel):
+    """Body for DELETE /auth/me — password required to confirm account deletion."""
+
+    password: str = Field(..., min_length=1)
+
+
 class MFAEnableResponse(BaseModel):
     secret: str
     otpauth_uri: str

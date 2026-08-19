@@ -617,14 +617,37 @@ class CycleService:
         today_ref = today or date.today()
         today_str = today_ref.isoformat()
 
+        # Hard lower bound so the payload cannot grow with account age (Phase D.4).
+        # Slightly over months_back (31d) to never drop the month where an
+        # on-going period starts.
+        start = today_ref - timedelta(days=months_back * 31)
+
         entries_stmt = (
             select(CycleEntry)
             .where(CycleEntry.user_id == user_id)
             .where(CycleEntry.period_start_date <= end)
+            .where(CycleEntry.period_start_date >= start)
             .where(CycleEntry.is_active.is_(True))
             .order_by(CycleEntry.period_start_date.asc())
         )
         entries = (await self.db.execute(entries_stmt)).scalars().all()
+
+        # Prediction features need more history than the client window; fetch a
+        # wider set (24 months) just for cycle/period-length statistics without
+        # growing the response payload.
+        wide_start = today_ref - timedelta(days=24 * 31)
+        if wide_start < start:
+            wide_entries = entries
+        else:
+            wide_entries_stmt = (
+                select(CycleEntry)
+                .where(CycleEntry.user_id == user_id)
+                .where(CycleEntry.period_start_date <= end)
+                .where(CycleEntry.period_start_date >= wide_start)
+                .where(CycleEntry.is_active.is_(True))
+                .order_by(CycleEntry.period_start_date.asc())
+            )
+            wide_entries = (await self.db.execute(wide_entries_stmt)).scalars().all()
 
         preds_stmt = (
             select(PredictedCycle)
@@ -644,9 +667,10 @@ class CycleService:
 
         from app.integrations.prediction_engine import build_rolling_features
 
-        cycle_lengths = self._compute_cycle_lengths(entries)
+        cycle_lengths = self._compute_cycle_lengths(wide_entries)
         period_lengths = [
-            compute_period_length(e.period_start_date, e.period_end_date, 5) for e in entries[:4]
+            compute_period_length(e.period_start_date, e.period_end_date, 5)
+            for e in wide_entries[:4]
         ]
         features = build_rolling_features(cycle_lengths, period_lengths)
         avg_period_length = round(features.avg_period_length)

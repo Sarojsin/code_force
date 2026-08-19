@@ -8,6 +8,8 @@ Endpoints:
   POST /api/v1/auth/refresh           (rotate refresh token, replay-protected)
   POST /api/v1/auth/logout            (revoke current access + refresh)
   GET  /api/v1/auth/me                (current user profile — mobile hydration)
+  PUT  /api/v1/auth/me                (update display name / phone number)
+  DELETE /api/v1/auth/me              (soft-delete account, password required)
   POST /api/v1/auth/mfa/enable        (issue TOTP secret; user must verify)
   POST /api/v1/auth/mfa/verify-setup  (confirm TOTP code, flip mfa_enabled)
   POST /api/v1/auth/mfa/login         (complete MFA challenge)
@@ -30,6 +32,7 @@ from app.core.token_revocation import TokenRevocationStore
 from app.modules.auth.dependencies import AuthServiceDep, CurrentUser
 from app.modules.auth.models import UserSession
 from app.modules.auth.schemas import (
+    AccountDeleteCreate,
     DeviceRegisterCreate,
     DeviceRegisterResponse,
     LoginCreate,
@@ -44,6 +47,7 @@ from app.modules.auth.schemas import (
     PasswordChangeCreate,
     PasswordLoginCreate,
     PasswordSetCreate,
+    ProfileUpdateCreate,
     RefreshTokenCreate,
     RegisterCreate,
     TokenPair,
@@ -299,6 +303,38 @@ async def get_me(
     resp = UserResponse.model_validate(current_user)
     resp.onboarding_completed = onboarding_completed
     return resp
+
+
+@router.put(
+    "/me",
+    response_model=UserResponse,
+    summary="Update the current user's profile (display name, phone number)",
+)
+async def update_me(
+    payload: ProfileUpdateCreate,
+    current_user: CurrentUser,
+    svc: AuthServiceDep,
+) -> UserResponse:
+    user = await svc.update_profile(
+        current_user.id,
+        display_name=payload.display_name,
+        phone_number=payload.phone_number,
+    )
+    return UserResponse.model_validate(user)
+
+
+@router.delete(
+    "/me",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Soft-delete the current user's account (password required)",
+)
+async def delete_me(
+    payload: AccountDeleteCreate,
+    current_user: CurrentUser,
+    svc: AuthServiceDep,
+) -> Response:
+    await svc.delete_account(current_user.id, payload.password)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ---- Password management ----
