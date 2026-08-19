@@ -1,11 +1,42 @@
+import { memo, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDiaryPages } from '../../services/queries/diary';
+
+const PageCard = memo(function PageCard({
+  page,
+  onPress,
+}: {
+  page: { id: string; page_date: string; memory_title?: string | null; page_number?: number | null };
+  onPress: (id: string) => void;
+}) {
+  return (
+    <TouchableOpacity style={styles.pageCard} onPress={() => onPress(page.id)}>
+      <Text style={styles.pageDate}>{page.page_date}</Text>
+      {page.memory_title && <Text style={styles.pageTitle} numberOfLines={2}>{page.memory_title}</Text>}
+      <Text style={styles.pageNum}>Page {page.page_number ?? 1}</Text>
+    </TouchableOpacity>
+  );
+});
 
 export function DiaryScreen({ route, navigation }: any) {
   const { diaryId } = route.params;
   const { top } = useSafeAreaInsets();
   const { data: pages } = useDiaryPages(diaryId);
+
+  const handleOpenPage = useCallback(
+    (pageId: string) => navigation.navigate('DiaryPage', { diaryId, pageId }),
+    [navigation, diaryId],
+  );
+
+  const handleCreatePage = useCallback(() => navigation.navigate('DiaryEditor', { diaryId }), [navigation, diaryId]);
+
+  const renderItem = useCallback(
+    ({ item }: { item: { id: string; page_date: string; memory_title?: string | null; page_number?: number | null } }) => (
+      <PageCard page={item} onPress={handleOpenPage} />
+    ),
+    [handleOpenPage],
+  );
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>
@@ -20,22 +51,17 @@ export function DiaryScreen({ route, navigation }: any) {
         numColumns={2}
         columnWrapperStyle={styles.row}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.pageCard}
-            onPress={() => navigation.navigate('DiaryPage', { diaryId, pageId: item.id })}
-          >
-            <Text style={styles.pageDate}>{item.page_date}</Text>
-            {item.memory_title && <Text style={styles.pageTitle} numberOfLines={2}>{item.memory_title}</Text>}
-            <Text style={styles.pageNum}>Page {item.page_number}</Text>
-          </TouchableOpacity>
-        )}
+        renderItem={renderItem}
+        initialNumToRender={6}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        removeClippedSubviews={true}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>No pages yet</Text>
             <TouchableOpacity
               style={styles.addBtn}
-              onPress={() => navigation.navigate('DiaryEditor', { diaryId })}
+              onPress={handleCreatePage}
             >
               <Text style={styles.addBtnText}>Create First Page</Text>
             </TouchableOpacity>

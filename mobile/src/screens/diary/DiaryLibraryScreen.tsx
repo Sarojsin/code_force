@@ -1,8 +1,9 @@
 import { View, Text, FlatList, TouchableOpacity, TextInput, Modal, Alert, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useDiaries, useCreateDiary } from '../../services/queries/diary';
 import { DiaryCard } from './components/DiaryCard';
+import type { Diary } from '../../db/schema';
 
 export function DiaryLibraryScreen({ navigation }: any) {
   const { top } = useSafeAreaInsets();
@@ -30,6 +31,16 @@ export function DiaryLibraryScreen({ navigation }: any) {
     }
   };
 
+  const handleOpenDiary = useCallback(
+    (id: string) => navigation.navigate('DiaryScreen', { diaryId: id }),
+    [navigation],
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: Diary }) => <DiaryCard diary={item} onPress={handleOpenDiary} />,
+    [handleOpenDiary],
+  );
+
   return (
     <View style={[styles.container, { paddingTop: top }]}>
       <View style={styles.header}>
@@ -47,9 +58,11 @@ export function DiaryLibraryScreen({ navigation }: any) {
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={styles.row}
-        renderItem={({ item }) => (
-          <DiaryCard diary={item} onPress={() => navigation.navigate('DiaryScreen', { diaryId: item.id })} />
-        )}
+        renderItem={renderItem}
+        initialNumToRender={6}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        removeClippedSubviews={true}
         ListHeaderComponent={
           <TouchableOpacity
             style={styles.newDiaryCard}

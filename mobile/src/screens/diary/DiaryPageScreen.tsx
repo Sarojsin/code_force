@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, ScrollView, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
 import { ResizeMode, Video, Audio } from 'expo-av';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -110,7 +111,7 @@ export function DiaryPageScreen({ route, navigation }: any) {
         return <Text style={[styles.textBlock, obj.font_family ? { fontFamily: obj.font_family } : null, obj.font_size ? { fontSize: obj.font_size } : null]}>{obj.text_content}</Text>;
       case 'image':
         return mediaUri
-          ? <Image source={{ uri: mediaUri }} style={[styles.mediaFrame, { width: obj.width ?? 200, height: obj.height ?? 200 }]} resizeMode="cover" />
+          ? <ExpoImage source={{ uri: mediaUri }} style={[styles.mediaFrame, { width: obj.width ?? 200, height: obj.height ?? 200 }]} contentFit="cover" cachePolicy="memory-disk" />
           : <View style={[styles.mediaPlaceholder, { width: obj.width ?? 200, height: obj.height ?? 200 }]}><Text style={styles.mediaPlaceholderIcon}>🖼</Text></View>;
       case 'video':
         return mediaUri

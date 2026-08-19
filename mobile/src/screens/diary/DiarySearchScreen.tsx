@@ -1,9 +1,24 @@
-import { useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDiarySearch } from '../../services/queries/diary';
 import { diaryLocal } from '../../services/localDb';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+
+const SearchResultCard = memo(function SearchResultCard({
+  title,
+  date,
+}: {
+  title: string;
+  date: string;
+}) {
+  return (
+    <TouchableOpacity style={styles.resultCard}>
+      <Text style={styles.resultTitle}>{title}</Text>
+      <Text style={styles.resultMeta}>{date}</Text>
+    </TouchableOpacity>
+  );
+});
 
 export function DiarySearchScreen({ navigation }: any) {
   const { top } = useSafeAreaInsets();
@@ -26,6 +41,13 @@ export function DiarySearchScreen({ navigation }: any) {
 
   const results = localResults.length > 0 ? localResults : serverResults;
 
+  const renderItem = useCallback(
+    ({ item }: { item: { id?: string; page_ids?: string[]; memory_title?: string | null; page_date: string } }) => (
+      <SearchResultCard title={item.memory_title ?? 'Untitled'} date={item.page_date} />
+    ),
+    [],
+  );
+
   return (
     <View style={[styles.container, { paddingTop: top }]}>
       <View style={styles.header}>
@@ -44,13 +66,12 @@ export function DiarySearchScreen({ navigation }: any) {
 
       <FlatList
         data={results}
-        keyExtractor={(item) => item.id ?? item.page_ids?.[0]}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.resultCard}>
-            <Text style={styles.resultTitle}>{item.memory_title ?? 'Untitled'}</Text>
-            <Text style={styles.resultMeta}>{item.page_date}</Text>
-          </TouchableOpacity>
-        )}
+        keyExtractor={(item) => item.id ?? item.page_ids?.[0] ?? item.page_date}
+        renderItem={renderItem}
+        initialNumToRender={7}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        removeClippedSubviews={true}
         ListEmptyComponent={
           query.length > 0 ? (
             <Text style={styles.empty}>No results found</Text>

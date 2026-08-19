@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useForm } from 'react-hook-form';
@@ -16,6 +16,7 @@ import {
   useCycleEntries,
   useLogCorrection,
   useCycleDays,
+  CYCLE_ENTRIES_WINDOW,
 } from 'src/services/queries';
 import { computeCycleDay, computePhaseRanges, PHASE_META, toLocalDateStr, derivePhaseForDate, getPhaseMeta } from 'src/utils';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -99,7 +100,16 @@ export function CalendarScreen() {
 
   const [showDaySheet, setShowDaySheet] = useState(false);
   const [selectedPhaseDetail, setSelectedPhaseDetail] = useState<PhaseRange['key'] | null>(null);
-  const [preFillSymptoms, setPreFillSymptoms] = useState<string[]>([]);
+  const sheetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (sheetTimerRef.current) {
+        clearTimeout(sheetTimerRef.current);
+        sheetTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const { control, handleSubmit, reset } = useForm<OverrideForm>({
     resolver: zodResolver(overrideSchema),
@@ -107,22 +117,32 @@ export function CalendarScreen() {
   });
 
   const { data: calData, isLoading } = useCycleCalendar(3, 3);
-  const { data: cycleEntries = [] } = useCycleEntries({ months_back: 6 });
+  const { data: cycleEntries = [] } = useCycleEntries({ ...CYCLE_ENTRIES_WINDOW });
   const logCorrection = useLogCorrection();
   const encodedDays = useMemo(() => calData?.days ?? {}, [calData]);
 
   const today = useMemo(() => new Date(), []);
-  const cycleDay = computeCycleDay(calData?.days, today);
-  const todaysStr = format(today, 'yyyy-MM-dd');
-  const currentPhase = getPhaseForDate(encodedDays, todaysStr);
+  const cycleDay = useMemo(() => computeCycleDay(calData?.days, today), [calData, today]);
+  const todaysStr = useMemo(() => format(today, 'yyyy-MM-dd'), [today]);
+  const currentPhase = useMemo(
+    () => getPhaseForDate(encodedDays, todaysStr),
+    [encodedDays, todaysStr],
+  );
 
-  const selectedStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
-  const selectedPhase = getPhaseForDate(encodedDays, selectedStr);
+  const selectedStr = useMemo(
+    () => (selectedDate ? format(selectedDate, 'yyyy-MM-dd') : ''),
+    [selectedDate],
+  );
+  const selectedPhase = useMemo(
+    () => getPhaseForDate(encodedDays, selectedStr),
+    [encodedDays, selectedStr],
+  );
 
   const { data: selectedDayData } = useCycleDays(
     selectedDate
       ? { start: toLocalDateStr(selectedDate), end: toLocalDateStr(selectedDate) }
       : undefined,
+    { enabled: !!selectedDate },
   );
   const dayDataForSheet: DailyDay | null = useMemo(() => {
     if (!selectedDate || !selectedDayData) return null;
@@ -157,12 +177,14 @@ export function CalendarScreen() {
 
   const openDaySheetFromPhase = useCallback(() => {
     setSelectedPhaseDetail(null);
-    setTimeout(() => {
+    if (sheetTimerRef.current) {
+      clearTimeout(sheetTimerRef.current);
+    }
+    sheetTimerRef.current = setTimeout(() => {
       setSelectedDate(today);
-      setPreFillSymptoms([]);
       setShowDaySheet(true);
     }, 300);
-  }, [today, preFillSymptoms]);
+  }, [today]);
 
   const handlePermanentOverride = handleSubmit((data) => {
     const endDate = addDays(new Date(data.overrideDate), 5);
@@ -182,15 +204,26 @@ export function CalendarScreen() {
   });
 
   const openDaySheet = () => {
-    setPreFillSymptoms([]);
     setShowDaySheet(true);
   };
 
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    setPreFillSymptoms([]);
-    setShowDaySheet(true);
+  const closeDaySheet = () => {
+    if (sheetTimerRef.current) {
+      clearTimeout(sheetTimerRef.current);
+      sheetTimerRef.current = null;
+    }
+    setShowDaySheet(false);
   };
+
+  const handleDateSelect = useCallback((date: Date) => {
+    setSelectedDate(date);
+    setShowDaySheet(true);
+  }, []);
+
+  const phaseAccentForDate = useCallback(
+    (dateStr: string) => getPhaseAccent(encodedDays, dateStr),
+    [encodedDays],
+  );
 
   return (
     <ScreenContainer
@@ -265,7 +298,7 @@ export function CalendarScreen() {
           selectedDate={selectedDate ?? undefined}
           onDateSelect={handleDateSelect}
           encodedDays={encodedDays}
-          phaseAccentForDate={(dateStr) => getPhaseAccent(encodedDays, dateStr)}
+          phaseAccentForDate={phaseAccentForDate}
           dimmedDates={dimmedDates}
           showHeader={false}
           isLoading={isLoading}
@@ -324,7 +357,6 @@ export function CalendarScreen() {
                 <Pressable
                   key={range.key}
                   onPress={() => {
-                    setPreFillSymptoms([]);
                     setSelectedPhaseDetail(range.key);
                   }}
                   style={[styles.phaseOverviewCard, { backgroundColor: meta.bg + '66', borderRadius: 16 }]}
@@ -373,11 +405,11 @@ export function CalendarScreen() {
             coveringEntry={coveringEntry}
             initialDayData={dayDataForSheet}
             onClose={() => {
-              setShowDaySheet(false);
+              closeDaySheet();
               setSelectedDate(null);
             }}
             onDone={() => {
-              setShowDaySheet(false);
+              closeDaySheet();
               setSelectedDate(null);
               Toast.show({ type: 'success', text1: 'Day logged' });
             }}
@@ -400,7 +432,7 @@ export function CalendarScreen() {
               todayMood={null}
               cycleStats={cycleStats}
               onLogToday={openDaySheetFromPhase}
-              onPreFill={(symptoms) => setPreFillSymptoms(symptoms)}
+              onPreFill={() => undefined}
             />
           </BottomSheet>
         )}

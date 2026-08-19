@@ -2,7 +2,7 @@
  * LogPeriodScreen — log period start/end dates, flow, symptoms, mood, energy.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { StyleSheet, View, Pressable } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,7 +25,7 @@ const symptoms = ['Cramps', 'Bloating', 'Headache', 'Fatigue', 'Nausea', 'Backac
 const moods = ['Happy', 'Sad', 'Irritable', 'Anxious', 'Calm', 'Tired', 'Energetic', 'Emotional'];
 const flowLevels = ['Light', 'Medium', 'Heavy', 'Very Heavy'] as const;
 
-const Chip = React.memo(function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+const Chip = React.memo(function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: (value: string) => void }) {
   const theme = useTheme();
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -34,7 +34,7 @@ const Chip = React.memo(function Chip({ label, selected, onPress }: { label: str
       <Pressable
         onPressIn={() => { scale.value = withSpring(0.94); }}
         onPressOut={() => { scale.value = withSpring(1); }}
-        onPress={onPress}
+        onPress={() => onPress(label)}
         accessibilityRole="button"
         accessibilityState={{ selected }}
         accessibilityLabel={label}
@@ -79,6 +79,16 @@ export const LogPeriodScreen = React.memo(function LogPeriodScreen() {
     setter(list.includes(item) ? list.filter(i => i !== item) : [...list, item]);
   };
 
+  const toggleFlow = useCallback((value: string) => setSelectedFlow(value), []);
+  const toggleSymptom = useCallback(
+    (value: string) => toggleChip(value, selectedSymptoms, setSelectedSymptoms),
+    [selectedSymptoms],
+  );
+  const toggleMood = useCallback(
+    (value: string) => toggleChip(value, selectedMoods, setSelectedMoods),
+    [selectedMoods],
+  );
+
   const onSubmit = async (data: LogPeriodForm) => {
     if (data.endDate) {
       const store = useEndDateStore.getState();
@@ -112,21 +122,21 @@ export const LogPeriodScreen = React.memo(function LogPeriodScreen() {
           <Txt variant="bodySmall" color="secondary" style={{ marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm }}>Flow intensity</Txt>
           <View style={styles.chipRow}>
             {flowLevels.map(f => (
-              <Chip key={f} label={f} selected={selectedFlow === f} onPress={() => setSelectedFlow(f)} />
+              <Chip key={f} label={f} selected={selectedFlow === f} onPress={toggleFlow} />
             ))}
           </View>
 
           <Txt variant="bodySmall" color="secondary" style={{ marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm }}>Symptoms</Txt>
           <View style={styles.chipRow}>
             {symptoms.map(s => (
-              <Chip key={s} label={s} selected={selectedSymptoms.includes(s)} onPress={() => toggleChip(s, selectedSymptoms, setSelectedSymptoms)} />
+              <Chip key={s} label={s} selected={selectedSymptoms.includes(s)} onPress={toggleSymptom} />
             ))}
           </View>
 
           <Txt variant="bodySmall" color="secondary" style={{ marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm }}>Mood tags</Txt>
           <View style={styles.chipRow}>
             {moods.map(m => (
-              <Chip key={m} label={m} selected={selectedMoods.includes(m)} onPress={() => toggleChip(m, selectedMoods, setSelectedMoods)} />
+              <Chip key={m} label={m} selected={selectedMoods.includes(m)} onPress={toggleMood} />
             ))}
           </View>
 

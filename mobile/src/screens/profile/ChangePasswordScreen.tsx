@@ -12,7 +12,9 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 
 import { Button, FormField, KeyboardAvoidingWrapper, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
+import { authService } from 'src/services/api';
 import { logger } from 'src/utils';
+import Toast from 'react-native-toast-message';
 import type { ProfileStackParamList } from 'src/navigation/types';
 import { z } from 'zod';
 
@@ -37,12 +39,14 @@ export function ChangePasswordScreen() {
     mode: 'onBlur',
   });
 
-  const onSubmit = async (_data: PasswordForm) => {
+  const onSubmit = async (data: PasswordForm) => {
     try {
-      logger.info('ChangePasswordScreen.submit');
+      await authService.changePassword(data.currentPassword, data.newPassword);
+      Toast.show({ type: 'success', text1: 'Password updated. You are logged out on other devices.' });
       navigation.goBack();
     } catch (err) {
       logger.error('ChangePasswordScreen.submit.failed', err);
+      Toast.show({ type: 'error', text1: 'Could not change password. Check your current password.' });
     }
   };
 
