@@ -1,0 +1,33 @@
+env: load .env
+env: export EXPO_PUBLIC_API_URL
+Starting project at E:\her_care\mobile
+Logs: E:\her_care\mobile\.expo\dev\logs\start.log
+Using src/app as the root directory for Expo Router.
+Starting Metro Bundler
+
+Waiting on http://localhost:8081
+
+An update for expo is available: 57.0.8 → ~57.0.14
+13 other packages may need updating. Run npx expo install --check for details.
+Logs for your project will appear below.
+Android Bundled 3508ms index.js (4827 modules)
+ LOG  [config] Platform.OS: android ROOT: http://192.168.0.102:8000 API_BASE_URL: http://192.168.0.102:8000/api/v1
+ WARN  InteractionManager has been deprecated and will be removed in a future release. Please refactor long tasks into smaller ones, and  use 'requestIdleCallback' instead.
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ LOG  Loading react-native-worklets-core...
+ LOG  Worklets loaded successfully
+ WARN  expo-background-fetch: This library is deprecated. Use expo-background-task instead.
+ INFO  db_maintenance.registered
+ WARN  sync.cycle.skipped_no_auth
+Android Bundled 638ms src\services\companion\lunaSyncClient.ts (1249 modules)
+ INFO  prune.complete
+ INFO  Migrated store data to SQLite
+Android Bundled 42ms src\assets\masters\symptoms.json (1 module)
+ INFO  Cleaned up obsolete AsyncStorage keys {"keys": ["shecare.cycle", "shecare.end_date_pending"]}
+ INFO  SQLite backfill complete {"records": 0}
+Android Bundled 31ms src\assets\masters\medications.json (1 module)
+ INFO  Day masters seeded from bundle {"medications": 7, "symptoms": 57}
+ INFO  AppState.backgrounded
+ WARN  sync.cycle.skipped_no_auth
+ ERROR  LoginScreen.login.failed {"code": "ERR_NETWORK", "message": "Network Error", "name": "AxiosError"}
+ INFO  AppState.backgrounded
