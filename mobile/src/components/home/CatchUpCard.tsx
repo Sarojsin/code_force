@@ -6,7 +6,7 @@ import { useTheme } from 'src/theme';
 import { useCatchUp } from 'src/hooks/useCatchUp';
 import { toLocalDateStr } from 'src/utils/date';
 
-export function CatchUpCard() {
+function CatchUpCardBase() {
   const theme = useTheme();
   const {
     backfillCards,
@@ -75,6 +75,8 @@ export function CatchUpCard() {
     </View>
   );
 }
+
+export const CatchUpCard = React.memo(CatchUpCardBase);
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: 12 },

@@ -14,7 +14,7 @@ import { useCompanionStore } from 'src/stores/companionStore';
  * NEVER shows seek_care (pain ≥ 7) — safety guardrail.
  * Hidden when the "Show health insights" settings toggle is OFF.
  */
-export function HomeRecommendationBanner() {
+function HomeRecommendationBannerBase() {
   const theme = useTheme();
   const navigation = useNavigation<any>();
   const showInsights = useCompanionStore((s) => s.showInsights);
@@ -51,6 +51,8 @@ export function HomeRecommendationBanner() {
     </Pressable>
   );
 }
+
+export const HomeRecommendationBanner = React.memo(HomeRecommendationBannerBase);
 
 const styles = StyleSheet.create({
   banner: {

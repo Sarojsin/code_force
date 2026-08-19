@@ -31,7 +31,7 @@ interface CheckInCardProps {
   calData?: CalendarResponse | null;
 }
 
-export function CheckInCard({ calData }: CheckInCardProps) {
+function CheckInCardBase({ calData }: CheckInCardProps) {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
   const checkIn = usePeriodCheckIn(calData);
@@ -131,6 +131,8 @@ export function CheckInCard({ calData }: CheckInCardProps) {
     </>
   );
 }
+
+export const CheckInCard = React.memo(CheckInCardBase);
 
 const styles = StyleSheet.create({
   card: { marginBottom: 12 },
