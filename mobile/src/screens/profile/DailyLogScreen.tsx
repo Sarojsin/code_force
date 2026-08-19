@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { memo, useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { format, addDays, startOfMonth, endOfMonth } from 'date-fns';
@@ -26,7 +26,7 @@ const FLOW_LABEL: Record<string, string> = {
   heavy: '🔴🔴',
 };
 
-function DayCard({ day, theme }: { day: DailyDay; theme: ReturnType<typeof useTheme> }) {
+const DayCard = memo(function DayCard({ day, theme }: { day: DailyDay; theme: ReturnType<typeof useTheme> }) {
   const date = new Date(day.log_date + 'T00:00:00');
   const hasData =
     day.mood ||
@@ -121,7 +121,7 @@ function DayCard({ day, theme }: { day: DailyDay; theme: ReturnType<typeof useTh
       )}
     </View>
   );
-}
+});
 
 export function DailyLogScreen() {
   const theme = useTheme();
@@ -145,6 +145,11 @@ export function DailyLogScreen() {
   }, [days]);
 
   const monthLabel = format(targetDate, 'MMMM yyyy');
+
+  const renderItem = useCallback(
+    ({ item }: { item: DailyDay }) => <DayCard day={item} theme={theme} />,
+    [theme],
+  );
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
@@ -185,7 +190,11 @@ export function DailyLogScreen() {
         <FlatList
           data={sortedDays}
           keyExtractor={(item) => item.id || item.log_date}
-          renderItem={({ item }) => <DayCard day={item} theme={theme} />}
+          renderItem={renderItem}
+          initialNumToRender={7}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          removeClippedSubviews={true}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />

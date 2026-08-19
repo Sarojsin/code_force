@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, PanResponder, StyleSheet, Image,
+  View, Text, TextInput, TouchableOpacity, PanResponder, StyleSheet,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { PolaroidFrame } from './PolaroidFrame';
 import { ResizeHandles } from './ResizeHandles';
 import { MemoryChip } from './MemoryChip';
@@ -78,7 +79,7 @@ function DraggableObjectBase({
         return <PolaroidFrame imageUri={mediaUri} width={obj.width} rotation={obj.rotation} />;
       case 'image':
         return mediaUri
-          ? <Image source={{ uri: mediaUri }} style={styles.image} resizeMode="cover" />
+          ? <Image source={{ uri: mediaUri }} style={styles.image} contentFit="cover" cachePolicy="memory-disk" />
           : <View style={styles.imagePlaceholder}><Text style={styles.imagePlaceholderText}>🖼</Text></View>;
       case 'video':
         return (

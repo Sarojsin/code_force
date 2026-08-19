@@ -1,4 +1,5 @@
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 
 interface PolaroidFrameProps {
   imageUri?: string;
@@ -14,7 +15,12 @@ export function PolaroidFrame({ imageUri, caption, rotation = 0, width = 180 }: 
     <View style={[styles.frame, { width, transform: [{ rotate: `${rotation}deg` }] }]}>
       <View style={styles.imageWrap}>
         {imageUri ? (
-          <Image source={{ uri: imageUri }} style={{ width: imgSize, height: imgSize * 0.8 }} />
+          <Image
+            source={{ uri: imageUri }}
+            style={{ width: imgSize, height: imgSize * 0.8 }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+          />
         ) : (
           <View style={[styles.placeholder, { width: imgSize, height: imgSize * 0.8 }]} />
         )}

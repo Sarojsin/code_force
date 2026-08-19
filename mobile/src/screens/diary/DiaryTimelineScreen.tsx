@@ -1,7 +1,22 @@
-import { useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDiaryTimeline } from '../../services/queries/diary';
+
+const TimelineEntryCard = memo(function TimelineEntryCard({
+  date,
+  count,
+}: {
+  date: string;
+  count: number;
+}) {
+  return (
+    <TouchableOpacity style={styles.entryCard}>
+      <Text style={styles.entryDate}>{date}</Text>
+      <Text style={styles.entryCount}>{count} page{count > 1 ? 's' : ''}</Text>
+    </TouchableOpacity>
+  );
+});
 
 export function DiaryTimelineScreen({ navigation }: any) {
   const { top } = useSafeAreaInsets();
@@ -11,6 +26,13 @@ export function DiaryTimelineScreen({ navigation }: any) {
   const { data: entries } = useDiaryTimeline(year, month);
 
   const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+
+  const renderItem = useCallback(
+    ({ item }: { item: { date: string; count: number } }) => (
+      <TimelineEntryCard date={item.date} count={item.count} />
+    ),
+    [],
+  );
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>
@@ -34,12 +56,11 @@ export function DiaryTimelineScreen({ navigation }: any) {
       <FlatList
         data={entries}
         keyExtractor={(item) => item.date}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.entryCard}>
-            <Text style={styles.entryDate}>{item.date}</Text>
-            <Text style={styles.entryCount}>{item.count} page{item.count > 1 ? 's' : ''}</Text>
-          </TouchableOpacity>
-        )}
+        renderItem={renderItem}
+        initialNumToRender={7}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        removeClippedSubviews={true}
         ListEmptyComponent={
           <Text style={styles.empty}>No entries this month</Text>
         }

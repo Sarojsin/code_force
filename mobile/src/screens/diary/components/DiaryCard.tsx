@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import type { Diary } from '../../../db/schema';
 
@@ -15,15 +16,15 @@ const SPINE_COLORS: Record<string, string> = {
 
 interface DiaryCardProps {
   diary: Diary;
-  onPress: () => void;
+  onPress: (id: string) => void;
 }
 
-export function DiaryCard({ diary, onPress }: DiaryCardProps) {
+export const DiaryCard = memo(function DiaryCard({ diary, onPress }: DiaryCardProps) {
   const coverBg = COVER_COLORS[diary.cover_color] ?? COVER_COLORS.primary;
   const spineBg = SPINE_COLORS[diary.cover_color] ?? SPINE_COLORS.primary;
 
   return (
-    <TouchableOpacity style={[styles.card, { backgroundColor: coverBg }]} onPress={onPress} activeOpacity={0.9}>
+    <TouchableOpacity style={[styles.card, { backgroundColor: coverBg }]} onPress={() => onPress(diary.id)} activeOpacity={0.9}>
       <View style={[styles.spine, { backgroundColor: spineBg }]} />
       <Text style={styles.icon}>📖</Text>
       <Text style={styles.title}>{diary.title}</Text>
@@ -32,7 +33,7 @@ export function DiaryCard({ diary, onPress }: DiaryCardProps) {
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: { height: 320, width: '48%', borderRadius: 24, overflow: 'hidden', padding: 24, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 10, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 8, marginBottom: 16 },
