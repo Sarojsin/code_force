@@ -2,29 +2,31 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 
 import { useTheme } from 'src/theme';
+import { lazyScreen } from 'src/components/ui/LazyScreen';
 import { HomeScreenRouter } from './screenRouters';
-import { MoodLogScreen } from 'src/screens/wellness/MoodLogScreen';
-import { CyclePredictionsScreen } from 'src/screens/cycle/CyclePredictionsScreen';
-import { VideoLibraryScreen } from 'src/screens/wellness/VideoLibraryScreen';
-import { ContentDetailScreen } from 'src/screens/wellness/ContentDetailScreen';
-import { JournalListScreen } from 'src/screens/wellness/JournalListScreen';
-import { JournalEntryScreen } from 'src/screens/wellness/JournalEntryScreen';
-import { MoodHistoryScreen } from 'src/screens/wellness/MoodHistoryScreen';
-import { BreathingListScreen } from 'src/screens/wellness/BreathingListScreen';
-import { InsightsScreen } from 'src/screens/wellness/InsightsScreen';
 import { HealthHubScreen } from 'src/screens/companion/HealthHubScreen';
 import { SOSActiveScreen } from 'src/screens/safety/SOSActiveScreen';
 import { SafetyHomeScreen } from 'src/screens/safety/SafetyHomeScreen';
 import { EmergencyContactsScreen } from 'src/screens/safety/EmergencyContactsScreen';
 import { EmergencyContactEditScreen } from 'src/screens/safety/EmergencyContactEditScreen';
 import { SosHistoryScreen } from 'src/screens/safety/SosHistoryScreen';
-import { DiaryLibraryScreen } from 'src/screens/diary/DiaryLibraryScreen';
-import { DiaryScreen } from 'src/screens/diary/DiaryScreen';
-import { DiaryPageScreen } from 'src/screens/diary/DiaryPageScreen';
-import { DiaryEditorScreen } from 'src/screens/diary/DiaryEditorScreen';
-import { DiaryTimelineScreen } from 'src/screens/diary/DiaryTimelineScreen';
-import { DiarySearchScreen } from 'src/screens/diary/DiarySearchScreen';
-import { DiaryAssetInstallScreen } from 'src/screens/diary/DiaryAssetInstallScreen';
+
+const MoodLogScreen = lazyScreen(() => import('src/screens/wellness/MoodLogScreen'), 'MoodLogScreen');
+const CyclePredictionsScreen = lazyScreen(() => import('src/screens/cycle/CyclePredictionsScreen'), 'CyclePredictionsScreen');
+const VideoLibraryScreen = lazyScreen(() => import('src/screens/wellness/VideoLibraryScreen'), 'VideoLibraryScreen');
+const ContentDetailScreen = lazyScreen(() => import('src/screens/wellness/ContentDetailScreen'), 'ContentDetailScreen');
+const JournalListScreen = lazyScreen(() => import('src/screens/wellness/JournalListScreen'), 'JournalListScreen');
+const JournalEntryScreen = lazyScreen(() => import('src/screens/wellness/JournalEntryScreen'), 'JournalEntryScreen');
+const MoodHistoryScreen = lazyScreen(() => import('src/screens/wellness/MoodHistoryScreen'), 'MoodHistoryScreen');
+const BreathingListScreen = lazyScreen(() => import('src/screens/wellness/BreathingListScreen'), 'BreathingListScreen');
+const InsightsScreen = lazyScreen(() => import('src/screens/wellness/InsightsScreen'), 'InsightsScreen');
+const DiaryLibraryScreen = lazyScreen(() => import('src/screens/diary/DiaryLibraryScreen'), 'DiaryLibraryScreen');
+const DiaryScreen = lazyScreen(() => import('src/screens/diary/DiaryScreen'), 'DiaryScreen');
+const DiaryPageScreen = lazyScreen(() => import('src/screens/diary/DiaryPageScreen'), 'DiaryPageScreen');
+const DiaryEditorScreen = lazyScreen(() => import('src/screens/diary/DiaryEditorScreen'), 'DiaryEditorScreen');
+const DiaryTimelineScreen = lazyScreen(() => import('src/screens/diary/DiaryTimelineScreen'), 'DiaryTimelineScreen');
+const DiarySearchScreen = lazyScreen(() => import('src/screens/diary/DiarySearchScreen'), 'DiarySearchScreen');
+const DiaryAssetInstallScreen = lazyScreen(() => import('src/screens/diary/DiaryAssetInstallScreen'), 'DiaryAssetInstallScreen');
 
 import type { HomeStackParamList } from './types';
 

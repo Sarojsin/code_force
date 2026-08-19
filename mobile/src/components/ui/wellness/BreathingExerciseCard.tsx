@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StyleSheet, View, Pressable, Modal, ActivityIndicator } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { Card, Text as Txt, Button } from 'src/components/ui';
@@ -63,8 +63,16 @@ export function BreathingTimer({
   const [phase, setPhase] = useState<'inhale' | 'hold' | 'exhale' | 'rest'>('inhale');
   const [secondsLeft, setSecondsLeft] = useState(exercise.duration_seconds);
   const [active, setActive] = useState(true);
+  const phaseTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  useEffect(() => {
+    return () => {
+      phaseTimersRef.current.forEach(t => clearTimeout(t));
+      phaseTimersRef.current = [];
+    };
+  }, []);
 
   useEffect(() => {
     if (!active) return;
@@ -96,14 +104,19 @@ export function BreathingTimer({
 
     const fullCycle = setInterval(() => {
       cycle.forEach(({ phase: p, target }) => {
-        setTimeout(() => {
+        const t = setTimeout(() => {
           setPhase(p);
           scale.value = withTiming(target, { duration: 1000, easing: Easing.inOut(Easing.ease) });
         }, p === 'inhale' ? 0 : p === 'hold' ? phaseDuration : p === 'exhale' ? phaseDuration * 2 : phaseDuration * 3);
+        phaseTimersRef.current.push(t);
       });
     }, phaseDuration * 4);
 
-    return () => clearInterval(fullCycle);
+    return () => {
+      clearInterval(fullCycle);
+      phaseTimersRef.current.forEach(t => clearTimeout(t));
+      phaseTimersRef.current = [];
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, exercise.id]);
 

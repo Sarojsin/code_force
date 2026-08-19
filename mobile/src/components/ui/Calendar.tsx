@@ -259,10 +259,17 @@ function SkeletonDayCell({ index }: { index: number }) {
 }
 
 function AnimatingWrapper({ animating, children }: { animating?: boolean; children: React.ReactNode }) {
-  const animStyle = useAnimatedStyle(() => {
-    if (!animating) return {};
-    return { transform: [{ scale: withSpring(1, { damping: 15 }) }] };
-  }, [animating]);
+  // Plain View when nothing animates so the 42 grid cells don't each mount a
+  // `useAnimatedStyle` hook + Animated.View. The animated wrapper only mounts
+  // for cells that are actually animating.
+  if (!animating) return <View>{children}</View>;
+  return <SpringWrapper>{children}</SpringWrapper>;
+}
+
+function SpringWrapper({ children }: { children: React.ReactNode }) {
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: withSpring(1, { damping: 15 }) }],
+  }));
   return <Animated.View style={animStyle}>{children}</Animated.View>;
 }
 

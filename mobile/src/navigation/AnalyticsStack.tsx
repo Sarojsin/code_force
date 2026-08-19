@@ -2,9 +2,11 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 
 import { useTheme } from 'src/theme';
-import { AnalyticsDashboardScreen } from 'src/screens/analytics/AnalyticsDashboardScreen';
+import { lazyScreen } from 'src/components/ui/LazyScreen';
 
 import type { AnalyticsStackParamList } from './types';
+
+const AnalyticsDashboardScreen = lazyScreen(() => import('src/screens/analytics/AnalyticsDashboardScreen'), 'AnalyticsDashboardScreen');
 
 const Stack = createStackNavigator<AnalyticsStackParamList>();
 

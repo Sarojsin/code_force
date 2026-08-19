@@ -2,27 +2,11 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 
 import { useTheme } from 'src/theme';
+import { lazyScreen } from 'src/components/ui/LazyScreen';
 import { CycleDashboardScreen } from 'src/screens/cycle/CycleDashboardScreen';
 import { LogPeriodScreen } from 'src/screens/cycle/LogPeriodScreen';
 import { CycleHistoryScreen } from 'src/screens/cycle/CycleHistoryScreen';
-import { CyclePredictionsScreen } from 'src/screens/cycle/CyclePredictionsScreen';
-import { CycleAnalyticsScreen } from 'src/screens/cycle/CycleAnalyticsScreen';
 import { WellnessHomeScreen } from 'src/screens/wellness/WellnessHomeScreen';
-import { JournalListScreen } from 'src/screens/wellness/JournalListScreen';
-import { JournalEntryScreen } from 'src/screens/wellness/JournalEntryScreen';
-import { DiaryLibraryScreen } from 'src/screens/diary/DiaryLibraryScreen';
-import { DiaryScreen } from 'src/screens/diary/DiaryScreen';
-import { DiaryPageScreen } from 'src/screens/diary/DiaryPageScreen';
-import { DiaryEditorScreen } from 'src/screens/diary/DiaryEditorScreen';
-import { DiaryTimelineScreen } from 'src/screens/diary/DiaryTimelineScreen';
-import { DiarySearchScreen } from 'src/screens/diary/DiarySearchScreen';
-import { DiaryAssetInstallScreen } from 'src/screens/diary/DiaryAssetInstallScreen';
-import { MoodLogScreen } from 'src/screens/wellness/MoodLogScreen';
-import { MoodHistoryScreen } from 'src/screens/wellness/MoodHistoryScreen';
-import { BreathingListScreen } from 'src/screens/wellness/BreathingListScreen';
-import { InsightsScreen } from 'src/screens/wellness/InsightsScreen';
-import { VideoLibraryScreen } from 'src/screens/wellness/VideoLibraryScreen';
-import { ContentDetailScreen } from 'src/screens/wellness/ContentDetailScreen';
 import { PregnancyHomeScreen } from 'src/screens/pregnancy/PregnancyHomeScreen';
 import { PregnancyProfileScreen } from 'src/screens/pregnancy/PregnancyProfileScreen';
 import { PregnancyDailyLogScreen } from 'src/screens/pregnancy/PregnancyDailyLogScreen';
@@ -41,6 +25,25 @@ import { ChangePasswordScreen } from 'src/screens/profile/ChangePasswordScreen';
 import { SettingsScreen } from 'src/screens/profile/SettingsScreen';
 import { LinkedFamilyScreen } from 'src/screens/profile/LinkedFamilyScreen';
 import { LunaInstallScreen } from 'src/screens/companion/LunaInstallScreen';
+
+// Heavy leaf screens lazy-loaded so the first tab render never parses them.
+const CyclePredictionsScreen = lazyScreen(() => import('src/screens/cycle/CyclePredictionsScreen'), 'CyclePredictionsScreen');
+const CycleAnalyticsScreen = lazyScreen(() => import('src/screens/cycle/CycleAnalyticsScreen'), 'CycleAnalyticsScreen');
+const JournalListScreen = lazyScreen(() => import('src/screens/wellness/JournalListScreen'), 'JournalListScreen');
+const JournalEntryScreen = lazyScreen(() => import('src/screens/wellness/JournalEntryScreen'), 'JournalEntryScreen');
+const MoodLogScreen = lazyScreen(() => import('src/screens/wellness/MoodLogScreen'), 'MoodLogScreen');
+const MoodHistoryScreen = lazyScreen(() => import('src/screens/wellness/MoodHistoryScreen'), 'MoodHistoryScreen');
+const BreathingListScreen = lazyScreen(() => import('src/screens/wellness/BreathingListScreen'), 'BreathingListScreen');
+const InsightsScreen = lazyScreen(() => import('src/screens/wellness/InsightsScreen'), 'InsightsScreen');
+const VideoLibraryScreen = lazyScreen(() => import('src/screens/wellness/VideoLibraryScreen'), 'VideoLibraryScreen');
+const ContentDetailScreen = lazyScreen(() => import('src/screens/wellness/ContentDetailScreen'), 'ContentDetailScreen');
+const DiaryLibraryScreen = lazyScreen(() => import('src/screens/diary/DiaryLibraryScreen'), 'DiaryLibraryScreen');
+const DiaryScreen = lazyScreen(() => import('src/screens/diary/DiaryScreen'), 'DiaryScreen');
+const DiaryPageScreen = lazyScreen(() => import('src/screens/diary/DiaryPageScreen'), 'DiaryPageScreen');
+const DiaryEditorScreen = lazyScreen(() => import('src/screens/diary/DiaryEditorScreen'), 'DiaryEditorScreen');
+const DiaryTimelineScreen = lazyScreen(() => import('src/screens/diary/DiaryTimelineScreen'), 'DiaryTimelineScreen');
+const DiarySearchScreen = lazyScreen(() => import('src/screens/diary/DiarySearchScreen'), 'DiarySearchScreen');
+const DiaryAssetInstallScreen = lazyScreen(() => import('src/screens/diary/DiaryAssetInstallScreen'), 'DiaryAssetInstallScreen');
 
 import type {
   CycleStackParamList,
