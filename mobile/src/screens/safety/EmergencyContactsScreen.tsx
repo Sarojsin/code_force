@@ -15,7 +15,7 @@ type Nav = StackNavigationProp<SafetyStackParamList, 'EmergencyContacts'>;
 
 type ContactItem = { id: string; name: string; phone_number: string; relationship: string | null; is_primary: boolean };
 
-const ContactCard = React.memo(function ContactCard({ item, onPress, onLongPress }: { item: ContactItem; onPress: () => void; onLongPress: () => void }) {
+const ContactCard = React.memo(function ContactCard({ item, onPress, onLongPress }: { item: ContactItem; onPress: (id: string) => void; onLongPress: (id: string, name: string) => void }) {
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const theme = useTheme();
@@ -24,8 +24,8 @@ const ContactCard = React.memo(function ContactCard({ item, onPress, onLongPress
       <Pressable
         onPressIn={() => { scale.value = withSpring(0.96); }}
         onPressOut={() => { scale.value = withSpring(1); }}
-        onPress={onPress}
-        onLongPress={onLongPress}
+        onPress={() => onPress(item.id)}
+        onLongPress={() => onLongPress(item.id, item.name)}
         accessibilityRole="button"
         accessibilityLabel={`${item.name}, ${item.relationship ?? 'contact'}`}
       >
@@ -59,7 +59,7 @@ export function EmergencyContactsScreen() {
   const { data: contacts, isLoading } = useEmergencyContacts();
   const deleteMutation = useDeleteEmergencyContact();
 
-  const handleDelete = (id: string, name: string) => {
+  const handleDelete = React.useCallback((id: string, name: string) => {
     Alert.alert(
       'Remove Contact',
       `Remove ${name} from your emergency contacts?`,
@@ -78,15 +78,20 @@ export function EmergencyContactsScreen() {
         },
       ],
     );
-  };
+  }, [deleteMutation]);
+
+  const handleOpenEdit = React.useCallback(
+    (id: string) => navigation.navigate('EmergencyContactEdit', { id }),
+    [navigation],
+  );
 
   const renderItem = React.useCallback(({ item }: { item: ContactItem }) => (
     <ContactCard
       item={item}
-      onPress={() => navigation.navigate('EmergencyContactEdit', { id: item.id })}
-      onLongPress={() => handleDelete(item.id, item.name)}
+      onPress={handleOpenEdit}
+      onLongPress={handleDelete}
     />
-  ), [navigation, handleDelete]);
+  ), [handleOpenEdit, handleDelete]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>

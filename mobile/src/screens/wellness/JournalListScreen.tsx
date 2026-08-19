@@ -31,12 +31,12 @@ function moodEmoji(mood: string | null): string {
   return map[mood] ?? '💬';
 }
 
-const JournalItem = React.memo(function JournalItemComponent({ item, onPress, theme }: { item: JournalEntry; onPress: () => void; theme: any }) {
+const JournalItem = React.memo(function JournalItemComponent({ item, onPress, theme }: { item: JournalEntry; onPress: (id: string) => void; theme: any }) {
   const sentiment = sentimentMeta(item.sentiment_label);
   const emoji = moodEmoji(item.mood);
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => onPress(item.id)}
       accessibilityRole="button"
       accessibilityLabel={`Journal: ${item.title ?? 'untitled'}`}
     >
@@ -100,7 +100,7 @@ export function JournalListScreen() {
   }, [navigation]);
 
   const renderItem = useCallback(({ item }: { item: JournalEntry }) => (
-    <JournalItem item={item} onPress={() => handleEntryPress(item.id)} theme={theme} />
+    <JournalItem item={item} onPress={handleEntryPress} theme={theme} />
   ), [handleEntryPress, theme]);
 
   if (isLoading) {

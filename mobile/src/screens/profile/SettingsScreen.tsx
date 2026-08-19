@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { memo, useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View, Pressable, Alert, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
+import Toast from 'react-native-toast-message';
 
 import { Text as Txt, Toggle } from 'src/components/ui';
 import { useTheme } from 'src/theme';
@@ -9,21 +10,27 @@ import { logger } from 'src/utils';
 import { useNavigation } from '@react-navigation/native';
 import { useCompanionStore } from '../../stores/companionStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { resetAppForLogout } from '../../services/sessionReset';
+import { authService } from '../../services/api';
 import { usePregnancyModeStore } from '../../stores/pregnancyModeStore';
 import { uninstallLuna } from '../../services/assetDownloader';
 import { useDiaryAssetStore } from '../../stores/diaryAssetStore';
 import { uninstallDiaryAssets } from '../../services/diaryAssetDownloader';
 import { useAnimationEngine, voiceService } from '../../services/companion';
 import { useVideoLibrarySettings } from '../../hooks/useVideoLibrarySettings';
-import { Luna3D } from '../../services/companion/3d/Luna3D';
+import { lazyScreen } from 'src/components/ui/LazyScreen';
 import Slider from '@react-native-community/slider';
 import { LinearGradient } from 'expo-linear-gradient';
 
+const Luna3D = lazyScreen(() => import('../../services/companion/3d/Luna3D'), 'Luna3D');
+
 interface SettingRowProps {
   label: string;
+  iconKey?: string;
   description?: string;
   value?: boolean;
+  disabled?: boolean;
   onToggle?: (v: boolean) => void;
   onPress?: () => void;
   showDisclosure?: boolean;
@@ -46,20 +53,23 @@ const SETTING_ICONS: Record<string, string> = {
   Language: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',
 };
 
-function SettingRow({ label, description, value, onToggle, onPress, showDisclosure, destructive, accessibilityLabel }: SettingRowProps) {
+const formatRangePercent = (v: number) => `${Math.round(v * 100)}%`;
+
+const SettingRow = memo(function SettingRowComponent({ label, iconKey, description, value, disabled, onToggle, onPress, showDisclosure, destructive, accessibilityLabel }: SettingRowProps) {
   const theme = useTheme();
   const hasSwitch = onToggle !== undefined;
   const hasNav = onPress !== undefined;
-  const iconPath = SETTING_ICONS[label];
+  const iconPath = iconKey ? SETTING_ICONS[iconKey] : SETTING_ICONS[label];
+  const isDisabled = disabled || (hasNav && !onPress);
 
   return (
     <Pressable
       onPress={hasNav ? onPress : undefined}
-      disabled={!hasNav}
-      style={[styles.settingRow, { borderBottomColor: theme.colors.border, minHeight: theme.minTouchTarget }]}
+      disabled={isDisabled}
+      style={[styles.settingRow, isDisabled && styles.settingRowDisabled, { borderBottomColor: theme.colors.border, minHeight: theme.minTouchTarget }]}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole={hasSwitch ? 'switch' : 'button'}
-      accessibilityState={{ checked: value }}
+      accessibilityState={{ checked: value, disabled: isDisabled }}
       accessibilityHint={hasSwitch ? 'Tap to toggle' : undefined}
     >
       {iconPath && (
@@ -83,7 +93,7 @@ function SettingRow({ label, description, value, onToggle, onPress, showDisclosu
       )}
     </Pressable>
   );
-}
+});
 
 function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -96,14 +106,14 @@ function SettingsSection({ title, children }: { title: string; children: React.R
   );
 }
 
-function SpeechSliderRow({
+const SpeechSliderRow = memo(function SpeechSliderRowComponent({
   label,
   value,
   minimum,
   maximum,
   step,
   formatValue,
-  onChange,
+  onSlidingComplete,
   accessibilityLabel,
 }: {
   label: string;
@@ -112,10 +122,12 @@ function SpeechSliderRow({
   maximum: number;
   step: number;
   formatValue?: (v: number) => string;
-  onChange: (v: number) => void;
+  onSlidingComplete: (v: number) => void;
   accessibilityLabel: string;
 }) {
   const theme = useTheme();
+  const [draft, setDraft] = useState(value);
+
   return (
     <View style={[styles.settingRow, { borderBottomColor: theme.colors.border, minHeight: theme.minTouchTarget }]}>
       <View style={{ flex: 1, marginLeft: 12 }}>
@@ -125,8 +137,9 @@ function SpeechSliderRow({
           minimumValue={minimum}
           maximumValue={maximum}
           step={step}
-          value={value}
-          onValueChange={onChange}
+          value={draft}
+          onValueChange={setDraft}
+          onSlidingComplete={(v) => onSlidingComplete(v)}
           minimumTrackTintColor={theme.colors.primary}
           maximumTrackTintColor={theme.colors.border}
           thumbTintColor={theme.colors.primary}
@@ -134,15 +147,16 @@ function SpeechSliderRow({
         />
       </View>
       <Txt variant="caption" color="muted" style={{ marginRight: 16 }}>
-        {formatValue ? formatValue(value) : String(value)}
+        {formatValue ? formatValue(draft) : String(draft)}
       </Txt>
     </View>
   );
-}
+});
 
 export function SettingsScreen() {
   const theme = useTheme();
   const navigation = useNavigation<any>();
+  const authUser = useAuthStore((s) => s.user);
   const pregnancyIsActive = usePregnancyModeStore((s) => s.isActive);
   const pregnancyEnable = usePregnancyModeStore((s) => s.enable);
   const pregnancyDisable = usePregnancyModeStore((s) => s.disable);
@@ -166,44 +180,52 @@ export function SettingsScreen() {
    const { currentAnim, rotation, rotationX } = useAnimationEngine();
   const assetsVersion = useCompanionStore((s) => s.assetsVersion);
 
-  const handleLunaToggle = (key: 'isHidden' | 'reduceAnimations' | 'muteSounds') => async (value: boolean) => {
-    const store = useCompanionStore.getState();
-    switch (key) {
-      case 'isHidden':
-        await store.setHidden(value);
-        logger.info('Luna hidden:', value);
-        break;
-      case 'reduceAnimations':
-        await store.setReduceAnimations(value);
-        logger.info('Luna reduceAnimations:', value);
-        break;
-      case 'muteSounds':
-        await store.setMuteSounds(value);
-        logger.info('Luna muteSounds:', value);
-        break;
-    }
-  };
+  const pushNotifications = useSettingsStore((s) => s.pushNotifications);
+  const periodReminders = useSettingsStore((s) => s.periodReminders);
+  const lunaInsights = useSettingsStore((s) => s.lunaInsights);
+  const biometricLock = useSettingsStore((s) => s.biometricLock);
+  const shareAnalytics = useSettingsStore((s) => s.shareAnalytics);
+  const offlineAI = useSettingsStore((s) => s.offlineAI);
+  const autoUpdateModels = useSettingsStore((s) => s.autoUpdateModels);
+  const emailNotifications = useSettingsStore((s) => s.emailNotifications);
+  const smsAlerts = useSettingsStore((s) => s.smsAlerts);
+  const setSetting = useSettingsStore((s) => s.setSetting);
 
-  const handleLunaSpeakToggle = async (value: boolean) => {
+  const handleLunaHiddenToggle = useCallback(async (value: boolean) => {
+    await useCompanionStore.getState().setHidden(value);
+    logger.info('Luna hidden:', value);
+  }, []);
+
+  const handleLunaReduceAnimationsToggle = useCallback(async (value: boolean) => {
+    await useCompanionStore.getState().setReduceAnimations(value);
+    logger.info('Luna reduceAnimations:', value);
+  }, []);
+
+  const handleLunaMuteSoundsToggle = useCallback(async (value: boolean) => {
+    await useCompanionStore.getState().setMuteSounds(value);
+    logger.info('Luna muteSounds:', value);
+  }, []);
+
+  const handleLunaSpeakToggle = useCallback(async (value: boolean) => {
     await voiceService.setEnabled(value);
     logger.info('Luna speaks:', value);
-  };
+  }, []);
 
-  const handleInsightsToggle = async (value: boolean) => {
+  const handleInsightsToggle = useCallback(async (value: boolean) => {
     await useCompanionStore.getState().setInsightsPref({ showInsights: value });
     logger.info('Luna showInsights:', value);
-  };
+  }, []);
 
-  const handleListenAndSpeakToggle = async (value: boolean) => {
+  const handleListenAndSpeakToggle = useCallback(async (value: boolean) => {
     await useCompanionStore.getState().setInsightsPref({ listenAndSpeak: value });
     logger.info('Luna listenAndSpeak:', value);
-  };
+  }, []);
 
-  const handleTestVoice = () => {
+  const handleTestVoice = useCallback(() => {
     void voiceService.speak("Hi, I'm Luna!");
-  };
+  }, []);
 
-  const handleLunaUninstall = () => {
+  const handleLunaUninstall = useCallback(() => {
     Alert.alert(
       'Uninstall Luna',
       "This removes Luna's sprites, sounds, and dialogues from your device (~4.5 MB). Your XP and level are saved.",
@@ -220,28 +242,67 @@ export function SettingsScreen() {
         },
       ],
     );
-  };
+  }, []);
 
-  const [settings, setSettings] = useState({
-    pushNotifications: true,
-    emailNotifications: false,
-    smsAlerts: true,
-    biometricLock: false,
-    shareAnalytics: false,
-    darkMode: theme.isDark,
-    offlineAI: true,
-    autoUpdateModels: true,
-  });
+  const handleDarkModeToggle = useCallback((value: boolean) => {
+    theme.setDark(value);
+    logger.info('SettingsScreen.darkMode', { darkMode: value });
+  }, [theme]);
+  const togglePushNotifications = useCallback((value: boolean) => {
+    setSetting('pushNotifications', value);
+    logger.info('SettingsScreen.toggle', { pushNotifications: value });
+  }, [setSetting]);
+  const togglePeriodReminders = useCallback((value: boolean) => {
+    setSetting('periodReminders', value);
+    logger.info('SettingsScreen.toggle', { periodReminders: value });
+  }, [setSetting]);
+  const toggleLunaInsights = useCallback((value: boolean) => {
+    setSetting('lunaInsights', value);
+    logger.info('SettingsScreen.toggle', { lunaInsights: value });
+  }, [setSetting]);
+  const toggleBiometricLock = useCallback((value: boolean) => {
+    setSetting('biometricLock', value);
+    logger.info('SettingsScreen.toggle', { biometricLock: value });
+  }, [setSetting]);
+  const toggleShareAnalytics = useCallback((value: boolean) => {
+    setSetting('shareAnalytics', value);
+    logger.info('SettingsScreen.toggle', { shareAnalytics: value });
+  }, [setSetting]);
+  const toggleEmailNotifications = useCallback((value: boolean) => {
+    setSetting('emailNotifications', value);
+    logger.info('SettingsScreen.toggle', { emailNotifications: value });
+  }, [setSetting]);
+  const toggleSmsAlerts = useCallback((value: boolean) => {
+    setSetting('smsAlerts', value);
+    logger.info('SettingsScreen.toggle', { smsAlerts: value });
+  }, [setSetting]);
+  const toggleOfflineAI = useCallback((value: boolean) => {
+    setSetting('offlineAI', value);
+    logger.info('SettingsScreen.toggle', { offlineAI: value });
+  }, [setSetting]);
+  const toggleAutoUpdateModels = useCallback((value: boolean) => {
+    setSetting('autoUpdateModels', value);
+    logger.info('SettingsScreen.toggle', { autoUpdateModels: value });
+  }, [setSetting]);
 
-  const toggle = (key: keyof typeof settings) => (value: boolean) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-    logger.info('SettingsScreen.toggle', { [key]: value });
-  };
+  const handlePregnancyToggle = useCallback((value: boolean) => {
+    if (value) pregnancyEnable();
+    else pregnancyDisable();
+  }, [pregnancyEnable, pregnancyDisable]);
+
+  const handleDayLogsPress = useCallback(() => {
+    navigation.navigate('DailyLog');
+  }, [navigation]);
+
+  const handleNotAvailable = useCallback(() => {
+    Toast.show({ type: 'info', text1: 'Not available yet' });
+  }, []);
 
   const [deletePassword, setDeletePassword] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     Alert.alert('Logout', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -253,19 +314,71 @@ export function SettingsScreen() {
         },
       },
     ]);
-  };
+  }, []);
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = useCallback(() => {
     setDeletePassword('');
     setShowDeleteModal(true);
-  };
+  }, []);
 
-  const confirmDelete = () => {
-    logger.info('SettingsScreen.deleteAccount');
+  const confirmDelete = useCallback(async () => {
+  if (!deletePassword || isDeleting) return;
+  setIsDeleting(true);
+  try {
+    await authService.deleteAccount(deletePassword);
     setShowDeleteModal(false);
     setDeletePassword('');
-    Alert.alert('Account Deleted', 'Your account has been scheduled for deletion.');
-  };
+    await resetAppForLogout();
+    Toast.show({ type: 'success', text1: 'Your account has been deleted.' });
+  } catch (err) {
+    logger.error('SettingsScreen.deleteAccount.failed', err);
+    Toast.show({ type: 'error', text1: 'Could not delete account. Check your password.' });
+    setIsDeleting(false);
+  }
+}, [deletePassword, isDeleting]);
+
+  const handleLunaInstallPress = useCallback(() => {
+    if (installStatus === 'ready') {
+      handleLunaUninstall();
+    } else {
+      navigation.navigate('CompanionInstall');
+    }
+  }, [installStatus, handleLunaUninstall, navigation]);
+
+  const handleDiaryInstallPress = useCallback(() => {
+    if (diaryInstallStatus === 'ready') {
+      Alert.alert(
+        'Uninstall Diary Assets',
+        'This removes stickers, textures, fonts, and sounds (~18 MB). Your diary pages are saved.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Uninstall',
+            style: 'destructive',
+            onPress: async () => {
+              const user = useAuthStore.getState().user;
+              if (user) await uninstallDiaryAssets(user.id);
+              useDiaryAssetStore.getState().reset();
+            },
+          },
+        ]
+      );
+    } else {
+      navigation.navigate('DiaryAssetInstall');
+    }
+  }, [diaryInstallStatus, navigation]);
+
+  const handleSpeechRateCommit = useCallback((v: number) => {
+    useCompanionStore.getState().setSpeechPref({ rate: v });
+  }, []);
+
+  const handleSpeechPitchCommit = useCallback((v: number) => {
+    useCompanionStore.getState().setSpeechPref({ pitch: v });
+  }, []);
+
+  const displayName = authUser?.display_name ?? authUser?.email ?? 'SheCare User';
+  const displayEmail = authUser?.email ?? '—';
+  const avatarLetter = ((authUser?.display_name ?? authUser?.email) ?? 'S').charAt(0).toUpperCase();
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
@@ -285,10 +398,10 @@ export function SettingsScreen() {
             <Txt style={{ color: '#fff', fontSize: 14 }}>✏️</Txt>
           </Pressable>
           <View style={[styles.profileAvatar, { borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-            <Txt style={{ color: '#fff', fontSize: 28, fontWeight: '800' }}>S</Txt>
+            <Txt style={{ color: '#fff', fontSize: 28, fontWeight: '800' }}>{avatarLetter}</Txt>
           </View>
-          <Txt style={styles.profileName}>Sofia Adeyemi</Txt>
-          <Txt style={styles.profileEmail}>sofia@shecare.app</Txt>
+          <Txt style={styles.profileName}>{displayName}</Txt>
+          <Txt style={styles.profileEmail}>{displayEmail}</Txt>
           <View style={styles.profilePills}>
             <View style={[styles.pill, { backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 100 }]}>
               <Txt style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>✨ Premium</Txt>
@@ -300,29 +413,31 @@ export function SettingsScreen() {
         </LinearGradient>
 
         <SettingsSection title="NOTIFICATIONS">
-          <SettingRow label="Push Notifications" description="Period reminders, wellness tips" value={settings.pushNotifications} onToggle={toggle('pushNotifications')} accessibilityLabel="Toggle push notifications" />
-          <SettingRow label="Period Reminders" description="3 days before predicted" value={true} onToggle={(v) => toggle('pushNotifications')(v)} accessibilityLabel="Toggle period reminders" />
-          <SettingRow label="Luna AI Insights" description="Daily at 8:00 AM" value={true} onToggle={(v) => toggle('pushNotifications')(v)} accessibilityLabel="Toggle Luna AI insights" />
+          <SettingRow label="Push Notifications" description="Period reminders, wellness tips" value={pushNotifications} onToggle={togglePushNotifications} accessibilityLabel="Toggle push notifications" />
+          <SettingRow label="Period Reminders" description="3 days before predicted" value={periodReminders} onToggle={togglePeriodReminders} accessibilityLabel="Toggle period reminders" />
+          <SettingRow label="Luna AI Insights" description="Daily at 8:00 AM" value={lunaInsights} onToggle={toggleLunaInsights} accessibilityLabel="Toggle Luna AI insights" />
         </SettingsSection>
 
         <SettingsSection title="PREGNANCY">
-          <SettingRow label="Pregnancy Mode 🤰" description="Switch to baby tracking" value={pregnancyIsActive} onToggle={(v) => v ? pregnancyEnable() : pregnancyDisable()} accessibilityLabel="Toggle pregnancy mode" />
+          <SettingRow label="Pregnancy Mode 🤰" description="Switch to baby tracking" value={pregnancyIsActive} onToggle={handlePregnancyToggle} accessibilityLabel="Toggle pregnancy mode" />
         </SettingsSection>
 
         <SettingsSection title="PRIVACY & SECURITY">
-          <SettingRow label="Biometric Lock" description="FaceID / Fingerprint to unlock" value={settings.biometricLock} onToggle={toggle('biometricLock')} accessibilityLabel="Toggle biometric lock" />
-          <SettingRow label="Share Analytics" description="Help improve SheCare" value={settings.shareAnalytics} onToggle={toggle('shareAnalytics')} accessibilityLabel="Toggle analytics sharing" />
-          <SettingRow label="Export My Data" description="Download your data (GDPR)" showDisclosure onPress={() => {}} accessibilityLabel="Export data" />
+          <SettingRow label="Biometric Lock" description="FaceID / Fingerprint to unlock" value={biometricLock} onToggle={toggleBiometricLock} accessibilityLabel="Toggle biometric lock" />
+          <SettingRow label="Share Analytics" description="Help improve SheCare" value={shareAnalytics} onToggle={toggleShareAnalytics} accessibilityLabel="Toggle analytics sharing" />
+          <SettingRow label="Export My Data" description="Download your data (GDPR)" showDisclosure onPress={handleNotAvailable} accessibilityLabel="Export data" />
+          <SettingRow label="Email Notifications" description="Account and security emails" value={emailNotifications} onToggle={toggleEmailNotifications} accessibilityLabel="Toggle email notifications" />
+          <SettingRow label="SMS Alerts" description="Critical period updates by text" value={smsAlerts} onToggle={toggleSmsAlerts} accessibilityLabel="Toggle SMS alerts" />
           <SettingRow label="Delete Account" destructive showDisclosure onPress={handleDeleteAccount} accessibilityLabel="Delete account" />
         </SettingsSection>
 
         <SettingsSection title="APPEARANCE">
-          <SettingRow label="Dark Mode" value={settings.darkMode} onToggle={toggle('darkMode')} accessibilityLabel="Toggle dark mode" />
-          <SettingRow label="Language" description="English" showDisclosure onPress={() => {}} accessibilityLabel="Change language" />
+          <SettingRow label="Dark Mode" iconKey="DarkMode" value={theme.isDark} onToggle={handleDarkModeToggle} accessibilityLabel="Toggle dark mode" />
+          <SettingRow label="Language" description="English" showDisclosure onPress={handleNotAvailable} accessibilityLabel="Change language" />
         </SettingsSection>
 
         <SettingsSection title="MY DATA">
-          <SettingRow label="Day Logs" description="View your daily observations history" showDisclosure onPress={() => navigation.navigate('DailyLog')} accessibilityLabel="View day logs" />
+          <SettingRow label="Day Logs" description="View your daily observations history" showDisclosure onPress={handleDayLogsPress} accessibilityLabel="View day logs" />
         </SettingsSection>
 
         <SettingsSection title="CONTENT & PERSONALIZATION">
@@ -336,10 +451,10 @@ export function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection title="AI & MODELS">
-          <SettingRow label="Offline AI Models" description="Enable on-device predictions" value={settings.offlineAI} onToggle={toggle('offlineAI')} accessibilityLabel="Toggle offline AI models" />
-          <SettingRow label="Auto-download Updates" description="Keep models up to date" value={settings.autoUpdateModels} onToggle={toggle('autoUpdateModels')} accessibilityLabel="Toggle auto-update models" />
-          <SettingRow label="Manage Downloads" description="View installed models" showDisclosure onPress={() => {}} accessibilityLabel="Manage downloaded models" />
-          <SettingRow label="Clear Model Cache" description="Remove downloaded models" showDisclosure onPress={() => {}} accessibilityLabel="Clear model cache" />
+          <SettingRow label="Offline AI Models" description="Enable on-device predictions" value={offlineAI} onToggle={toggleOfflineAI} accessibilityLabel="Toggle offline AI models" />
+          <SettingRow label="Auto-download Updates" description="Keep models up to date" value={autoUpdateModels} onToggle={toggleAutoUpdateModels} accessibilityLabel="Toggle auto-update models" />
+          <SettingRow label="Manage Downloads" description="View installed models" showDisclosure onPress={handleNotAvailable} accessibilityLabel="Manage downloaded models" />
+          <SettingRow label="Clear Model Cache" description="Remove downloaded models" showDisclosure onPress={handleNotAvailable} accessibilityLabel="Clear model cache" />
         </SettingsSection>
 
         <SettingsSection title="COMPANION">
@@ -382,21 +497,15 @@ export function SettingsScreen() {
             }
             destructive={installStatus === 'ready'}
             showDisclosure
-            onPress={() => {
-              if (installStatus === 'ready') {
-                handleLunaUninstall();
-              } else {
-                navigation.navigate('CompanionInstall');
-              }
-            }}
+            onPress={handleLunaInstallPress}
             accessibilityLabel="Luna install or uninstall"
           />
 
           {installStatus === 'ready' && (
             <>
-              <SettingRow label="Hide Companion" description="Luna disappears from the dashboard" value={companionHidden} onToggle={handleLunaToggle('isHidden')} accessibilityLabel="Toggle hide Luna companion" />
-              <SettingRow label="Reduce Animations" description="Static cat only (no movement)" value={companionReduceAnimations} onToggle={handleLunaToggle('reduceAnimations')} accessibilityLabel="Toggle reduce Luna animations" />
-              <SettingRow label="Mute Sounds" description="Disable meows and purrs" value={companionMuteSounds} onToggle={handleLunaToggle('muteSounds')} accessibilityLabel="Toggle mute Luna sounds" />
+              <SettingRow label="Hide Companion" description="Luna disappears from the dashboard" value={companionHidden} onToggle={handleLunaHiddenToggle} accessibilityLabel="Toggle hide Luna companion" />
+              <SettingRow label="Reduce Animations" description="Static cat only (no movement)" value={companionReduceAnimations} onToggle={handleLunaReduceAnimationsToggle} accessibilityLabel="Toggle reduce Luna animations" />
+              <SettingRow label="Mute Sounds" description="Disable meows and purrs" value={companionMuteSounds} onToggle={handleLunaMuteSoundsToggle} accessibilityLabel="Toggle mute Luna sounds" />
               <SettingRow label="Show Health Insights" description="Tips and recommendations on Home" value={companionShowInsights} onToggle={handleInsightsToggle} accessibilityLabel="Toggle Luna health insights" />
               <SettingRow label="Listen & Speak" description="Tap the mic on Luna to talk — no passive listening" value={companionListenAndSpeak} onToggle={handleListenAndSpeakToggle} accessibilityLabel="Toggle Luna listen and speak" />
               <SettingRow label="Luna Speaks" description="Read dialogue aloud (device voice)" value={companionSpeakEnabled} onToggle={handleLunaSpeakToggle} accessibilityLabel="Toggle Luna speaking" />
@@ -408,8 +517,8 @@ export function SettingsScreen() {
                     minimum={0.5}
                     maximum={2}
                     step={0.05}
-                    formatValue={(v) => `${Math.round(v * 100)}%`}
-                    onChange={(v) => useCompanionStore.getState().setSpeechPref({ rate: v })}
+                    formatValue={formatRangePercent}
+                    onSlidingComplete={handleSpeechRateCommit}
                     accessibilityLabel="Adjust Luna speaking rate"
                   />
                   <SpeechSliderRow
@@ -418,8 +527,8 @@ export function SettingsScreen() {
                     minimum={0.5}
                     maximum={2}
                     step={0.05}
-                    formatValue={(v) => `${Math.round(v * 100)}%`}
-                    onChange={(v) => useCompanionStore.getState().setSpeechPref({ pitch: v })}
+                    formatValue={formatRangePercent}
+                    onSlidingComplete={handleSpeechPitchCommit}
                     accessibilityLabel="Adjust Luna voice pitch"
                   />
                   <SettingRow
@@ -456,41 +565,20 @@ export function SettingsScreen() {
             }
             destructive={diaryInstallStatus === 'ready'}
             showDisclosure
-            onPress={() => {
-              if (diaryInstallStatus === 'ready') {
-                Alert.alert(
-                  'Uninstall Diary Assets',
-                  'This removes stickers, textures, fonts, and sounds (~18 MB). Your diary pages are saved.',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Uninstall',
-                      style: 'destructive',
-                      onPress: async () => {
-                        const user = useAuthStore.getState().user;
-                        if (user) await uninstallDiaryAssets(user.id);
-                        useDiaryAssetStore.getState().reset();
-                      },
-                    },
-                  ]
-                );
-              } else {
-                navigation.navigate('DiaryAssetInstall');
-              }
-            }}
+            onPress={handleDiaryInstallPress}
             accessibilityLabel="Diary assets install or uninstall"
           />
         </SettingsSection>
 
         <SettingsSection title="SUPPORT">
-          <SettingRow label="Help Center" showDisclosure onPress={() => {}} accessibilityLabel="Help center" />
-          <SettingRow label="Rate the App" showDisclosure onPress={() => {}} accessibilityLabel="Rate the app" />
+          <SettingRow label="Help Center" showDisclosure onPress={handleNotAvailable} accessibilityLabel="Help center" />
+          <SettingRow label="Rate the App" showDisclosure onPress={handleNotAvailable} accessibilityLabel="Rate the app" />
         </SettingsSection>
 
         <SettingsSection title="ABOUT">
           <SettingRow label="Version" description="0.1.0 (Build 1)" accessibilityLabel="App version" />
-          <SettingRow label="Privacy Policy" showDisclosure onPress={() => {}} accessibilityLabel="Privacy policy" />
-          <SettingRow label="Terms of Service" showDisclosure onPress={() => {}} accessibilityLabel="Terms of service" />
+          <SettingRow label="Privacy Policy" showDisclosure onPress={handleNotAvailable} accessibilityLabel="Privacy policy" />
+          <SettingRow label="Terms of Service" showDisclosure onPress={handleNotAvailable} accessibilityLabel="Terms of service" />
         </SettingsSection>
 
         <Pressable onPress={handleLogout} style={[styles.logoutBtn, { borderColor: 'rgba(239,68,68,0.28)', backgroundColor: 'rgba(239,68,68,0.06)', borderRadius: 16 }]}>
@@ -518,8 +606,14 @@ export function SettingsScreen() {
               <Pressable onPress={() => setShowDeleteModal(false)} style={[styles.modalBtn, { flex: 1, borderColor: theme.colors.mauve, borderWidth: 1, borderRadius: 12 }]}>
                 <Txt variant="body" align="center">Cancel</Txt>
               </Pressable>
-              <Pressable onPress={confirmDelete} style={[styles.modalBtn, { flex: 1, backgroundColor: theme.colors.danger, borderRadius: 12 }]}>
-                <Txt variant="body" align="center" style={{ color: '#fff' }}>Delete</Txt>
+              <Pressable
+                onPress={confirmDelete}
+                disabled={isDeleting}
+                style={[styles.modalBtn, { flex: 1, backgroundColor: theme.colors.danger, borderRadius: 12 }]}
+              >
+                <Txt variant="body" align="center" style={{ color: '#fff' }}>
+                  {isDeleting ? 'Deleting…' : 'Delete'}
+                </Txt>
               </Pressable>
             </View>
           </View>
@@ -609,6 +703,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  settingRowDisabled: {
+    opacity: 0.5,
   },
   settingIcon: {
     width: 32,

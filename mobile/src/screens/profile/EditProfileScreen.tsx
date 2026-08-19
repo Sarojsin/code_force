@@ -13,7 +13,9 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { Button, FormField, KeyboardAvoidingWrapper, Text as Txt, Card } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useAuthStore } from 'src/stores';
+import { authService } from 'src/services/api';
 import { logger } from 'src/utils';
+import Toast from 'react-native-toast-message';
 import type { ProfileStackParamList } from 'src/navigation/types';
 import { z } from 'zod';
 
@@ -29,6 +31,7 @@ export function EditProfileScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
   const user = useAuthStore(s => s.user);
+  const setUser = useAuthStore(s => s.setUser);
 
   const { control, handleSubmit, formState } = useForm<ProfileEditForm>({
     resolver: zodResolver(profileEditSchema),
@@ -38,10 +41,16 @@ export function EditProfileScreen() {
 
   const onSubmit = async (data: ProfileEditForm) => {
     try {
-      logger.info('EditProfileScreen.submit', data);
+      const updated = await authService.updateProfile({
+        display_name: data.displayName,
+        phone_number: data.phone,
+      });
+      setUser(updated);
+      Toast.show({ type: 'success', text1: 'Profile updated' });
       navigation.goBack();
     } catch (err) {
       logger.error('EditProfileScreen.submit.failed', err);
+      Toast.show({ type: 'error', text1: 'Could not update profile. Try again.' });
     }
   };
 

@@ -11,10 +11,9 @@
  * (Settings → Smart recommendations) hides the For You toggle entirely.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { memo, useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
-  Image,
   StyleSheet,
   View,
   TouchableOpacity,
@@ -22,6 +21,7 @@ import {
   AppState,
   ScrollView,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { focusManager } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
@@ -30,6 +30,7 @@ import { Sparkles, ClipboardList } from 'lucide-react-native';
 
 import { Text as Txt, Card, EmptyState, HorizontalCardCarousel } from 'src/components/ui';
 import { useTheme } from 'src/theme';
+import type { Theme } from 'src/theme';
 import type { NurseContent } from 'src/services/api/nurse_content';
 import { useVideoRecommendations } from 'src/hooks/useVideoRecommendations';
 import { useVideoLibrarySettings } from 'src/hooks/useVideoLibrarySettings';
@@ -39,6 +40,9 @@ import type { WellnessStackParamList } from 'src/navigation/types';
 
 const CATEGORIES = ['all', 'wellness', 'pregnancy', 'cycle', 'nutrition', 'mental_health'] as const;
 const CAROUSEL_CARD_WIDTH = 280;
+
+// getItemLayout intentionally skipped: ContentCard heights vary (160px thumbnail
+// + variable body), so a fixed itemSize would corrupt scroll positions.
 
 focusManager.setEventListener((handleFocus) => {
   const onFocus = () => handleFocus(true);
@@ -67,6 +71,24 @@ export function VideoLibraryScreen() {
   } = useVideoRecommendations(forYou ? 'all' : activeCategory);
 
   const effectiveGeneral = useMemo(() => (forYou ? general : all), [forYou, general, all]);
+
+  // Stable navigation handler — same reference for memoized ContentCard items,
+  // the RecommendedSection, and the FlatList renderItem.
+  const handleOpenContent = useCallback(
+    (id: string) => navigation.navigate('ContentDetail', { id }),
+    [navigation],
+  );
+
+  const chooseCategory = useCallback((cat: (typeof CATEGORIES)[number]) => {
+    setActiveCategory(cat);
+  }, []);
+
+  const renderItem = useCallback(
+    ({ item }: { item: NurseContent }) => (
+      <ContentCard content={item} theme={theme} onPress={handleOpenContent} />
+    ),
+    [theme, handleOpenContent],
+  );
 
   if (isLoading && !forYou) {
     return (
@@ -111,7 +133,7 @@ export function VideoLibraryScreen() {
           theme={theme}
           contents={recommended}
           matchedSymptoms={matchedSymptoms}
-          onPress={(id) => navigation.navigate('ContentDetail', { id })}
+          onPress={handleOpenContent}
         />
       ) : null}
 
@@ -126,7 +148,7 @@ export function VideoLibraryScreen() {
           {CATEGORIES.map((cat) => (
             <TouchableOpacity
               key={cat}
-              onPress={() => setActiveCategory(cat)}
+              onPress={() => chooseCategory(cat)}
               style={[
                 styles.categoryChip,
                 activeCategory === cat && { backgroundColor: theme.colors.primary },
@@ -161,13 +183,11 @@ export function VideoLibraryScreen() {
         <FlatList
           data={effectiveGeneral ?? []}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <ContentCard
-              content={item}
-              theme={theme}
-              onPress={() => navigation.navigate('ContentDetail', { id: item.id })}
-            />
-          )}
+          renderItem={renderItem}
+          initialNumToRender={7}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          removeClippedSubviews={true}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListFooterComponent={
@@ -226,17 +246,21 @@ function LibraryHeader({
   );
 }
 
-function RecommendedSection({
+const RecommendedSection = memo(function RecommendedSection({
   theme,
   contents,
   matchedSymptoms,
   onPress,
 }: {
-  theme: ReturnType<typeof useTheme>;
+  theme: Theme;
   contents: NurseContent[];
   matchedSymptoms: string[];
   onPress: (id: string) => void;
 }) {
+  // Stable per-chunk callback so RecommendedCard receives a consistent
+  // onPress reference across re-renders of the section.
+  const handleCardPress = useCallback((id: string) => onPress(id), [onPress]);
+
   return (
     <View>
       <View style={styles.sectionTitleRow}>
@@ -255,21 +279,21 @@ function RecommendedSection({
       ) : null}
       <HorizontalCardCarousel cardWidth={CAROUSEL_CARD_WIDTH} accessibilityLabel="Recommended videos">
         {contents.map((item) => (
-          <RecommendedCard key={item.id} content={item} theme={theme} onPress={() => onPress(item.id)} />
+          <RecommendedCard key={item.id} content={item} theme={theme} onPress={handleCardPress} />
         ))}
       </HorizontalCardCarousel>
     </View>
   );
-}
+});
 
-function RecommendedCard({
+const RecommendedCard = memo(function RecommendedCard({
   content,
   theme,
   onPress,
 }: {
   content: NurseContent;
-  theme: ReturnType<typeof useTheme>;
-  onPress: () => void;
+  theme: Theme;
+  onPress: (id: string) => void;
 }) {
   const isVideo = content.content_type === 'video';
   const thumbnail = content.thumbnail_url || (content.images && content.images[0]?.url) || null;
@@ -278,10 +302,16 @@ function RecommendedCard({
     <Card
       style={[styles.recoCard, { borderRadius: theme.radius.cardLg, borderColor: theme.colors.borderSubtle }]}
       padded={false}
-      onPress={onPress}
+      onPress={() => onPress(content.id)}
     >
       {thumbnail ? (
-        <Image source={{ uri: thumbnail }} style={styles.recoThumb} resizeMode="cover" />
+        <ExpoImage
+          source={{ uri: thumbnail }}
+          style={styles.recoThumb}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
+        />
       ) : (
         <View style={[styles.recoThumb, styles.placeholder, { backgroundColor: theme.colors.border }]}>
           <Txt variant="caption" color="muted">{isVideo ? 'Video' : 'Article'}</Txt>
@@ -298,7 +328,7 @@ function RecommendedCard({
       </View>
     </Card>
   );
-}
+});
 
 function NoSymptomsBanner({
   theme,
@@ -327,15 +357,29 @@ function NoSymptomsBanner({
   );
 }
 
-function ContentCard({ content, theme, onPress }: { content: NurseContent; theme: any; onPress: () => void }) {
+const ContentCard = memo(function ContentCard({
+  content,
+  theme,
+  onPress,
+}: {
+  content: NurseContent;
+  theme: Theme;
+  onPress: (id: string) => void;
+}) {
   const isVideo = content.content_type === 'video';
   const isImage = content.content_type === 'image';
   const thumbnail = content.thumbnail_url || (content.images && content.images[0]?.url) || null;
 
   return (
-    <Card style={styles.card} padded onPress={onPress}>
+    <Card style={styles.card} padded onPress={() => onPress(content.id)}>
       {thumbnail ? (
-        <Image source={{ uri: thumbnail }} style={styles.thumbnail} resizeMode="cover" />
+        <ExpoImage
+          source={{ uri: thumbnail }}
+          style={styles.thumbnail}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
+        />
       ) : (
         <View style={[styles.thumbnail, styles.placeholder, { backgroundColor: theme.colors.border }]}>
           <Txt variant="caption" color="muted">
@@ -359,9 +403,9 @@ function ContentCard({ content, theme, onPress }: { content: NurseContent; theme
       </View>
     </Card>
   );
-}
+});
 
-function SkeletonRows({ theme }: { theme: any }) {
+function SkeletonRows({ theme }: { theme: Theme }) {
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
       {[1, 2, 3].map((i) => (

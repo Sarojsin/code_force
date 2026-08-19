@@ -62,6 +62,16 @@ export function SOSActiveScreen() {
   const [countdown, setCountdown] = useState(SOS_TRIGGER_DELAY_MS / 1000);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const cancelledRef = useRef(false);
+  const goBackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (goBackTimerRef.current) {
+        clearTimeout(goBackTimerRef.current);
+        goBackTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (phase !== 'countdown') return;
@@ -143,10 +153,13 @@ export function SOSActiveScreen() {
 
   const handleImSafe = async () => {
     if (!activeAlert) return;
+    if (goBackTimerRef.current) {
+      clearTimeout(goBackTimerRef.current);
+    }
     try {
       await resolveMutation.mutateAsync(activeAlert.id);
       setPhase('resolved');
-      setTimeout(() => navigation.goBack(), 1500);
+      goBackTimerRef.current = setTimeout(() => navigation.goBack(), 1500);
     } catch (err) {
       await enqueueResolve(activeAlert.id).catch(() => {});
       Toast.show({
@@ -154,7 +167,7 @@ export function SOSActiveScreen() {
         text1: "We'll sync when online. You're marked as safe locally.",
       });
       setPhase('resolved');
-      setTimeout(() => navigation.goBack(), 1500);
+      goBackTimerRef.current = setTimeout(() => navigation.goBack(), 1500);
     }
   };
 

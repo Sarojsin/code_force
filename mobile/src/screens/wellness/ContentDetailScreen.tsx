@@ -1,5 +1,6 @@
 import React from 'react';
-import { ScrollView, Image, StyleSheet, View, Dimensions, TouchableOpacity, Text } from 'react-native';
+import { ScrollView, StyleSheet, View, Dimensions, TouchableOpacity, Text } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ResizeMode, Video } from 'expo-av';
 import { useQuery } from '@tanstack/react-query';
@@ -74,10 +75,12 @@ export function ContentDetailScreen({ route, navigation }: Props) {
         ) : null}
 
         {!isVideo && content.thumbnail_url ? (
-          <Image
+          <ExpoImage
             source={{ uri: content.thumbnail_url }}
             style={styles.heroImage}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
           />
         ) : null}
 
