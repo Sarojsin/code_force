@@ -50,6 +50,19 @@ export const authService = {
     return unwrap<User>(resp.data);
   },
 
+  async updateProfile(data: { display_name?: string; phone_number?: string }): Promise<User> {
+    const resp = await api.put<ApiSuccess<User> | User>('/auth/me', data);
+    return unwrap<User>(resp.data);
+  },
+
+  async changePassword(old_password: string, new_password: string): Promise<void> {
+    await api.post('/auth/password/change', { old_password, new_password });
+  },
+
+  async deleteAccount(password: string): Promise<void> {
+    await api.delete('/auth/me', { data: { password } });
+  },
+
   async logout(): Promise<void> {
     try {
       await api.post('/auth/logout');

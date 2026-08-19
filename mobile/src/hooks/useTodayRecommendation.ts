@@ -34,9 +34,8 @@ export interface TodayRecommendation {
  * `tier` never disagree. Consumed by the Home banner, Wellness "For today",
  * Luna proactive, and Luna reactive — never duplicated.
  *
- * Staleness fix: `useTodayDayData` fetches once per userId, so after a day save
- * it would return stale/null data. We re-fetch from localDb when the `day_logged`
- * event fires (cycle.ts emits it AFTER `upsertCycleDay` already updated localDb).
+ * Staleness fix: we re-fetch from localDb when the `day_logged` event fires
+ * (cycle.ts emits it AFTER `upsertCycleDay` already updated localDb).
  */
 export function useTodayRecommendation(): TodayRecommendation {
   const userId = useAuthStore((s) => s.user?.id);

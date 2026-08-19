@@ -9,7 +9,7 @@
 
 import { sql } from 'drizzle-orm';
 import migrations from './migrations/migrations';
-import { getDb } from './connection';
+import { getDb, withTransaction } from './connection';
 
 const MIGRATION_TABLE = '__drizzle_migrations';
 
@@ -48,12 +48,16 @@ export async function runMigrations(): Promise<void> {
       .map((statement) => statement.trim())
       .filter((statement) => statement.length > 0);
 
-    await db.transaction(async (tx) => {
+    // A migration's statements + the tracking insert must apply atomically.
+    // withTransaction holds one queue turn so no other write can interleave
+    // (Phase D.1.1 — migrations are raw SQL, params-free).
+    await withTransaction(async (nativeDb) => {
       for (const statement of statements) {
-        await tx.run(sql.raw(statement));
+        await nativeDb.execAsync(statement);
       }
-      await tx.run(
-        sql`INSERT INTO ${migrationTable} ("hash", "created_at") VALUES (${statementHash(migrationSql)}, ${entry.when})`,
+      await nativeDb.runAsync(
+        `INSERT INTO "${MIGRATION_TABLE}" ("hash", "created_at") VALUES (?, ?)`,
+        [statementHash(migrationSql), entry.when],
       );
     });
   }

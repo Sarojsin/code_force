@@ -71,6 +71,34 @@ export function getDb(): SqliteRemoteDatabase {
   return dbInstance;
 }
 
+/**
+ * Run `fn` inside a single SQLite transaction (BEGIN IMMEDIATE ... COMMIT) that
+ * holds ONE `runExclusive` queue turn, so no other queued writer can interleave
+ * between statements. `fn` receives the raw native db and MUST use the native
+ * API (`runAsync`/`execAsync`) directly — do NOT call drizzle `db.*` inside,
+ * because drizzle statements re-enter `runExclusive` and would deadlock the
+ * queue. Build SQL outside the callback via drizzle's `.toSQL()` and execute
+ * it here.
+ */
+export async function withTransaction<T>(fn: (db: SQLiteDatabase) => Promise<T>): Promise<T> {
+  return runExclusive(async () => {
+    const db = await getNativeDb();
+    await db.execAsync('BEGIN IMMEDIATE');
+    try {
+      const result = await fn(db);
+      await db.execAsync('COMMIT');
+      return result;
+    } catch (error) {
+      try {
+        await db.execAsync('ROLLBACK');
+      } catch {
+        // connection torn down during rollback — ignore
+      }
+      throw error;
+    }
+  });
+}
+
 export async function closeDb(): Promise<void> {
   // Run through the same serialized queue that owns every native statement, so
   // an in-flight query/transaction (e.g. DayMasterLocalService.replaceAll)

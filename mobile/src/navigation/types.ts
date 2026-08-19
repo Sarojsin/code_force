@@ -32,7 +32,6 @@ export type CycleStackParamList = {
   CycleHistory: undefined;
   CyclePredictions: undefined;
   CycleAnalytics: undefined;
-  PhaseDetail: { phase: string };
 };
 
 export type PregnancyStackParamList = {
@@ -63,11 +62,6 @@ export type ProfileStackParamList = {
   DiaryAssetInstall: undefined;
 };
 
-export type ChatStackParamList = {
-  ChatHome: undefined;
-  ChatRoom: { roomId: string };
-};
-
 export type HomeStackParamList = {
   HomeDashboard: undefined;
   MoodLog: undefined;
@@ -83,7 +77,6 @@ export type HomeStackParamList = {
   DiaryTimeline: { diaryId: string };
   DiarySearch: undefined;
   DiaryAssetInstall: undefined;
-  WellnessHub: undefined;
   HealthHub: undefined;
   MoodHistory: undefined;
   BreathingList: undefined;
@@ -134,7 +127,6 @@ export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   Onboarding: NavigatorScreenParams<OnboardingStackParamList>;
   Main: NavigatorScreenParams<MainTabParamList>;
-  Chat: NavigatorScreenParams<ChatStackParamList>;
 };
 
 declare global {
