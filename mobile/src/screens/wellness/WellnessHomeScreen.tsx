@@ -1,7 +1,8 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text as Txt } from 'src/components/ui';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { Text as Txt, ErrorState, ScreenSkeleton } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { PhaseAwareHero } from 'src/components/ui/wellness/PhaseAwareHero';
 import { ReadinessScoreCard } from 'src/components/ui/wellness/ReadinessScoreCard';
@@ -17,12 +18,29 @@ import { useWellnessDashboard } from 'src/hooks/useWellnessDashboard';
 export function WellnessHomeScreen() {
   const theme = useTheme();
   const dashboard = useWellnessDashboard();
+  const tabBarHeight = useBottomTabBarHeight();
   const phaseAccent = dashboard.cycle.phaseAccent ?? theme.colors.primary;
   const phaseBg = dashboard.cycle.phaseBg ?? `${theme.colors.primary}44`;
 
+  if (dashboard.isError) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+        <ErrorState message="Couldn't load your wellness dashboard." onRetry={() => dashboard.refetch()} />
+      </SafeAreaView>
+    );
+  }
+
+  if (dashboard.isLoading) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+        <ScreenSkeleton variant="list" count={5} label="Loading your wellness…" />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 + tabBarHeight + 140 }]}>
         <View style={styles.header}>
           <Txt variant="h1" style={styles.titleText}>Wellness</Txt>
           <Txt variant="body" color="secondary">

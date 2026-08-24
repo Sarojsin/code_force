@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
-import { FlatList, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, Text as Txt } from 'src/components/ui';
+import { Card, ScreenSkeleton, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useMoodLogs } from 'src/services/queries/wellness';
 import type { MoodLog } from 'src/services/api';
@@ -66,10 +66,8 @@ export function MoodHistoryScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView
-        style={[styles.safe, styles.centered, { backgroundColor: theme.colors.background }]}
-      >
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+        <ScreenSkeleton variant="list" label="Loading mood history…" />
       </SafeAreaView>
     );
   }

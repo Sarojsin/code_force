@@ -90,14 +90,19 @@ export function VideoLibraryScreen() {
     [theme, handleOpenContent],
   );
 
-  if (isLoading && !forYou) {
+  if (isLoading) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
         <LibraryHeader
-          forYou={forYou}
+          forYou={smartRecommendationsEnabled && forYou}
           onToggle={smartRecommendationsEnabled ? setForYou : undefined}
           theme={theme}
         />
+        {smartRecommendationsEnabled && forYou ? (
+          <View style={styles.forYouLoadingLabel}>
+            <Txt variant="caption" color="muted">Preparing your picks…</Txt>
+          </View>
+        ) : null}
         <SkeletonRows theme={theme} />
       </SafeAreaView>
     );
@@ -191,7 +196,7 @@ export function VideoLibraryScreen() {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListFooterComponent={
-            forYou && !hasData && (all ?? []).length > 0 ? <Txt variant="caption" color="muted" style={styles.browseAllNote}>Browse the full library below.</Txt> : null
+            forYou && !hasData && (all ?? []).length > 0 ? <Txt variant="bodySmall" color="secondary" style={styles.browseAllNote}>Browse the full library below.</Txt> : null
           }
         />
       )}
@@ -427,6 +432,7 @@ const styles = StyleSheet.create({
   title: { marginBottom: 4 },
   subtitle: { marginTop: 4, opacity: 0.7, flex: 1 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
+  forYouLoadingLabel: { paddingHorizontal: 24, paddingTop: 4, marginBottom: 8 },
   forYouPill: {
     flexDirection: 'row',
     alignItems: 'center',

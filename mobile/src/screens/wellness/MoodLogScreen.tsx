@@ -63,7 +63,7 @@ function MoodTrendChart() {
       </Svg>
       <View style={{ flexDirection: 'row', width: w, paddingHorizontal: padding.left }}>
         {MOCK_MOOD_LABELS.map((m) => (
-          <Txt key={m} variant="caption" color="muted" style={{ width: stepX, textAlign: 'center', fontSize: 9 }}>{m}</Txt>
+          <Txt key={m} variant="caption" color="muted" style={{ width: stepX, textAlign: 'center', fontSize: theme.typography.annotation.fontSize }}>{m}</Txt>
         ))}
       </View>
     </View>
