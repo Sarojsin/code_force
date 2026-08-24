@@ -55,6 +55,7 @@ export interface CalendarProps {
   animatingDates?: Set<string>;
   showPhaseLegend?: boolean;
   phaseAccentForDate?: (dateStr: string) => string | undefined;
+  phaseGlyphForDate?: (dateStr: string) => string | undefined;
   showHeader?: boolean;
   isLoading?: boolean;
   dimmedDates?: Set<string>;
@@ -64,7 +65,7 @@ export interface CalendarProps {
 
 export const Calendar = React.memo(function Calendar({
   selectedDate, onDateSelect, markedDates, minDate, maxDate, encodedDays, animatingDates,
-  showPhaseLegend, phaseAccentForDate, showHeader = true, isLoading = false, dimmedDates,
+  showPhaseLegend, phaseAccentForDate, phaseGlyphForDate, showHeader = true, isLoading = false, dimmedDates,
   month, onMonthChange,
 }: CalendarProps) {
   const theme = useTheme();
@@ -106,6 +107,7 @@ export const Calendar = React.memo(function Calendar({
 
           const animating = animatingDates?.has(dateStr);
           const phaseAccent = phaseAccentForDate?.(dateStr);
+          const phaseGlyph = phaseGlyphForDate?.(dateStr);
           const selectedBg = selected ? (phaseAccent ?? theme.colors.primary) : undefined;
           const dimmed = dimmedDates !== undefined && dimmedDates.has(dateStr);
 
@@ -126,7 +128,7 @@ export const Calendar = React.memo(function Calendar({
               <Pressable
                 onPress={() => inMonth && !disabled && onDateSelect(day)}
                 disabled={!inMonth || disabled}
-                accessibilityLabel={`${format(day, 'MMMM d, yyyy')}${dayType !== 'none' ? `, ${dayType}` : ''}`}
+                accessibilityLabel={`${format(day, 'MMMM d, yyyy')}${dayType !== 'none' ? `, ${dayType}` : ''}${phaseGlyph ? `, ${phaseGlyph}` : ''}`}
                 accessibilityRole="button"
                 accessibilityState={{ selected: !!selected, disabled: !inMonth || disabled }}
                 style={[
@@ -156,6 +158,16 @@ export const Calendar = React.memo(function Calendar({
                 >
                   {format(day, 'd')}
                 </Text>
+                {phaseGlyph && !isStrikethrough && (
+                  <Text
+                    variant="annotation"
+                    align="center"
+                    style={[styles.phaseGlyph, { color: theme.colors.textDark, opacity: 0.72 }, today && styles.phaseGlyphWithToday]}
+                    accessible={false}
+                  >
+                    {phaseGlyph}
+                  </Text>
+                )}
                 {today && (
                   <Text variant="caption" style={[styles.todayTag, { color: selected ? theme.colors.textInverse : theme.colors.primary }]}>
                     Today
@@ -170,7 +182,7 @@ export const Calendar = React.memo(function Calendar({
         })}
       </View>
     )),
-    [days, currentMonth, selectedDate, markedDates, minDate, maxDate, encodedDays, animatingDates, phaseAccentForDate, onDateSelect, dimmedDates, theme.colors],
+    [days, currentMonth, selectedDate, markedDates, minDate, maxDate, encodedDays, animatingDates, phaseAccentForDate, phaseGlyphForDate, onDateSelect, dimmedDates, theme.colors],
   );
 
   return (
@@ -293,7 +305,19 @@ const styles = StyleSheet.create({
   markedDot: { width: 5, height: 5, borderRadius: 3, marginTop: 2, position: 'absolute', bottom: 4 },
   todayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#EF4444', position: 'absolute', bottom: 4 },
   dayEmphasis: { fontWeight: '800' },
-  todayTag: { fontSize: 7, fontWeight: '700', position: 'absolute', bottom: 3 },
+  todayTag: { fontSize: 9, fontWeight: '700', position: 'absolute', bottom: 3 },
+  phaseGlyph: {
+    fontSize: 9,
+    fontWeight: '800',
+    lineHeight: 10,
+    position: 'absolute',
+    bottom: 5,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  phaseGlyphWithToday: {
+    bottom: 16,
+  },
   phaseLegend: {
     flexDirection: 'row',
     gap: 7,

@@ -80,7 +80,7 @@ export function Button({
         <View style={[StyleSheet.absoluteFill, styles.disabledPrimaryBg]} />
       )}
       {loading ? (
-        <ActivityIndicator color={vStyle.text.color as string} />
+        <ActivityIndicator size="small" color={vStyle.text.color as string} />
       ) : (
         <Text style={[theme.typography.button, { letterSpacing: 0.16 }, vStyle.text]}>{label}</Text>
       )}

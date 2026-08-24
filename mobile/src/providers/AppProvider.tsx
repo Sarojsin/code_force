@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, View, Text, useColorScheme } from 'react
 
 import { EncryptedStorage } from 'src/services/storage';
 import { prefetchAppData } from 'src/services/queries/prefetch';
+import { hydrateFromSqlite } from 'src/services/queries/hydrateFromSqlite';
 import { useAuthStore } from 'src/stores/authStore';
 
 const PREWARM_KEYS = [
@@ -44,7 +45,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             return null;
           }
         })();
-        prefetchAppData(userId ?? useAuthStore.getState().user?.id ?? null).catch(() => {});
+        const resolvedUserId = userId ?? useAuthStore.getState().user?.id ?? null;
+        prefetchAppData(resolvedUserId).catch(() => {});
+        if (resolvedUserId) {
+          hydrateFromSqlite(resolvedUserId).catch(() => {});
+        }
       })();
 
       await Promise.race([prewarmPromise, timeoutPromise]);

@@ -26,7 +26,7 @@ import {
 } from 'lucide-react-native';
 
 import { Card, Text, Skeleton } from 'src/components/ui';
-import { useTheme } from 'src/theme';
+import { useTheme, typography } from 'src/theme';
 import { safeStep, buildAreaPath, buildLinePath } from 'src/utils/svg';
 import {
   useCycleEntries,
@@ -121,7 +121,7 @@ function TrendChart({ cycleData, months }: { cycleData: number[]; months: string
               strokeDasharray="4 4"
               strokeOpacity={0.5}
             />
-            <SvgText x={padding.left - 6} y={y + 3.5} fontSize="9" fill={theme.colors.textMuted} textAnchor="end">{tick}</SvgText>
+            <SvgText x={padding.left - 6} y={y + 3.5} fontSize={theme.typography.annotation.fontSize} fill={theme.colors.textMuted} textAnchor="end">{tick}</SvgText>
           </React.Fragment>
         );
       })}
@@ -132,13 +132,15 @@ function TrendChart({ cycleData, months }: { cycleData: number[]; months: string
       {points.map((p, i) => (
         <React.Fragment key={i}>
           <SvgCircle cx={p.x} cy={p.y} r="3.5" fill={theme.colors.surface} stroke={theme.colors.accent} strokeWidth="2" />
-          <SvgText x={p.x} y={p.y - 9} fontSize="9" fontWeight="600" fill={theme.colors.textSecondary} textAnchor="middle">
+          <SvgText x={p.x} y={p.y - 9} fontSize={theme.typography.annotation.fontSize} fontWeight="600" fill={theme.colors.textSecondary} textAnchor="middle">
             {cycleData[i]}
           </SvgText>
         </React.Fragment>
       ))}
       {months.map((m, i) => (
-        <SvgText key={i} x={padding.left + i * stepX} y={h - 4} fontSize="9" fill={theme.colors.textMuted} textAnchor="middle">{m}</SvgText>
+        /* Intentionally NOT a FlatList: a 12-month SVG chart is rendered as one
+           vector block; virtualization would not pay off (Phase D bounds fetch to 6 months). */
+        <SvgText key={i} x={padding.left + i * stepX} y={h - 4} fontSize={theme.typography.annotation.fontSize} fill={theme.colors.textMuted} textAnchor="middle">{m}</SvgText>
       ))}
     </Svg>
   );
@@ -848,8 +850,8 @@ const styles = StyleSheet.create({
   modalHeaderTitle: { flex: 1, marginLeft: 8 },
   modalClose: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   modalBody: { paddingBottom: 20 },
-  modalLabel: { fontSize: 10, letterSpacing: 1, fontWeight: '600', marginBottom: 6 },
-  modalLabelWide: { fontSize: 10, letterSpacing: 1, fontWeight: '600', marginBottom: 6, marginTop: 16 },
+  modalLabel: { fontSize: typography.label.fontSize, letterSpacing: 1, fontWeight: '600', marginBottom: 6 },
+  modalLabelWide: { fontSize: typography.label.fontSize, letterSpacing: 1, fontWeight: '600', marginBottom: 6, marginTop: 16 },
   modalText: { lineHeight: 20 },
   modalChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   doctorNote: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
