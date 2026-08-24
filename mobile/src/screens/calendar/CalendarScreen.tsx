@@ -57,6 +57,14 @@ const OVERVIEW_META: Record<PhaseRange['key'], (typeof PHASE_META)['menstrual']>
   luteal: PHASE_META.luteal,
 };
 
+const PHASE_GLYPHS: Record<PhaseRange['key'], string> = {
+  menstrual: 'P',
+  follicular: 'F',
+  fertile: 'Fl',
+  ovulation: 'O',
+  luteal: 'L',
+};
+
 function getPhaseForDate(days: Record<string, string>, dateStr: string): { emoji: string; label: string; color: string; description: string } {
   const phaseKey = derivePhaseForDate(days, dateStr);
   const meta = getPhaseMeta(phaseKey);
@@ -97,6 +105,7 @@ export function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showOverride, setShowOverride] = useState(false);
   const [activePhaseFilter, setActivePhaseFilter] = useState<string | null>(null);
+  const [phaseOverviewOpen, setPhaseOverviewOpen] = useState(true);
 
   const [showDaySheet, setShowDaySheet] = useState(false);
   const [selectedPhaseDetail, setSelectedPhaseDetail] = useState<PhaseRange['key'] | null>(null);
@@ -225,6 +234,14 @@ export function CalendarScreen() {
     [encodedDays],
   );
 
+  const phaseGlyphForDate = useCallback(
+    (dateStr: string) => {
+      const key = derivePhaseForDate(encodedDays, dateStr);
+      return PHASE_GLYPHS[key];
+    },
+    [encodedDays],
+  );
+
   return (
     <ScreenContainer
       scroll
@@ -249,7 +266,7 @@ export function CalendarScreen() {
           </Pressable>
           <View style={{ alignItems: 'center' }}>
             <Text variant="h2">{format(currentMonth, 'MMMM yyyy')}</Text>
-            <Text style={{ fontSize: 12, color: theme.colors.textSoft, marginTop: 2 }}>
+            <Text variant="bodySmall" color="secondary" style={{ marginTop: 2 }}>
               Cycle Day {cycleDay} · {currentPhase.label}
             </Text>
           </View>
@@ -274,6 +291,7 @@ export function CalendarScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
                 accessibilityLabel={`Filter: ${p.label}`}
+                hitSlop={8}
                 style={[
                   styles.phasePill,
                   {
@@ -286,7 +304,7 @@ export function CalendarScreen() {
                 ]}
               >
                 <Text variant="emoji">{p.emoji}</Text>
-                <Text style={[styles.phasePillLabel, { color: isActive ? '#fff' : '#5A3A47' }]}>{p.label}</Text>
+                <Text variant="bodySmall" style={[styles.phasePillLabel, { color: isActive ? '#fff' : '#5A3A47' }]}>{p.label}</Text>
               </Pressable>
             );
           })}
@@ -299,6 +317,7 @@ export function CalendarScreen() {
           onDateSelect={handleDateSelect}
           encodedDays={encodedDays}
           phaseAccentForDate={phaseAccentForDate}
+          phaseGlyphForDate={phaseGlyphForDate}
           dimmedDates={dimmedDates}
           showHeader={false}
           isLoading={isLoading}
@@ -310,7 +329,7 @@ export function CalendarScreen() {
               <Text variant="h3">{format(selectedDate, 'MMMM d')}</Text>
               <View style={[styles.phaseBadge, { backgroundColor: selectedPhase.color + '22', borderRadius: 100 }]}>
                 <Text variant="emoji">{selectedPhase.emoji}</Text>
-                <Text style={[styles.phaseBadgeLabel, { color: selectedPhase.color }]}>{selectedPhase.label}</Text>
+                <Text variant="bodySmall" style={[styles.phaseBadgeLabel, { color: selectedPhase.color }]}>{selectedPhase.label}</Text>
               </View>
             </View>
             <Text variant="body" color="secondary" style={{ marginTop: 8 }}>{selectedPhase.description}</Text>
@@ -323,7 +342,7 @@ export function CalendarScreen() {
                   { backgroundColor: theme.colors.primary, borderRadius: 100 },
                 ]}
               >
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>Log period & details</Text>
+                <Text variant="bodySmall" color="inverse" style={{ fontWeight: '600' }}>Log period & details</Text>
               </Pressable>
             </View>
             {!coveringEntry && (
@@ -335,8 +354,20 @@ export function CalendarScreen() {
         )}
 
         <View style={styles.phaseOverview}>
-          <Text variant="h3" style={{ marginBottom: 12 }}>Phase Overview</Text>
-          {isLoading ? (
+          <Pressable
+            onPress={() => setPhaseOverviewOpen((v) => !v)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: phaseOverviewOpen }}
+            accessibilityLabel="Phase overview section"
+            hitSlop={8}
+            style={styles.phaseOverviewHeader}
+          >
+            <Text variant="h3">Phase Overview</Text>
+            <Text variant="body" color="secondary" style={styles.phaseOverviewChevron}>
+              {phaseOverviewOpen ? '⌃' : '⌄'}
+            </Text>
+          </Pressable>
+          {!phaseOverviewOpen ? null : isLoading ? (
             <>
               <Skeleton height={64} style={{ marginBottom: 8, borderRadius: 16 }} />
               <Skeleton height={64} style={{ marginBottom: 8, borderRadius: 16 }} />
@@ -368,7 +399,7 @@ export function CalendarScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Text variant="body" style={{ fontWeight: '600' }}>{meta.label}</Text>
                       <View style={[styles.dateBadge, { backgroundColor: meta.fg + '22', borderRadius: 100 }]}>
-                        <Text style={{ color: meta.fg, fontSize: 10, fontWeight: '600' }}>{badge}</Text>
+                        <Text variant="detail" style={{ color: meta.fg, fontWeight: '600' }}>{badge}</Text>
                       </View>
                     </View>
                     <Text variant="caption" color="muted" style={{ marginTop: 2 }}>
@@ -465,11 +496,12 @@ const styles = StyleSheet.create({
   phasePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    minHeight: 36,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 4,
   },
   phasePillLabel: {
-    fontSize: 12,
     fontWeight: '600',
     marginLeft: 4,
   },
@@ -486,7 +518,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   phaseBadgeLabel: {
-    fontSize: 12,
     fontWeight: '600',
     marginLeft: 4,
   },
@@ -503,6 +534,16 @@ const styles = StyleSheet.create({
   },
   phaseOverview: {
     marginTop: 24,
+  },
+  phaseOverviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  phaseOverviewChevron: {
+    fontSize: 18,
+    fontWeight: '700',
   },
   phaseOverviewCard: {
     flexDirection: 'row',

@@ -3,11 +3,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useDiaries, useCreateDiary } from '../../services/queries/diary';
 import { DiaryCard } from './components/DiaryCard';
+import { ScreenSkeleton, ErrorState, EmptyState } from '../../components/ui';
 import type { Diary } from '../../db/schema';
 
 export function DiaryLibraryScreen({ navigation }: any) {
   const { top } = useSafeAreaInsets();
-  const { data: diaries } = useDiaries();
+  const { data: diaries, isLoading, isError, refetch } = useDiaries();
   const createDiary = useCreateDiary();
   const [showCreate, setShowCreate] = useState(false);
   const [diaryTitle, setDiaryTitle] = useState('');
@@ -41,6 +42,22 @@ export function DiaryLibraryScreen({ navigation }: any) {
     [handleOpenDiary],
   );
 
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { paddingTop: top }]}>
+        <ScreenSkeleton variant="cards" count={6} label="Loading your diaries…" />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={[styles.container, { paddingTop: top }]}>
+        <ErrorState message="Couldn't load your diaries." onRetry={() => refetch()} />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { paddingTop: top }]}>
       <View style={styles.header}>
@@ -63,6 +80,14 @@ export function DiaryLibraryScreen({ navigation }: any) {
         maxToRenderPerBatch={10}
         windowSize={10}
         removeClippedSubviews={true}
+        ListEmptyComponent={
+          <EmptyState
+            title="No diaries yet"
+            message="Start a new volume to preserve your memories."
+            actionLabel="Start a new volume"
+            onAction={() => setShowCreate(true)}
+          />
+        }
         ListHeaderComponent={
           <TouchableOpacity
             style={styles.newDiaryCard}

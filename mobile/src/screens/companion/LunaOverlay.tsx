@@ -9,7 +9,7 @@ import { useAnimationEngine, memoryService, dialogueEngine, voiceService } from 
 import { Luna3D } from '../../services/companion/3d/Luna3D';
 import { useSpeechBubble } from '../../services/companion/EventEngine';
 import { Text, Loader } from '../../components/ui';
-import { useTheme } from '../../theme';
+import { useTheme, typography } from '../../theme';
 import { getLunaContext, LunaScreen } from '../../services/companion/lunaContext';
 import { getFallbackTip, type HealthTipCategory } from '../../services/healthTips';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -820,14 +820,14 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   tipBadgeText: {
-    fontSize: 9,
+    fontSize: typography.annotation.fontSize,
     fontWeight: '700',
     letterSpacing: 0.6,
     color: '#DC2626',
   },
   levelBadgeText: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: typography.annotation.fontSize,
     fontWeight: '700',
   },
   groundShadow: {

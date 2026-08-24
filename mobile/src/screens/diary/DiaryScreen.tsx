@@ -2,6 +2,7 @@ import { memo, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDiaryPages } from '../../services/queries/diary';
+import { ScreenSkeleton, ErrorState } from '../../components/ui';
 
 const PageCard = memo(function PageCard({
   page,
@@ -22,7 +23,7 @@ const PageCard = memo(function PageCard({
 export function DiaryScreen({ route, navigation }: any) {
   const { diaryId } = route.params;
   const { top } = useSafeAreaInsets();
-  const { data: pages } = useDiaryPages(diaryId);
+  const { data: pages, isLoading, isError, refetch } = useDiaryPages(diaryId);
 
   const handleOpenPage = useCallback(
     (pageId: string) => navigation.navigate('DiaryPage', { diaryId, pageId }),
@@ -37,6 +38,22 @@ export function DiaryScreen({ route, navigation }: any) {
     ),
     [handleOpenPage],
   );
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { paddingTop: top }]}>
+        <ScreenSkeleton variant="list" count={4} label="Loading pages…" />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={[styles.container, { paddingTop: top }]}>
+        <ErrorState message="Couldn't load the pages of this diary." onRetry={() => refetch()} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>

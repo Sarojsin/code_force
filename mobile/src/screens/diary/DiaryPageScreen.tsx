@@ -3,6 +3,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
 import { ResizeMode, Video, Audio } from 'expo-av';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { typography } from 'src/theme';
 import { useDiaryPage } from '../../services/queries/diary';
 import { diaryLocal } from '../../services/localDb';
 import { resolveDiaryMediaUris } from '../../services/diary/diaryMediaUri';
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
   playBtnActive: { backgroundColor: '#ba1a1a' },
   playBtnText: { color: '#fff', fontSize: 12 },
   moodBadge: { alignItems: 'center', backgroundColor: '#fffcf5', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: '#f0eee6' },
-  moodLabel: { fontFamily: 'WorkSans_500Medium', fontSize: 10, color: '#554240', marginTop: 2 },
+  moodLabel: { fontFamily: 'WorkSans_500Medium', fontSize: typography.label.fontSize, color: '#554240', marginTop: 2 },
   mediaFrame: { borderRadius: 4 },
   mediaPlaceholder: {
     borderRadius: 4, borderWidth: 1, borderStyle: 'dashed', borderColor: '#dbc1bd',

@@ -132,7 +132,7 @@ export function PregnancyHomeScreen(props: PregnancyHomeScreenProps = {}) {
         </View>
 
         <Card style={{ marginBottom: 16 }}>
-          <Txt style={{ fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, letterSpacing: 1.5 }}>WEEK PROGRESS</Txt>
+          <Txt style={{ fontSize: theme.typography.label.fontSize, fontWeight: '800', color: theme.colors.textSoft, letterSpacing: 1.5 }}>WEEK PROGRESS</Txt>
           <View style={[styles.progressBar, { backgroundColor: theme.colors.border, borderRadius: 100, marginTop: 12 }]}>
             <View style={[styles.progressFill, { width: `${(currentWeek / 40) * 100}%`, backgroundColor: theme.colors.primary, borderRadius: 100 }]} />
           </View>
