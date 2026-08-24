@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
 import {
@@ -528,7 +528,7 @@ function mergeCycleDaysByDate(local: CycleDay[] | DailyDay[], server: DailyDay[]
  */
 export function useCycleDays(
   range?: { start?: string; end?: string },
-  options: { enabled?: boolean } = {},
+  options: { enabled?: boolean; placeholderData?: UseQueryOptions<DailyDay[]>['placeholderData'] } = {},
 ) {
   const keys = useCycleKeys();
   const userId = useAuthStore((s) => s.user?.id);
@@ -557,6 +557,7 @@ export function useCycleDays(
   return useQuery({
     queryKey: [...keys.days, range],
     enabled,
+    placeholderData: options.placeholderData,
     queryFn: async (): Promise<DailyDay[]> => {
       let server: DailyDay[] = [];
       if (boundedRange?.start && boundedRange?.end) {

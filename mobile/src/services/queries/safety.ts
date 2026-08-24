@@ -28,7 +28,7 @@ export function useEmergencyContacts() {
   return useQuery({
     queryKey: safetyKeys.contacts,
     queryFn: () => safetyService.getEmergencyContacts(),
-    staleTime: 0,
+    staleTime: 5 * 60_000,
     retry: false,
   });
 }
@@ -177,7 +177,7 @@ export function useSosHistory() {
   return useQuery({
     queryKey: safetyKeys.sosHistory,
     queryFn: () => safetyService.getSosHistory(),
-    staleTime: 0,
+    staleTime: 5 * 60_000,
     retry: false,
   });
 }

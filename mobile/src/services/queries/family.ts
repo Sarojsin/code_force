@@ -12,7 +12,7 @@ export function useFamilyLinks() {
   return useQuery({
     queryKey: familyKeys.links,
     queryFn: () => familyService.getLinks(),
-    staleTime: 0,
+    staleTime: 5 * 60_000,
     retry: false,
   });
 }

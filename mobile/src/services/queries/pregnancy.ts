@@ -19,7 +19,7 @@ export function usePregnancyProfile() {
   return useQuery({
     queryKey: pregnancyKeys.profile,
     queryFn: () => pregnancyService.getProfile(),
-    staleTime: 0,
+    staleTime: 5 * 60_000,
     retry: false,
   });
 }
@@ -58,7 +58,7 @@ export function usePregnancyMilestones() {
   return useQuery({
     queryKey: pregnancyKeys.milestones,
     queryFn: () => pregnancyService.getMilestones(),
-    staleTime: 0,
+    staleTime: 5 * 60_000,
     retry: false,
   });
 }

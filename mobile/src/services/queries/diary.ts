@@ -55,10 +55,10 @@ export function useDeleteDiary() {
   });
 }
 
-export function useDiaryPages(diaryId: string) {
+export function useDiaryPages(diaryId: string, opts?: { limit?: number; offset?: number }) {
   return useQuery({
-    queryKey: ['diary_pages', diaryId],
-    queryFn: () => diaryService.getPages(diaryId),
+    queryKey: ['diary_pages', diaryId, opts?.limit ?? 50, opts?.offset ?? 0],
+    queryFn: () => diaryService.getPages(diaryId, opts),
     staleTime: 5 * 60_000,
   });
 }

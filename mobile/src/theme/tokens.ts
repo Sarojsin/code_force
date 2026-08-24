@@ -161,9 +161,12 @@ export const typography = {
   h1: { fontSize: 24, fontWeight: '700' as const, lineHeight: 30, fontFamily: fonts.heading },
   h2: { fontSize: 20, fontWeight: '600' as const, lineHeight: 26, fontFamily: fonts.body },
   h3: { fontSize: 18, fontWeight: '600' as const, lineHeight: 24, fontFamily: fonts.body },
+  title: { fontSize: 21, fontWeight: '700' as const, lineHeight: 26, fontFamily: fonts.body },
+  detail: { fontSize: 13, fontWeight: '400' as const, lineHeight: 18, fontFamily: fonts.body },
   body: { fontSize: 16, fontWeight: '400' as const, lineHeight: 22, fontFamily: fonts.body },
   bodySmall: { fontSize: 14, fontWeight: '400' as const, lineHeight: 20, fontFamily: fonts.body },
   caption: { fontSize: 12, fontWeight: '400' as const, lineHeight: 16, fontFamily: fonts.body },
+  annotation: { fontSize: 9, fontWeight: '600' as const, lineHeight: 12, letterSpacing: 0.4, fontFamily: fonts.body },
   button: { fontSize: 16, fontWeight: '600' as const, lineHeight: 20, fontFamily: fonts.body },
   // Extra variants per UI_UX spec
   displayLogo: { fontSize: 28, fontWeight: '700' as const, lineHeight: 34, fontFamily: fonts.heading },

@@ -28,6 +28,8 @@ export interface UseWellnessDashboardReturn {
   phaseRecommendations: HealthTipResponse[];
   moodInsight: string | null;
   isLoading: boolean;
+  isError: boolean;
+  refetch: () => Promise<unknown>;
   error: Error | null;
 }
 
@@ -81,6 +83,16 @@ export function useWellnessDashboard(): UseWellnessDashboardReturn {
   );
 
   const isLoading = cycle.isLoading || moodLogsResult.isLoading || insightsResult.isLoading || todayDaysResult.isLoading;
+  const isError = moodLogsResult.isError || insightsResult.isError || todayDaysResult.isError;
+  const refetch = () =>
+    Promise.allSettled([
+      moodLogsResult.refetch(),
+      insightsResult.refetch(),
+      analyticsResult.refetch(),
+      predictionsResult.refetch(),
+      todayDaysResult.refetch(),
+      healthTipsResult.refetch(),
+    ]).then(() => undefined);
 
   return {
     cycle,
@@ -95,6 +107,8 @@ export function useWellnessDashboard(): UseWellnessDashboardReturn {
     phaseRecommendations,
     moodInsight,
     isLoading,
+    isError,
+    refetch,
     error: cycle.error || moodLogsResult.error || insightsResult.error,
   };
 }

@@ -29,8 +29,10 @@ export const diaryService = {
     await api.delete(`${BASE}/diaries/${id}`);
   },
 
-  async getPages(diaryId: string): Promise<any[]> {
-    const resp = await api.get(`${BASE}/diaries/${diaryId}/pages`);
+  async getPages(diaryId: string, opts?: { limit?: number; offset?: number }): Promise<any[]> {
+    const resp = await api.get(`${BASE}/diaries/${diaryId}/pages`, {
+      params: { limit: opts?.limit ?? 50, offset: opts?.offset ?? 0 },
+    });
     return unwrap(resp.data);
   },
 
