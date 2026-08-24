@@ -18,8 +18,8 @@ export function KeyboardAvoidingWrapper({ children, offset, bounces = true, cont
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? (offset ?? 100) : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? (offset ?? 100) : (offset ?? 0)}
     >
       <ScrollView {...scrollProps}>
         {children}

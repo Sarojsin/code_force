@@ -71,7 +71,7 @@ function TimelineBar({ phase }: { phase: 'menstrual' | 'follicular' | 'ovulation
       {phases.map((p, i) => (
         <View key={p} style={{ alignItems: 'center' }}>
           <View style={[styles.timelineSeg, { backgroundColor: i <= activeIdx ? (colors as any)[p] : theme.colors.border, width: segW - 4, height: 6, borderRadius: 3 }]} />
-          <Text variant="caption" color={i <= activeIdx ? 'primary' : 'muted'} style={{ marginTop: 4, fontSize: 9 }}>
+          <Text variant="annotation" align="center" color={i <= activeIdx ? 'primary' : 'muted'} style={{ marginTop: 4 }}>
             {p === 'menstrual' ? 'D1' : p === 'follicular' ? 'D6' : p === 'ovulation' ? 'D14' : 'D17'}
           </Text>
         </View>

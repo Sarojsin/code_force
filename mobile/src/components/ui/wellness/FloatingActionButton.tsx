@@ -45,7 +45,7 @@ export function FloatingActionButton({
     >
       {icon ?? <PlusIcon />}
       {label && (
-        <Txt variant="caption" style={styles.label}>
+        <Txt variant="caption" style={[styles.label, { top: size + 4 }]}>
           {label}
         </Txt>
       )}
@@ -73,7 +73,6 @@ const styles = StyleSheet.create({
   },
   label: {
     position: 'absolute',
-    bottom: -24,
     color: '#666',
     fontSize: 12,
     fontWeight: '600',

@@ -1,5 +1,6 @@
 import React, { ComponentType, Suspense } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+
+import { ScreenSkeleton } from './ScreenSkeleton';
 
 /**
  * Singleton cache: keyed by `exportName` (a stable string) so the SAME screen
@@ -25,13 +26,7 @@ export function lazyScreen<T extends ComponentType<any>>(
     return { default: exportName ? mod[exportName] : (mod.default || Object.values(mod)[0]) };
   });
   const Wrapped = (props: any) => (
-    <Suspense
-      fallback={
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="small" />
-        </View>
-      }
-    >
+    <Suspense fallback={<ScreenSkeleton variant="list" count={4} label="Loading…" />}>
       {/* route.params flow through props; the singleton wrapper preserves them */}
       <LazyComponent {...props} />
     </Suspense>

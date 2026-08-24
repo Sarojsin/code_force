@@ -29,7 +29,8 @@ export function ScreenLayout({
   const content = (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
       {loading ? (
         <View style={[styles.centered, styles.flex]}>
