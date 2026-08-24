@@ -1075,3 +1075,30 @@ unchanged; the following are **new and optional** (`null` until enough data):
 
 Mobile may use these to build the Cycle Overview stat cards; when a field is
 `null` the card shows `--` and the widget is kept but empty (no fake data).
+
+---
+
+## 17. Memory Diary (diary module)
+
+`GET /api/v1/diary/diaries` — list the user's heirlooms. Small, unbounded list
+(one row per diary a user owns); mobile renders all results.
+
+`GET /api/v1/diary/diaries/{diary_id}/pages` — list pages of one diary.
+
+| Query param | Type | Notes |
+|-------------|------|-------|
+| `limit` | `int?` | max `200`, default `50` |
+| `offset` | `int?` | default `0` |
+
+Mobile calls pages with an explicit `limit` (default `50`) so the query cache
+stays bounded. `DiaryPageResponse` shape as defined by the diary module
+(`diaryplan10.md`); all other diary endpoints unchanged.
+
+`GET /api/v1/diary/diaries/{diary_id}/pages/{page_id}` — single page incl.
+objects. `GET /api/v1/diary/timeline?year&month`, `GET /api/v1/diary/search`
+unchanged.
+
+**Offline:** the diary list + pages are mirrored in mobile SQLite
+(`diaryLocal`) and hydrated into the React Query cache at launch (ADR 0007) —
+the hydrator maps SQLite rows to the exact server shape above; it never writes
+raw Drizzle rows into the cache.
