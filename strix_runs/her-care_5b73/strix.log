@@ -1,0 +1,1275 @@
+2026-08-20 01:55:49.196 INFO    her-care_5b73 - strix.core.runner: Starting Strix scan her-care_5b73 (image=ghcr.io/usestrix/strix-sandbox:1.3.0, max_turns=500, interactive=False, run_dir=E:\her_care\strix_runs\her-care_5b73)
+2026-08-20 01:55:49.197 INFO    her-care_5b73 - strix.core.runner: LLM model resolved: gemini/gemini-3.6-flash
+2026-08-20 01:55:49.197 INFO    her-care_5b73 - strix.core.runner: Bringing up sandbox session for scan her-care_5b73
+2026-08-20 01:55:49.197 DEBUG   her-care_5b73 - strix.runtime.backends: Selected sandbox backend: docker
+2026-08-20 01:55:49.198 INFO    her-care_5b73 - strix.runtime.session_manager: Creating sandbox session for scan her-care_5b73 (backend=docker, image=ghcr.io/usestrix/strix-sandbox:1.3.0)
+2026-08-20 01:55:49.388 DEBUG   her-care_5b73 - strix.runtime.docker_client: Creating sandbox container: image=ghcr.io/usestrix/strix-sandbox:1.3.0 caps=['NET_ADMIN', 'NET_RAW'] exposed_ports=[48080]
+2026-08-20 01:55:49.686 INFO    her-care_5b73 - strix.runtime.docker_client: Sandbox container created: id=81f268b4e541 image=ghcr.io/usestrix/strix-sandbox:1.3.0
+2026-08-20 01:55:51.374 DEBUG   her-care_5b73 - strix.runtime.session_manager: Caido host endpoint resolved: http://127.0.0.1:51770
+2026-08-20 01:55:51.374 INFO    her-care_5b73 - strix.runtime.caido_bootstrap: Bootstrapping Caido client (host=http://127.0.0.1:51770, container=http://127.0.0.1:48080)
+2026-08-20 01:55:51.602 INFO    her-care_5b73 - strix.runtime.caido_bootstrap: Caido project selected: 5d3359c2-82e1-44cf-a6dc-a2c901e276c3
+2026-08-20 01:55:51.602 INFO    her-care_5b73 - strix.runtime.session_manager: Sandbox session for scan her-care_5b73 ready and cached
+2026-08-20 01:55:51.602 INFO    her-care_5b73 - strix.core.runner: Sandbox ready for scan her-care_5b73
+2026-08-20 01:55:51.629 DEBUG   her-care_5b73 - strix.skills: Loaded skill: scan_modes/quick -> quick
+2026-08-20 01:55:51.679 DEBUG   her-care_5b73 - strix.skills: Loaded skill: tooling/agent_browser -> agent_browser
+2026-08-20 01:55:51.705 DEBUG   her-care_5b73 - strix.skills: Loaded skill: tooling/python -> python
+2026-08-20 01:55:51.751 DEBUG   her-care_5b73 - strix.skills: Loaded skill: coordination/root_agent -> root_agent
+2026-08-20 01:55:51.767 DEBUG   her-care_5b73 - strix.skills: Loaded skill: coordination/source_aware_whitebox -> source_aware_whitebox
+2026-08-20 01:55:51.785 DEBUG   her-care_5b73 - strix.skills: Loaded skill: custom/source_aware_sast -> source_aware_sast
+2026-08-20 01:55:51.786 DEBUG   her-care_5b73 - strix.skills: load_skills: 6 skill(s) resolved
+2026-08-20 01:55:52.959 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 01:55:53.030 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 01:55:53.094 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 01:55:53.111 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 01:55:53.621 DEBUG   her-care_5b73 - strix.agents.prompt: render_system_prompt: scan_mode=quick root=True whitebox=True skills=6 prompt_len=81456
+2026-08-20 01:55:53.621 INFO    her-care_5b73 - strix.agents.factory: Built root agent 'Root Agent' (skills=0, tools=30, scan_mode=quick, whitebox=True)
+2026-08-20 01:55:53.622 INFO    her-care_5b73 - strix.core.agents: agent.register a69634f1 (Root Agent) parent=-
+2026-08-20 01:55:54.262 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 01:55:54.387 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 01:55:54.439 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 01:55:54.443 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 01:55:54.446 DEBUG   her-care_5b73 - openai.agents: Setting current trace: no-op
+2026-08-20 01:55:54.446 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:55:54.475 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:55:54.475 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 01:55:54.475 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:55:54.492 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 01:55:54.493 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:55:54.494 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 01:55:54.727 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 01:55:57.397 DEBUG   - - strix.telemetry.posthog: posthog send failed for event skill_loaded
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connection.py", line 571, in getresponse
+    httplib_response = super().getresponse()
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\http\client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\http\client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\http\client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TimeoutError: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\util\retry.py", line 498, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\util\util.py", line 39, in reraise
+    raise value
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 536, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 367, in _raise_timeout
+    raise ReadTimeoutError(
+        self, url, f"Read timed out. (read timeout={timeout_value})"
+    ) from err
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='us.i.posthog.com', port=443): Read timed out. (read timeout=3.0)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\telemetry\posthog.py", line 41, in _send
+    with requests.post(f"{_POSTHOG_HOST}/capture/", json=payload, timeout=SEND_TIMEOUT):
+         ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\api.py", line 134, in post
+    return request("post", url, data=data, json=json, **kwargs)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\adapters.py", line 742, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='us.i.posthog.com', port=443): Read timed out. (read timeout=3.0)
+2026-08-20 01:55:57.837 DEBUG   - - strix.telemetry.posthog: posthog send failed for event skill_loaded
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connection.py", line 571, in getresponse
+    httplib_response = super().getresponse()
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\http\client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\http\client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\http\client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TimeoutError: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\util\retry.py", line 498, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\util\util.py", line 39, in reraise
+    raise value
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 536, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 367, in _raise_timeout
+    raise ReadTimeoutError(
+        self, url, f"Read timed out. (read timeout={timeout_value})"
+    ) from err
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='us.i.posthog.com', port=443): Read timed out. (read timeout=3.0)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\telemetry\posthog.py", line 41, in _send
+    with requests.post(f"{_POSTHOG_HOST}/capture/", json=payload, timeout=SEND_TIMEOUT):
+         ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\api.py", line 134, in post
+    return request("post", url, data=data, json=json, **kwargs)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\adapters.py", line 742, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='us.i.posthog.com', port=443): Read timed out. (read timeout=3.0)
+2026-08-20 01:55:58.604 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 01:55:59.018 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 01:56:52.942 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 01:56:52.945 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 01:56:52.946 DEBUG   her-care_5b73 - openai.agents: Processing output item type=reasoning class=ResponseReasoningItem
+2026-08-20 01:56:52.946 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 01:56:52.946 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 01:56:52.947 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:56:53.073 DEBUG   her-care_5b73 - openai.agents: Turn 1 complete, next_step type=NextStepRunAgain
+2026-08-20 01:56:53.410 DEBUG   her-care_5b73 - openai.agents: Starting turn 2, current_agent=Root Agent
+2026-08-20 01:56:53.411 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:56:53.413 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 01:56:53.414 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:56:53.416 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 01:57:18.853 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 01:57:18.856 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 01:57:18.857 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 01:57:18.857 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 01:57:18.858 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:57:19.002 DEBUG   her-care_5b73 - openai.agents: Turn 2 complete, next_step type=NextStepRunAgain
+2026-08-20 01:57:19.215 DEBUG   her-care_5b73 - openai.agents: Starting turn 3, current_agent=Root Agent
+2026-08-20 01:57:19.216 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:57:19.218 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 01:57:19.219 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:57:19.222 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 01:57:39.571 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 01:57:39.573 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 01:57:39.574 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 01:57:39.575 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 01:57:39.576 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:57:40.735 DEBUG   her-care_5b73 - openai.agents: Turn 3 complete, next_step type=NextStepRunAgain
+2026-08-20 01:57:41.073 DEBUG   her-care_5b73 - openai.agents: Starting turn 4, current_agent=Root Agent
+2026-08-20 01:57:41.074 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:57:41.079 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 01:57:41.080 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:57:41.084 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 01:58:00.363 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 01:58:00.366 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 01:58:00.366 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 01:58:00.367 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 01:58:00.368 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:58:00.475 DEBUG   her-care_5b73 - openai.agents: Turn 4 complete, next_step type=NextStepRunAgain
+2026-08-20 01:58:00.716 DEBUG   her-care_5b73 - openai.agents: Starting turn 5, current_agent=Root Agent
+2026-08-20 01:58:00.716 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:58:00.719 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 01:58:00.720 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:58:00.723 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 01:58:49.283 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 01:58:51.288 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:58:51.298 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 01:59:10.415 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 01:59:10.419 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 01:59:10.420 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 01:59:10.420 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 01:59:10.421 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:59:10.623 DEBUG   her-care_5b73 - openai.agents: Turn 5 complete, next_step type=NextStepRunAgain
+2026-08-20 01:59:10.973 DEBUG   her-care_5b73 - openai.agents: Starting turn 6, current_agent=Root Agent
+2026-08-20 01:59:10.973 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:59:10.980 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 01:59:10.982 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:59:10.986 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 01:59:37.855 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 01:59:37.858 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 01:59:37.859 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 01:59:37.860 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 01:59:37.862 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:59:38.045 DEBUG   her-care_5b73 - openai.agents: Turn 6 complete, next_step type=NextStepRunAgain
+2026-08-20 01:59:38.384 DEBUG   her-care_5b73 - openai.agents: Starting turn 7, current_agent=Root Agent
+2026-08-20 01:59:38.385 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:59:38.391 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 01:59:38.393 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 01:59:38.398 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:00:08.583 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:00:08.592 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:00:08.596 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:00:08.596 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:00:08.598 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:00:08.757 DEBUG   her-care_5b73 - openai.agents: Turn 7 complete, next_step type=NextStepRunAgain
+2026-08-20 02:00:08.989 DEBUG   her-care_5b73 - openai.agents: Starting turn 8, current_agent=Root Agent
+2026-08-20 02:00:08.989 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:00:08.990 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:00:08.990 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:00:08.992 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:00:18.565 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:00:18.566 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:00:18.566 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:00:18.566 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:00:18.567 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:00:18.661 DEBUG   her-care_5b73 - openai.agents: Turn 8 complete, next_step type=NextStepRunAgain
+2026-08-20 02:00:18.853 DEBUG   her-care_5b73 - openai.agents: Starting turn 9, current_agent=Root Agent
+2026-08-20 02:00:18.854 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:00:18.855 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:00:18.856 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:00:18.857 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:00:28.285 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:00:28.286 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:00:28.287 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:00:28.288 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:00:28.289 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:00:28.392 DEBUG   her-care_5b73 - openai.agents: Turn 9 complete, next_step type=NextStepRunAgain
+2026-08-20 02:00:28.748 DEBUG   her-care_5b73 - openai.agents: Starting turn 10, current_agent=Root Agent
+2026-08-20 02:00:28.748 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:00:28.750 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:00:28.751 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:00:28.752 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:00:47.768 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:00:47.771 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:00:47.772 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:00:47.772 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:00:47.773 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:00:47.918 DEBUG   her-care_5b73 - openai.agents: Turn 10 complete, next_step type=NextStepRunAgain
+2026-08-20 02:00:48.133 DEBUG   her-care_5b73 - openai.agents: Starting turn 11, current_agent=Root Agent
+2026-08-20 02:00:48.134 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:00:48.135 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:00:48.136 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:00:48.137 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:02:02.077 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:02:02.080 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:02:02.080 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:02:02.081 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:02:02.083 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:02:02.229 DEBUG   her-care_5b73 - openai.agents: Turn 11 complete, next_step type=NextStepRunAgain
+2026-08-20 02:02:04.155 DEBUG   her-care_5b73 - openai.agents: Starting turn 12, current_agent=Root Agent
+2026-08-20 02:02:04.155 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:02:04.158 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:02:04.158 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:02:04.162 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:02:24.859 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:02:24.862 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:02:24.863 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:02:24.863 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:02:24.864 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:02:25.020 DEBUG   her-care_5b73 - openai.agents: Turn 12 complete, next_step type=NextStepRunAgain
+2026-08-20 02:02:25.246 DEBUG   her-care_5b73 - openai.agents: Starting turn 13, current_agent=Root Agent
+2026-08-20 02:02:25.247 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:02:25.249 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:02:25.250 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:02:25.254 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:02:44.247 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:02:44.252 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:02:44.253 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:02:44.254 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:02:44.256 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:02:44.616 DEBUG   her-care_5b73 - openai.agents: Turn 13 complete, next_step type=NextStepRunAgain
+2026-08-20 02:02:44.844 DEBUG   her-care_5b73 - openai.agents: Starting turn 14, current_agent=Root Agent
+2026-08-20 02:02:44.844 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:02:44.849 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:02:44.851 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:02:44.855 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:03:18.539 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:03:18.540 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:03:18.541 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:03:18.541 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:03:18.542 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:03:18.971 DEBUG   her-care_5b73 - openai.agents: Turn 14 complete, next_step type=NextStepRunAgain
+2026-08-20 02:03:19.264 DEBUG   her-care_5b73 - openai.agents: Starting turn 15, current_agent=Root Agent
+2026-08-20 02:03:19.264 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:03:19.266 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:03:19.267 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:03:19.268 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:03:38.667 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:03:38.674 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:03:38.675 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:03:38.675 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:03:38.676 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:03:39.477 DEBUG   her-care_5b73 - openai.agents: Turn 15 complete, next_step type=NextStepRunAgain
+2026-08-20 02:03:39.622 DEBUG   her-care_5b73 - openai.agents: Starting turn 16, current_agent=Root Agent
+2026-08-20 02:03:39.622 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:03:39.624 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:03:39.624 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:03:39.628 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:04:08.859 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:04:08.862 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:04:08.863 DEBUG   her-care_5b73 - openai.agents: Processing output item type=reasoning class=ResponseReasoningItem
+2026-08-20 02:04:08.863 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:04:08.864 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:04:08.866 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:04:08.867 DEBUG   her-care_5b73 - openai.agents: Invoking tool create_todo
+2026-08-20 02:04:08.871 DEBUG   her-care_5b73 - openai.agents: Tool create_todo completed.
+2026-08-20 02:04:08.872 DEBUG   her-care_5b73 - openai.agents: Turn 16 complete, next_step type=NextStepRunAgain
+2026-08-20 02:04:09.078 DEBUG   her-care_5b73 - openai.agents: Starting turn 17, current_agent=Root Agent
+2026-08-20 02:04:09.078 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:04:09.081 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:04:09.082 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:04:09.084 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:06:21.673 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:06:21.676 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:06:21.679 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:06:21.679 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:06:21.681 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:06:21.682 DEBUG   her-care_5b73 - openai.agents: Invoking tool view_agent_graph
+2026-08-20 02:06:21.683 DEBUG   her-care_5b73 - openai.agents: Tool view_agent_graph completed.
+2026-08-20 02:06:21.685 DEBUG   her-care_5b73 - openai.agents: Turn 17 complete, next_step type=NextStepRunAgain
+2026-08-20 02:06:23.759 DEBUG   her-care_5b73 - openai.agents: Starting turn 18, current_agent=Root Agent
+2026-08-20 02:06:23.760 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:06:23.766 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:06:23.767 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:06:23.771 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:07:45.430 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:07:45.440 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:07:45.443 DEBUG   her-care_5b73 - openai.agents: Processing output item type=reasoning class=ResponseReasoningItem
+2026-08-20 02:07:45.444 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:07:45.444 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:07:45.446 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:07:45.447 DEBUG   her-care_5b73 - openai.agents: Invoking tool update_todo
+2026-08-20 02:07:45.449 DEBUG   her-care_5b73 - openai.agents: Tool update_todo completed.
+2026-08-20 02:07:45.450 DEBUG   her-care_5b73 - openai.agents: Turn 18 complete, next_step type=NextStepRunAgain
+2026-08-20 02:07:47.456 DEBUG   her-care_5b73 - openai.agents: Starting turn 19, current_agent=Root Agent
+2026-08-20 02:07:47.457 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:07:47.466 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:07:47.468 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:07:47.475 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:08:59.207 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:08:59.210 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:08:59.212 DEBUG   her-care_5b73 - openai.agents: Processing output item type=reasoning class=ResponseReasoningItem
+2026-08-20 02:08:59.212 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:08:59.212 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:08:59.215 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:08:59.216 DEBUG   her-care_5b73 - openai.agents: Invoking tool create_agent
+2026-08-20 02:08:59.261 DEBUG   her-care_5b73 - strix.skills: Loaded skill: custom/source_aware_sast -> source_aware_sast
+2026-08-20 02:08:59.273 DEBUG   her-care_5b73 - strix.skills: Loaded skill: custom/dependency_cve_scanning -> dependency_cve_scanning
+2026-08-20 02:08:59.280 DEBUG   her-care_5b73 - strix.skills: Loaded skill: scan_modes/quick -> quick
+2026-08-20 02:08:59.296 DEBUG   her-care_5b73 - strix.skills: Loaded skill: tooling/agent_browser -> agent_browser
+2026-08-20 02:08:59.314 DEBUG   her-care_5b73 - strix.skills: Loaded skill: tooling/python -> python
+2026-08-20 02:08:59.320 DEBUG   her-care_5b73 - strix.skills: Loaded skill: coordination/source_aware_whitebox -> source_aware_whitebox
+2026-08-20 02:08:59.328 DEBUG   her-care_5b73 - strix.skills: load_skills: 6 skill(s) resolved
+2026-08-20 02:08:59.453 DEBUG   her-care_5b73 - strix.agents.prompt: render_system_prompt: scan_mode=quick root=False whitebox=True skills=6 prompt_len=90110
+2026-08-20 02:08:59.454 INFO    her-care_5b73 - strix.agents.factory: Built child agent 'SAST Triage Specialist' (skills=2, tools=30, scan_mode=quick, whitebox=True)
+2026-08-20 02:08:59.456 INFO    her-care_5b73 - strix.core.agents: agent.register 2f28c780 (SAST Triage Specialist) parent=a69634f1
+2026-08-20 02:08:59.468 INFO    her-care_5b73 - strix.tools.agents_graph.tools: create_agent: spawned 2f28c780 (SAST Triage Specialist) parent=a69634f1 skills=2 task_len=844
+2026-08-20 02:08:59.469 DEBUG   her-care_5b73 - openai.agents: Tool create_agent completed.
+2026-08-20 02:08:59.471 DEBUG   her-care_5b73 - openai.agents: Turn 19 complete, next_step type=NextStepRunAgain
+2026-08-20 02:09:01.156 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:09:01.159 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:09:01.172 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:09:01.385 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:09:01.392 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:09:01.398 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:09:01.413 DEBUG   her-care_5b73 - openai.agents: Starting turn 20, current_agent=Root Agent
+2026-08-20 02:09:01.414 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:09:01.419 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:09:01.420 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:09:01.426 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:09:01.530 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:09:01.573 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:09:01.573 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=SAST Triage Specialist
+2026-08-20 02:09:01.574 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:09:01.577 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:09:01.578 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:09:01.581 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:09:02.318 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:09:03.095 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:09:03.135 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:09:03.138 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:09:03.163 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:09:03.178 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:09:03.200 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:09:04.321 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:09:04.324 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:09:04.677 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:09:08.684 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:09:08.687 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:09:09.040 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:09:17.047 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:09:17.049 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:09:17.407 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:09:33.423 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:09:33.426 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:09:33.785 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:10:05.788 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:05.790 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:06.129 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for 2f28c780; replaying turn (attempt 1/5, backoff 2.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 53.295349361s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "53s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 53.295349361s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "53s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:10:08.151 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:08.187 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:08.187 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=SAST Triage Specialist
+2026-08-20 02:10:08.188 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:08.190 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:10:08.191 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:08.193 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:08.539 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:10:10.542 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:10.546 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:11.039 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:10:15.042 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:15.048 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:15.438 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:10:22.375 INFO    her-care_5b73 - strix.report.sarif: Wrote SARIF 2.1.0 report: E:\her_care\strix_runs\her-care_5b73\findings.sarif (0 results)
+2026-08-20 02:10:22.384 INFO    her-care_5b73 - strix.report.state: Essential scan data saved to: E:\her_care\strix_runs\her-care_5b73
+2026-08-20 02:10:22.386 DEBUG   her-care_5b73 - openai.agents: Processing output item type=message class=ResponseOutputMessage
+2026-08-20 02:10:22.386 DEBUG   her-care_5b73 - openai.agents: Processing output item type=function_call class=ResponseFunctionToolCall
+2026-08-20 02:10:22.389 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:22.391 DEBUG   her-care_5b73 - openai.agents: Invoking tool create_agent
+2026-08-20 02:10:22.439 DEBUG   her-care_5b73 - strix.skills: Loaded skill: custom/api_spec_testing -> api_spec_testing
+2026-08-20 02:10:22.454 DEBUG   her-care_5b73 - strix.skills: Loaded skill: scan_modes/quick -> quick
+2026-08-20 02:10:22.462 DEBUG   her-care_5b73 - strix.skills: Loaded skill: tooling/agent_browser -> agent_browser
+2026-08-20 02:10:22.476 DEBUG   her-care_5b73 - strix.skills: Loaded skill: tooling/python -> python
+2026-08-20 02:10:22.484 DEBUG   her-care_5b73 - strix.skills: Loaded skill: coordination/source_aware_whitebox -> source_aware_whitebox
+2026-08-20 02:10:22.501 DEBUG   her-care_5b73 - strix.skills: Loaded skill: custom/source_aware_sast -> source_aware_sast
+2026-08-20 02:10:22.505 DEBUG   her-care_5b73 - strix.skills: load_skills: 6 skill(s) resolved
+2026-08-20 02:10:22.621 DEBUG   her-care_5b73 - strix.agents.prompt: render_system_prompt: scan_mode=quick root=False whitebox=True skills=6 prompt_len=79737
+2026-08-20 02:10:22.621 INFO    her-care_5b73 - strix.agents.factory: Built child agent 'Backend Environment & Endpoint Mapper' (skills=1, tools=30, scan_mode=quick, whitebox=True)
+2026-08-20 02:10:22.622 INFO    her-care_5b73 - strix.core.agents: agent.register 2d1d193b (Backend Environment & Endpoint Mapper) parent=a69634f1
+2026-08-20 02:10:22.643 INFO    her-care_5b73 - strix.tools.agents_graph.tools: create_agent: spawned 2d1d193b (Backend Environment & Endpoint Mapper) parent=a69634f1 skills=1 task_len=650
+2026-08-20 02:10:22.643 DEBUG   her-care_5b73 - openai.agents: Tool create_agent completed.
+2026-08-20 02:10:22.646 DEBUG   her-care_5b73 - openai.agents: Turn 20 complete, next_step type=NextStepRunAgain
+2026-08-20 02:10:22.894 DEBUG   her-care_5b73 - openai.agents: Starting turn 21, current_agent=Root Agent
+2026-08-20 02:10:22.894 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:22.907 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:10:22.907 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:22.911 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:23.102 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:23.163 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:23.164 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=Backend Environment & Endpoint Mapper
+2026-08-20 02:10:23.164 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:23.169 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:10:23.170 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:23.173 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:23.295 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:10:23.452 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:23.456 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:23.524 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:10:23.817 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:10:24.389 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:10:24.459 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:10:24.464 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:10:24.469 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:10:24.477 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:10:24.481 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:10:25.303 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:25.316 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:25.529 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:25.532 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:25.710 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:10:25.890 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:10:26.269 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:10:26.370 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:10:26.385 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:10:26.387 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:10:26.393 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:10:26.399 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:10:29.712 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:29.714 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:29.899 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:29.902 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:30.071 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:10:30.235 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:10:38.073 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:38.077 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:38.237 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:38.240 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:38.449 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:10:38.576 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:10:39.820 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:39.826 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:40.210 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:10:54.451 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:54.455 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:54.585 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:10:54.587 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:10:54.798 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:10:54.969 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:11:12.218 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:12.220 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:12.577 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for 2f28c780; replaying turn (attempt 2/5, backoff 4.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 46.851853803s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "46s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 46.851853803s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "46s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:11:16.615 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:16.644 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:16.644 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=SAST Triage Specialist
+2026-08-20 02:11:16.644 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:16.647 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:11:16.647 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:16.650 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:17.011 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:11:19.024 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:19.026 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:19.378 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:11:23.381 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:23.384 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:23.757 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:11:26.800 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:26.803 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:26.984 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:26.989 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:27.170 DEBUG   her-care_5b73 - openai.agents: Resetting current trace
+2026-08-20 02:11:27.171 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for a69634f1; replaying turn (attempt 1/5, backoff 2.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 32.258707185s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "32s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 32.258707185s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "32s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:11:27.338 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for 2d1d193b; replaying turn (attempt 1/5, backoff 2.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 32.088209325s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "32s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 32.088209325s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "32s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:11:29.241 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 02:11:29.244 DEBUG   her-care_5b73 - openai.agents: Setting current trace: no-op
+2026-08-20 02:11:29.245 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:29.275 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:29.276 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 02:11:29.276 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:29.281 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:11:29.281 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:29.284 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:29.360 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:29.388 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:29.388 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=Backend Environment & Endpoint Mapper
+2026-08-20 02:11:29.389 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:29.390 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:11:29.391 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:29.393 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:29.641 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:11:29.760 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:11:31.649 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:31.653 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:31.758 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:31.761 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:31.788 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:31.790 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:32.030 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:11:32.163 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:11:32.332 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:11:36.039 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:36.044 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:36.340 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:36.344 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:36.434 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:11:36.714 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:11:44.443 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:44.450 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:44.732 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:44.736 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:44.824 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:11:45.111 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:11:48.166 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:11:48.169 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:11:48.507 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:12:00.826 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:00.830 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:01.124 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:01.127 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:01.196 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:12:01.469 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:12:20.522 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:20.527 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:20.880 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for 2f28c780; replaying turn (attempt 3/5, backoff 8.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 38.550734531s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "38s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 38.550734531s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "38s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:12:28.908 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:28.939 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:28.939 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=SAST Triage Specialist
+2026-08-20 02:12:28.939 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:28.942 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:12:28.943 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:28.945 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:29.283 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:12:31.294 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:31.297 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:31.635 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:12:33.201 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:33.206 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:33.478 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:33.481 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:33.567 DEBUG   her-care_5b73 - openai.agents: Resetting current trace
+2026-08-20 02:12:33.568 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for a69634f1; replaying turn (attempt 2/5, backoff 4.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 25.858020455s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "model": "gemini-3.6-flash",\n              "location": "global"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "25s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 25.858020455s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "model": "gemini-3.6-flash",\n              "location": "global"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "25s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:12:33.792 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for 2d1d193b; replaying turn (attempt 2/5, backoff 4.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 25.639256496s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "25s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 25.639256496s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "25s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:12:35.639 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:35.642 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:35.972 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:12:37.633 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 02:12:37.636 DEBUG   her-care_5b73 - openai.agents: Setting current trace: no-op
+2026-08-20 02:12:37.636 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:37.673 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:37.673 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 02:12:37.673 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:37.679 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:12:37.679 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:37.683 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:37.828 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:37.859 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:37.859 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=Backend Environment & Endpoint Mapper
+2026-08-20 02:12:37.859 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:37.862 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:12:37.862 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:37.865 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:38.061 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:12:38.192 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:12:40.072 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:40.077 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:40.197 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:40.202 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:40.443 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:12:40.646 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:12:43.977 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:43.979 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:44.297 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:12:44.459 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:44.460 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:44.653 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:44.654 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:44.775 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:12:44.959 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:12:52.779 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:52.783 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:52.960 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:12:52.963 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:12:53.135 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:12:53.309 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:13:00.298 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:00.300 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:00.628 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:13:09.142 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:09.144 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:09.311 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:09.314 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:09.485 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:13:09.642 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:13:32.640 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:32.644 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:32.993 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for 2f28c780; replaying turn (attempt 4/5, backoff 16.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 26.437046369s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "26s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 26.437046369s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "26s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:13:41.501 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:41.506 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:41.651 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:41.656 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:41.890 DEBUG   her-care_5b73 - openai.agents: Resetting current trace
+2026-08-20 02:13:41.890 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for a69634f1; replaying turn (attempt 3/5, backoff 8.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 17.544365662s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "17s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 17.544365662s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "17s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:13:42.002 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for 2d1d193b; replaying turn (attempt 3/5, backoff 8.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 17.42618388s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "17s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 17.42618388s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "17s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:13:49.035 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:49.079 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:49.079 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=SAST Triage Specialist
+2026-08-20 02:13:49.080 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:49.083 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:13:49.084 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:49.087 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:49.441 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:13:49.974 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 02:13:49.976 DEBUG   her-care_5b73 - openai.agents: Setting current trace: no-op
+2026-08-20 02:13:49.976 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:50.044 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:50.045 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 02:13:50.046 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:50.067 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:13:50.069 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:50.074 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:50.122 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:50.164 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:50.165 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=Backend Environment & Endpoint Mapper
+2026-08-20 02:13:50.165 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:50.170 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:13:50.172 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:50.175 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:50.418 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:13:50.518 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:13:51.454 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:51.458 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:51.838 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:13:52.432 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:52.439 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:52.532 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:52.538 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:52.840 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:13:52.905 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:13:55.840 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:55.845 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:56.233 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:13:56.849 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:56.856 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:56.910 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:13:56.915 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:13:57.282 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:13:57.342 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:14:04.243 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:14:04.249 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:14:04.629 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:14:05.285 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:14:05.288 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:14:05.348 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:14:05.354 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:14:05.652 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:14:05.710 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:14:20.638 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:14:20.641 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:14:20.985 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:14:21.659 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:14:21.660 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:14:21.714 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:14:21.717 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:14:21.989 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:14:22.052 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:14:52.992 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:14:52.995 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:14:53.340 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for 2f28c780; replaying turn (attempt 5/5, backoff 32.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 6.083977922s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "6s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 6.083977922s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "6s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:14:54.000 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:14:54.001 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:14:54.061 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:14:54.063 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:14:54.486 DEBUG   her-care_5b73 - openai.agents: Resetting current trace
+2026-08-20 02:14:54.486 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for a69634f1; replaying turn (attempt 4/5, backoff 16.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 4.937994202s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "4s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 4.937994202s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "4s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:14:54.487 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for 2d1d193b; replaying turn (attempt 4/5, backoff 16.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 4.937957388s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "model": "gemini-3.6-flash",\n              "location": "global"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "4s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 4.937957388s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "model": "gemini-3.6-flash",\n              "location": "global"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "4s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:15:10.522 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 02:15:10.523 DEBUG   her-care_5b73 - openai.agents: Setting current trace: no-op
+2026-08-20 02:15:10.523 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:10.525 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:10.563 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:10.563 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 02:15:10.563 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:10.564 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:10.564 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=Backend Environment & Endpoint Mapper
+2026-08-20 02:15:10.564 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:10.566 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:15:10.566 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:10.568 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:10.577 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:15:10.577 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:10.578 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:10.924 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:15:10.932 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:15:12.933 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:12.935 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:12.936 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:12.939 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:13.278 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:15:13.293 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:15:17.284 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:17.287 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:17.306 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:17.307 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:17.626 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:15:17.643 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:15:25.354 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:25.384 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:25.384 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=SAST Triage Specialist
+2026-08-20 02:15:25.385 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:25.386 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:15:25.386 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:25.387 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:25.641 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:25.643 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:25.892 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:25.912 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:25.936 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:15:26.245 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:15:26.271 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:15:27.950 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:27.952 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:28.284 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:15:32.293 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:32.295 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:32.629 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:15:40.645 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:40.647 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:40.986 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:15:42.249 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:42.251 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:42.271 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:42.273 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:42.560 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:15:42.595 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:15:56.992 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:15:56.994 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:15:57.347 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:16:14.569 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:14.571 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:16:14.596 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:14.599 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:16:14.893 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for 2d1d193b; replaying turn (attempt 5/5, backoff 32.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 44.528031505s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "model": "gemini-3.6-flash",\n              "location": "global"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "44s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 44.528031505s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "model": "gemini-3.6-flash",\n              "location": "global"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "44s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:16:14.946 DEBUG   her-care_5b73 - openai.agents: Resetting current trace
+2026-08-20 02:16:14.946 WARNING her-care_5b73 - strix.core.execution: transient model/provider error for a69634f1; replaying turn (attempt 5/5, backoff 32.0s): litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 44.473926032s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "44s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 44.473926032s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "44s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:16:29.359 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:29.361 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:16:30.279 ERROR   her-care_5b73 - strix.core.execution: agent run failed for 2f28c780; marking failed
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\vertex_ai\gemini\vertex_and_google_ai_studio_gemini.py", line 2571, in make_call
+    response: Final = await client.post(api_base, headers=headers, data=data, stream=True, logging_obj=logging_obj)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\logging_utils.py", line 289, in async_wrapper
+    result: Final = await func(*args, **kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 706, in post
+    await _raise_masked_async_error(e, stream)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 465, in _raise_masked_async_error
+    raise MaskedHTTPStatusError(e, message=_body, text=_body) from None
+litellm.llms.custom_httpx.http_handler.MaskedHTTPStatusError: Client error '429 Too Many Requests' for url 'https://generativelanguage.googleapis.com/v1alpha/models/gemini-3.6-flash:streamGenerateContent?alt=sse'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 1885, in __anext__
+    await self.fetch_stream()
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 1873, in fetch_stream
+    self.completion_stream = await self.make_call(client=litellm.module_level_aclient)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\vertex_ai\gemini\vertex_and_google_ai_studio_gemini.py", line 2575, in make_call
+    raise VertexAIError(
+    ...<3 lines>...
+    )
+litellm.llms.vertex_ai.common_utils.VertexAIError: b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 29.545052145s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "29s"\n      }\n    ]\n  }\n}\n'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 676, in _run_cycle
+    async for event in stream.stream_events():
+    ...<4 lines>...
+                logger.exception("stream event sink failed for %s", agent_id)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 931, in stream_events
+    raise self._stored_exception
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 1021, in _await_task_safely
+    await task
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 695, in _await_run_and_cleanup
+    result = await original_task
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1226, in start_streaming
+    turn_result = await run_single_turn_streamed(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1712, in run_single_turn_streamed
+    async for event in model_run_context_stream(retry_stream, tool_use_tracker):
+    ...<142 lines>...
+                    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\models\_run_context.py", line 31, in model_run_context_stream
+    async for item in stream:
+        yield item
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\model_retry.py", line 560, in stream_response_with_retry
+    event = await stream.__anext__()
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 354, in stream_response
+    async for event in _with_idle_timeout(stream, self._stream_idle_timeout):
+    ...<2 lines>...
+            yield guarded
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 378, in _with_idle_timeout
+    event = await asyncio.wait_for(iterator.__anext__(), timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 421, in stream_response
+    async for chunk in ChatCmplStreamHandler.handle_stream(
+    ...<6 lines>...
+        yield chunk
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\models\chatcmpl_stream_handler.py", line 603, in handle_stream
+    async for chunk in stream:
+    ...<451 lines>...
+                    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 1995, in __anext__
+    self._log_stream_failure_and_raise(e)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 2100, in _log_stream_failure_and_raise
+    self._handle_stream_fallback_error(e)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 2186, in _handle_stream_fallback_error
+    raise MidStreamFallbackError(
+    ...<6 lines>...
+    )
+litellm.exceptions.MidStreamFallbackError: litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 29.545052145s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "29s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 29.545052145s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "29s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:16:30.330 INFO    her-care_5b73 - strix.core.agents: agent.status 2f28c780=failed
+2026-08-20 02:16:46.907 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:46.939 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:46.939 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=Backend Environment & Endpoint Mapper
+2026-08-20 02:16:46.939 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:46.940 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:16:46.940 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:46.941 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:16:46.992 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 02:16:46.993 DEBUG   her-care_5b73 - openai.agents: Setting current trace: no-op
+2026-08-20 02:16:46.994 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:47.015 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:47.015 DEBUG   her-care_5b73 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 02:16:47.016 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:47.018 DEBUG   her-care_5b73 - openai.agents: No conversation_id available for request
+2026-08-20 02:16:47.018 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:47.020 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:16:47.289 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:16:47.381 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 2.0s (attempt 1/5).
+2026-08-20 02:16:49.299 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:49.300 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:16:49.388 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:49.390 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:16:49.801 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:16:49.810 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 4.0s (attempt 2/5).
+2026-08-20 02:16:53.813 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:53.815 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:16:53.816 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:16:53.821 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:16:54.137 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:16:54.198 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 8.0s (attempt 3/5).
+2026-08-20 02:17:02.145 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:17:02.146 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:17:02.201 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:17:02.204 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:17:02.460 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:17:02.516 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 16.0s (attempt 4/5).
+2026-08-20 02:17:18.465 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:17:18.466 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:17:18.528 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:17:18.531 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:17:18.785 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:17:18.867 DEBUG   her-care_5b73 - openai.agents: Retrying failed streamed model request in 32.0s (attempt 5/5).
+2026-08-20 02:17:50.791 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:17:50.793 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:17:50.874 DEBUG   her-care_5b73 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:17:50.876 DEBUG   her-care_5b73 - openai.agents: Calling LLM
+2026-08-20 02:17:51.236 DEBUG   her-care_5b73 - openai.agents: Resetting current trace
+2026-08-20 02:17:52.274 ERROR   her-care_5b73 - strix.core.execution: agent run failed for 2d1d193b; marking failed
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\vertex_ai\gemini\vertex_and_google_ai_studio_gemini.py", line 2571, in make_call
+    response: Final = await client.post(api_base, headers=headers, data=data, stream=True, logging_obj=logging_obj)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\logging_utils.py", line 289, in async_wrapper
+    result: Final = await func(*args, **kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 706, in post
+    await _raise_masked_async_error(e, stream)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 465, in _raise_masked_async_error
+    raise MaskedHTTPStatusError(e, message=_body, text=_body) from None
+litellm.llms.custom_httpx.http_handler.MaskedHTTPStatusError: Client error '429 Too Many Requests' for url 'https://generativelanguage.googleapis.com/v1alpha/models/gemini-3.6-flash:streamGenerateContent?alt=sse'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 1885, in __anext__
+    await self.fetch_stream()
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 1873, in fetch_stream
+    self.completion_stream = await self.make_call(client=litellm.module_level_aclient)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\vertex_ai\gemini\vertex_and_google_ai_studio_gemini.py", line 2575, in make_call
+    raise VertexAIError(
+    ...<3 lines>...
+    )
+litellm.llms.vertex_ai.common_utils.VertexAIError: b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 8.325999885s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "8s"\n      }\n    ]\n  }\n}\n'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 676, in _run_cycle
+    async for event in stream.stream_events():
+    ...<4 lines>...
+                logger.exception("stream event sink failed for %s", agent_id)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 931, in stream_events
+    raise self._stored_exception
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 1021, in _await_task_safely
+    await task
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 695, in _await_run_and_cleanup
+    result = await original_task
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1226, in start_streaming
+    turn_result = await run_single_turn_streamed(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1712, in run_single_turn_streamed
+    async for event in model_run_context_stream(retry_stream, tool_use_tracker):
+    ...<142 lines>...
+                    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\models\_run_context.py", line 31, in model_run_context_stream
+    async for item in stream:
+        yield item
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\model_retry.py", line 560, in stream_response_with_retry
+    event = await stream.__anext__()
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 354, in stream_response
+    async for event in _with_idle_timeout(stream, self._stream_idle_timeout):
+    ...<2 lines>...
+            yield guarded
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 378, in _with_idle_timeout
+    event = await asyncio.wait_for(iterator.__anext__(), timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 421, in stream_response
+    async for chunk in ChatCmplStreamHandler.handle_stream(
+    ...<6 lines>...
+        yield chunk
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\models\chatcmpl_stream_handler.py", line 603, in handle_stream
+    async for chunk in stream:
+    ...<451 lines>...
+                    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 1995, in __anext__
+    self._log_stream_failure_and_raise(e)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 2100, in _log_stream_failure_and_raise
+    self._handle_stream_fallback_error(e)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 2186, in _handle_stream_fallback_error
+    raise MidStreamFallbackError(
+    ...<6 lines>...
+    )
+litellm.exceptions.MidStreamFallbackError: litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 8.325999885s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "8s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 8.325999885s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "8s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:17:52.287 INFO    her-care_5b73 - strix.core.agents: agent.status 2d1d193b=failed
+2026-08-20 02:17:52.561 ERROR   her-care_5b73 - strix.core.execution: agent run failed for a69634f1; marking failed
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\vertex_ai\gemini\vertex_and_google_ai_studio_gemini.py", line 2571, in make_call
+    response: Final = await client.post(api_base, headers=headers, data=data, stream=True, logging_obj=logging_obj)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\logging_utils.py", line 289, in async_wrapper
+    result: Final = await func(*args, **kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 706, in post
+    await _raise_masked_async_error(e, stream)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 465, in _raise_masked_async_error
+    raise MaskedHTTPStatusError(e, message=_body, text=_body) from None
+litellm.llms.custom_httpx.http_handler.MaskedHTTPStatusError: Client error '429 Too Many Requests' for url 'https://generativelanguage.googleapis.com/v1alpha/models/gemini-3.6-flash:streamGenerateContent?alt=sse'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 1885, in __anext__
+    await self.fetch_stream()
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 1873, in fetch_stream
+    self.completion_stream = await self.make_call(client=litellm.module_level_aclient)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\vertex_ai\gemini\vertex_and_google_ai_studio_gemini.py", line 2575, in make_call
+    raise VertexAIError(
+    ...<3 lines>...
+    )
+litellm.llms.vertex_ai.common_utils.VertexAIError: b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 8.191389267s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "8s"\n      }\n    ]\n  }\n}\n'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 676, in _run_cycle
+    async for event in stream.stream_events():
+    ...<4 lines>...
+                logger.exception("stream event sink failed for %s", agent_id)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 931, in stream_events
+    raise self._stored_exception
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 1021, in _await_task_safely
+    await task
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 695, in _await_run_and_cleanup
+    result = await original_task
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1226, in start_streaming
+    turn_result = await run_single_turn_streamed(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1712, in run_single_turn_streamed
+    async for event in model_run_context_stream(retry_stream, tool_use_tracker):
+    ...<142 lines>...
+                    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\models\_run_context.py", line 31, in model_run_context_stream
+    async for item in stream:
+        yield item
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\model_retry.py", line 560, in stream_response_with_retry
+    event = await stream.__anext__()
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 354, in stream_response
+    async for event in _with_idle_timeout(stream, self._stream_idle_timeout):
+    ...<2 lines>...
+            yield guarded
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 378, in _with_idle_timeout
+    event = await asyncio.wait_for(iterator.__anext__(), timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 421, in stream_response
+    async for chunk in ChatCmplStreamHandler.handle_stream(
+    ...<6 lines>...
+        yield chunk
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\models\chatcmpl_stream_handler.py", line 603, in handle_stream
+    async for chunk in stream:
+    ...<451 lines>...
+                    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 1995, in __anext__
+    self._log_stream_failure_and_raise(e)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 2100, in _log_stream_failure_and_raise
+    self._handle_stream_fallback_error(e)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 2186, in _handle_stream_fallback_error
+    raise MidStreamFallbackError(
+    ...<6 lines>...
+    )
+litellm.exceptions.MidStreamFallbackError: litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 8.191389267s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "8s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 8.191389267s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "8s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:17:52.573 INFO    her-care_5b73 - strix.core.agents: agent.status a69634f1=failed
+2026-08-20 02:17:52.576 ERROR   her-care_5b73 - strix.core.runner: Strix scan her-care_5b73 failed
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\vertex_ai\gemini\vertex_and_google_ai_studio_gemini.py", line 2571, in make_call
+    response: Final = await client.post(api_base, headers=headers, data=data, stream=True, logging_obj=logging_obj)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\logging_utils.py", line 289, in async_wrapper
+    result: Final = await func(*args, **kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 706, in post
+    await _raise_masked_async_error(e, stream)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 465, in _raise_masked_async_error
+    raise MaskedHTTPStatusError(e, message=_body, text=_body) from None
+litellm.llms.custom_httpx.http_handler.MaskedHTTPStatusError: Client error '429 Too Many Requests' for url 'https://generativelanguage.googleapis.com/v1alpha/models/gemini-3.6-flash:streamGenerateContent?alt=sse'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 1885, in __anext__
+    await self.fetch_stream()
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 1873, in fetch_stream
+    self.completion_stream = await self.make_call(client=litellm.module_level_aclient)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\vertex_ai\gemini\vertex_and_google_ai_studio_gemini.py", line 2575, in make_call
+    raise VertexAIError(
+    ...<3 lines>...
+    )
+litellm.llms.vertex_ai.common_utils.VertexAIError: b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 8.191389267s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "8s"\n      }\n    ]\n  }\n}\n'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\runner.py", line 395, in run_strix_scan
+    result = await run_agent_loop(
+             ^^^^^^^^^^^^^^^^^^^^^
+    ...<12 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 212, in run_agent_loop
+    result = await _run_until_lifecycle(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 485, in _run_until_lifecycle
+    result = await _run_cycle(
+             ^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 676, in _run_cycle
+    async for event in stream.stream_events():
+    ...<4 lines>...
+                logger.exception("stream event sink failed for %s", agent_id)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 931, in stream_events
+    raise self._stored_exception
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 1021, in _await_task_safely
+    await task
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 695, in _await_run_and_cleanup
+    result = await original_task
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1226, in start_streaming
+    turn_result = await run_single_turn_streamed(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1712, in run_single_turn_streamed
+    async for event in model_run_context_stream(retry_stream, tool_use_tracker):
+    ...<142 lines>...
+                    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\models\_run_context.py", line 31, in model_run_context_stream
+    async for item in stream:
+        yield item
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\model_retry.py", line 560, in stream_response_with_retry
+    event = await stream.__anext__()
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 354, in stream_response
+    async for event in _with_idle_timeout(stream, self._stream_idle_timeout):
+    ...<2 lines>...
+            yield guarded
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 378, in _with_idle_timeout
+    event = await asyncio.wait_for(iterator.__anext__(), timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 421, in stream_response
+    async for chunk in ChatCmplStreamHandler.handle_stream(
+    ...<6 lines>...
+        yield chunk
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\models\chatcmpl_stream_handler.py", line 603, in handle_stream
+    async for chunk in stream:
+    ...<451 lines>...
+                    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 1995, in __anext__
+    self._log_stream_failure_and_raise(e)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 2100, in _log_stream_failure_and_raise
+    self._handle_stream_fallback_error(e)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\streaming_handler.py", line 2186, in _handle_stream_fallback_error
+    raise MidStreamFallbackError(
+    ...<6 lines>...
+    )
+litellm.exceptions.MidStreamFallbackError: litellm.MidStreamFallbackError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 8.191389267s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "8s"\n      }\n    ]\n  }\n}\n' Original exception: RateLimitError: litellm.RateLimitError: litellm.RateLimitError: vertex_ai_betaException - b'{\n  "error": {\n    "code": 429,\n    "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 8.191389267s.",\n    "status": "RESOURCE_EXHAUSTED",\n    "details": [\n      {\n        "@type": "type.googleapis.com/google.rpc.Help",\n        "links": [\n          {\n            "description": "Learn more about Gemini API quotas",\n            "url": "https://ai.google.dev/gemini-api/docs/rate-limits"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.QuotaFailure",\n        "violations": [\n          {\n            "quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",\n            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",\n            "quotaDimensions": {\n              "location": "global",\n              "model": "gemini-3.6-flash"\n            },\n            "quotaValue": "20"\n          }\n        ]\n      },\n      {\n        "@type": "type.googleapis.com/google.rpc.RetryInfo",\n        "retryDelay": "8s"\n      }\n    ]\n  }\n}\n'
+2026-08-20 02:17:52.595 INFO    her-care_5b73 - strix.core.agents: agent.status a69634f1=failed
+2026-08-20 02:17:52.599 INFO    her-care_5b73 - strix.core.runner: Tearing down sandbox session for scan her-care_5b73
+2026-08-20 02:17:53.102 INFO    her-care_5b73 - strix.runtime.session_manager: Cleaned up sandbox session for scan her-care_5b73
+2026-08-20 02:17:53.104 INFO    her-care_5b73 - strix.core.runner: Strix scan her-care_5b73 done

@@ -1,0 +1,243 @@
+2026-08-20 02:34:46.084 INFO    backend_3e32 - strix.core.runner: Starting Strix scan backend_3e32 (image=ghcr.io/usestrix/strix-sandbox:1.3.0, max_turns=500, interactive=False, run_dir=E:\her_care\strix_runs\backend_3e32)
+2026-08-20 02:34:46.085 INFO    backend_3e32 - strix.core.runner: LLM model resolved: groq/openai/gpt-oss-120b
+2026-08-20 02:34:46.085 INFO    backend_3e32 - strix.core.runner: Bringing up sandbox session for scan backend_3e32
+2026-08-20 02:34:46.085 DEBUG   backend_3e32 - strix.runtime.backends: Selected sandbox backend: docker
+2026-08-20 02:34:46.086 INFO    backend_3e32 - strix.runtime.session_manager: Creating sandbox session for scan backend_3e32 (backend=docker, image=ghcr.io/usestrix/strix-sandbox:1.3.0)
+2026-08-20 02:34:46.282 DEBUG   backend_3e32 - strix.runtime.docker_client: Creating sandbox container: image=ghcr.io/usestrix/strix-sandbox:1.3.0 caps=['NET_ADMIN', 'NET_RAW'] exposed_ports=[48080]
+2026-08-20 02:34:46.394 INFO    backend_3e32 - strix.runtime.docker_client: Sandbox container created: id=2c43d9875cdb image=ghcr.io/usestrix/strix-sandbox:1.3.0
+2026-08-20 02:34:47.123 DEBUG   backend_3e32 - strix.runtime.session_manager: Caido host endpoint resolved: http://127.0.0.1:53250
+2026-08-20 02:34:47.123 INFO    backend_3e32 - strix.runtime.caido_bootstrap: Bootstrapping Caido client (host=http://127.0.0.1:53250, container=http://127.0.0.1:48080)
+2026-08-20 02:34:47.370 INFO    backend_3e32 - strix.runtime.caido_bootstrap: Caido project selected: cdb14f38-701d-408f-8efe-b0b91240e075
+2026-08-20 02:34:47.370 INFO    backend_3e32 - strix.runtime.session_manager: Sandbox session for scan backend_3e32 ready and cached
+2026-08-20 02:34:47.370 INFO    backend_3e32 - strix.core.runner: Sandbox ready for scan backend_3e32
+2026-08-20 02:34:47.376 DEBUG   backend_3e32 - strix.skills: Loaded skill: scan_modes/quick -> quick
+2026-08-20 02:34:47.378 DEBUG   backend_3e32 - strix.skills: Loaded skill: tooling/agent_browser -> agent_browser
+2026-08-20 02:34:47.383 DEBUG   backend_3e32 - strix.skills: Loaded skill: tooling/python -> python
+2026-08-20 02:34:47.388 DEBUG   backend_3e32 - strix.skills: Loaded skill: coordination/root_agent -> root_agent
+2026-08-20 02:34:47.391 DEBUG   backend_3e32 - strix.skills: Loaded skill: coordination/source_aware_whitebox -> source_aware_whitebox
+2026-08-20 02:34:47.396 DEBUG   backend_3e32 - strix.skills: Loaded skill: custom/source_aware_sast -> source_aware_sast
+2026-08-20 02:34:47.398 DEBUG   backend_3e32 - strix.skills: load_skills: 6 skill(s) resolved
+2026-08-20 02:34:47.448 DEBUG   backend_3e32 - strix.agents.prompt: render_system_prompt: scan_mode=quick root=True whitebox=True skills=6 prompt_len=81463
+2026-08-20 02:34:47.448 INFO    backend_3e32 - strix.agents.factory: Built root agent 'Root Agent' (skills=0, tools=30, scan_mode=quick, whitebox=True)
+2026-08-20 02:34:47.448 INFO    backend_3e32 - strix.core.agents: agent.register 1fb8112f (Root Agent) parent=-
+2026-08-20 02:34:47.966 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 02:34:47.968 DEBUG   backend_3e32 - openai.agents: Setting current trace: no-op
+2026-08-20 02:34:47.968 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:47.987 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:47.987 DEBUG   backend_3e32 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 02:34:47.987 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:47.989 DEBUG   backend_3e32 - openai.agents: No conversation_id available for request
+2026-08-20 02:34:47.989 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:47.992 DEBUG   backend_3e32 - openai.agents: Calling LLM
+2026-08-20 02:34:48.203 DEBUG   backend_3e32 - openai.agents: Resetting current trace
+2026-08-20 02:34:48.204 WARNING backend_3e32 - strix.core.execution: transient model/provider error for 1fb8112f; replaying turn (attempt 1/5, backoff 2.0s): litellm.RateLimitError: RateLimitError: GroqException - {"error":{"message":"Request too large for model `openai/gpt-oss-120b` in organization `org_01m0dvspr0eyw8cvs11fwsdgq0` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Requested 37182, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing","type":"tokens","code":"rate_limit_exceeded"}}
+
+2026-08-20 02:34:48.598 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:34:48.613 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:34:48.615 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:34:48.627 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:34:49.573 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:34:49.912 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:34:49.920 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:34:49.934 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:34:49.941 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:34:50.197 DEBUG   - - strix.telemetry.posthog: posthog event sent: skill_loaded
+2026-08-20 02:34:50.219 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 02:34:50.221 DEBUG   backend_3e32 - openai.agents: Setting current trace: no-op
+2026-08-20 02:34:50.221 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:50.237 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:50.237 DEBUG   backend_3e32 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 02:34:50.237 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:50.238 DEBUG   backend_3e32 - openai.agents: No conversation_id available for request
+2026-08-20 02:34:50.238 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:50.240 DEBUG   backend_3e32 - openai.agents: Calling LLM
+2026-08-20 02:34:50.431 DEBUG   backend_3e32 - openai.agents: Resetting current trace
+2026-08-20 02:34:50.431 WARNING backend_3e32 - strix.core.execution: transient model/provider error for 1fb8112f; replaying turn (attempt 2/5, backoff 4.0s): litellm.RateLimitError: RateLimitError: GroqException - {"error":{"message":"Request too large for model `openai/gpt-oss-120b` in organization `org_01m0dvspr0eyw8cvs11fwsdgq0` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Requested 37182, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing","type":"tokens","code":"rate_limit_exceeded"}}
+
+2026-08-20 02:34:50.726 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:34:51.529 DEBUG   - - strix.telemetry.scarf: scarf event sent: skill_loaded
+2026-08-20 02:34:54.463 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 02:34:54.464 DEBUG   backend_3e32 - openai.agents: Setting current trace: no-op
+2026-08-20 02:34:54.464 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:54.482 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:54.482 DEBUG   backend_3e32 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 02:34:54.482 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:54.483 DEBUG   backend_3e32 - openai.agents: No conversation_id available for request
+2026-08-20 02:34:54.483 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:54.486 DEBUG   backend_3e32 - openai.agents: Calling LLM
+2026-08-20 02:34:54.792 DEBUG   backend_3e32 - openai.agents: Resetting current trace
+2026-08-20 02:34:54.792 WARNING backend_3e32 - strix.core.execution: transient model/provider error for 1fb8112f; replaying turn (attempt 3/5, backoff 8.0s): litellm.RateLimitError: RateLimitError: GroqException - {"error":{"message":"Request too large for model `openai/gpt-oss-120b` in organization `org_01m0dvspr0eyw8cvs11fwsdgq0` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Requested 37182, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing","type":"tokens","code":"rate_limit_exceeded"}}
+
+2026-08-20 02:35:02.811 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 02:35:02.813 DEBUG   backend_3e32 - openai.agents: Setting current trace: no-op
+2026-08-20 02:35:02.813 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:35:02.830 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:35:02.830 DEBUG   backend_3e32 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 02:35:02.830 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:35:02.831 DEBUG   backend_3e32 - openai.agents: No conversation_id available for request
+2026-08-20 02:35:02.831 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:35:02.833 DEBUG   backend_3e32 - openai.agents: Calling LLM
+2026-08-20 02:35:03.016 DEBUG   backend_3e32 - openai.agents: Resetting current trace
+2026-08-20 02:35:03.016 WARNING backend_3e32 - strix.core.execution: transient model/provider error for 1fb8112f; replaying turn (attempt 4/5, backoff 16.0s): litellm.RateLimitError: RateLimitError: GroqException - {"error":{"message":"Request too large for model `openai/gpt-oss-120b` in organization `org_01m0dvspr0eyw8cvs11fwsdgq0` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Requested 37230, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing","type":"tokens","code":"rate_limit_exceeded"}}
+
+2026-08-20 02:35:19.029 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 02:35:19.030 DEBUG   backend_3e32 - openai.agents: Setting current trace: no-op
+2026-08-20 02:35:19.030 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:35:19.053 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:35:19.053 DEBUG   backend_3e32 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 02:35:19.053 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:35:19.054 DEBUG   backend_3e32 - openai.agents: No conversation_id available for request
+2026-08-20 02:35:19.054 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:35:19.056 DEBUG   backend_3e32 - openai.agents: Calling LLM
+2026-08-20 02:35:19.236 DEBUG   backend_3e32 - openai.agents: Resetting current trace
+2026-08-20 02:35:19.237 WARNING backend_3e32 - strix.core.execution: transient model/provider error for 1fb8112f; replaying turn (attempt 5/5, backoff 32.0s): litellm.RateLimitError: RateLimitError: GroqException - {"error":{"message":"Request too large for model `openai/gpt-oss-120b` in organization `org_01m0dvspr0eyw8cvs11fwsdgq0` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Requested 37230, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing","type":"tokens","code":"rate_limit_exceeded"}}
+
+2026-08-20 02:35:51.260 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 02:35:51.263 DEBUG   backend_3e32 - openai.agents: Setting current trace: no-op
+2026-08-20 02:35:51.263 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:35:51.303 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:35:51.303 DEBUG   backend_3e32 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 02:35:51.303 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:35:51.306 DEBUG   backend_3e32 - openai.agents: No conversation_id available for request
+2026-08-20 02:35:51.306 DEBUG   backend_3e32 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:35:51.310 DEBUG   backend_3e32 - openai.agents: Calling LLM
+2026-08-20 02:35:51.528 DEBUG   backend_3e32 - openai.agents: Resetting current trace
+2026-08-20 02:35:52.146 ERROR   backend_3e32 - strix.core.execution: agent run failed for 1fb8112f; marking failed
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 260, in _make_common_async_call
+    response = await async_httpx_client.post(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\logging_utils.py", line 289, in async_wrapper
+    result: Final = await func(*args, **kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 706, in post
+    await _raise_masked_async_error(e, stream)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 465, in _raise_masked_async_error
+    raise MaskedHTTPStatusError(e, message=_body, text=_body) from None
+litellm.llms.custom_httpx.http_handler.MaskedHTTPStatusError: Client error '413 Request Entity Too Large' for url 'https://api.groq.com/openai/v1/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/413
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\main.py", line 639, in acompletion
+    response = await init_response
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 737, in acompletion_stream_function
+    completion_stream, _response_headers = await self.make_async_call_stream_helper(
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 796, in make_async_call_stream_helper
+    response: Final = await self._make_common_async_call(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 277, in _make_common_async_call
+    raise self._handle_error(e=e, provider_config=provider_config)
+          ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 5740, in _handle_error
+    raise provider_config.get_error_class(
+    ...<3 lines>...
+    )
+litellm.llms.openai.common_utils.OpenAIError: {"error":{"message":"Request too large for model `openai/gpt-oss-120b` in organization `org_01m0dvspr0eyw8cvs11fwsdgq0` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Requested 37230, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing","type":"tokens","code":"rate_limit_exceeded"}}
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 676, in _run_cycle
+    async for event in stream.stream_events():
+    ...<4 lines>...
+                logger.exception("stream event sink failed for %s", agent_id)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 931, in stream_events
+    raise self._stored_exception
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 1021, in _await_task_safely
+    await task
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 695, in _await_run_and_cleanup
+    result = await original_task
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1226, in start_streaming
+    turn_result = await run_single_turn_streamed(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1712, in run_single_turn_streamed
+    async for event in model_run_context_stream(retry_stream, tool_use_tracker):
+    ...<142 lines>...
+                    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\models\_run_context.py", line 31, in model_run_context_stream
+    async for item in stream:
+        yield item
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\model_retry.py", line 560, in stream_response_with_retry
+    event = await stream.__anext__()
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 354, in stream_response
+    async for event in _with_idle_timeout(stream, self._stream_idle_timeout):
+    ...<2 lines>...
+            yield guarded
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 378, in _with_idle_timeout
+    event = await asyncio.wait_for(iterator.__anext__(), timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 404, in stream_response
+    response, stream = await self._fetch_response(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 635, in _fetch_response
+    ret = await litellm.acompletion(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<19 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\utils.py", line 1850, in wrapper_async
+    raise e
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\utils.py", line 1667, in wrapper_async
+    result = await original_function(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\main.py", line 692, in acompletion
+    raise exception_type(
+          ~~~~~~~~~~~~~~^
+        model=model,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        extra_kwargs=kwargs,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 2503, in exception_type
+    raise e  # it's already mapped
+    ^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 2272, in exception_type
+    _map_openai_exception(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        model=model,
+        ^^^^^^^^^^^^
+    ...<5 lines>...
+        extra_information=extra_information,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 284, in _map_openai_exception
+    raise RateLimitError(
+    ...<4 lines>...
+    )
+litellm.exceptions.RateLimitError: litellm.RateLimitError: RateLimitError: GroqException - {"error":{"message":"Request too large for model `openai/gpt-oss-120b` in organization `org_01m0dvspr0eyw8cvs11fwsdgq0` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Requested 37230, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing","type":"tokens","code":"rate_limit_exceeded"}}
+
+2026-08-20 02:35:52.162 INFO    backend_3e32 - strix.core.agents: agent.status 1fb8112f=failed
+2026-08-20 02:35:52.165 WARNING backend_3e32 - strix.core.runner: Scan backend_3e32 stopped: persistent rate limit from the LLM provider (litellm.RateLimitError: RateLimitError: GroqException - {"error":{"message":"Request too large for model `openai/gpt-oss-120b` in organization `org_01m0dvspr0eyw8cvs11fwsdgq0` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Requested 37230, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing","type":"tokens","code":"rate_limit_exceeded"}}
+). Resume with 'strix --resume backend_3e32' once the limit clears.
+2026-08-20 02:35:52.165 INFO    backend_3e32 - strix.core.agents: agent.status 1fb8112f=stopped
+2026-08-20 02:35:52.170 INFO    backend_3e32 - strix.core.runner: Tearing down sandbox session for scan backend_3e32
+2026-08-20 02:35:52.722 INFO    backend_3e32 - strix.runtime.session_manager: Cleaned up sandbox session for scan backend_3e32
+2026-08-20 02:35:52.724 INFO    backend_3e32 - strix.core.runner: Strix scan backend_3e32 done

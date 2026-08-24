@@ -1,0 +1,317 @@
+2026-08-20 02:28:27.257 INFO    her-care_84f4 - strix.core.runner: Starting Strix scan her-care_84f4 (image=ghcr.io/usestrix/strix-sandbox:1.3.0, max_turns=500, interactive=False, run_dir=E:\her_care\strix_runs\her-care_84f4)
+2026-08-20 02:28:27.258 INFO    her-care_84f4 - strix.core.runner: LLM model resolved: groq/openai/gpt-oss-120b
+2026-08-20 02:28:27.258 INFO    her-care_84f4 - strix.core.runner: Bringing up sandbox session for scan her-care_84f4
+2026-08-20 02:28:27.259 DEBUG   her-care_84f4 - strix.runtime.backends: Selected sandbox backend: docker
+2026-08-20 02:28:27.260 INFO    her-care_84f4 - strix.runtime.session_manager: Creating sandbox session for scan her-care_84f4 (backend=docker, image=ghcr.io/usestrix/strix-sandbox:1.3.0)
+2026-08-20 02:28:27.442 DEBUG   her-care_84f4 - strix.runtime.docker_client: Creating sandbox container: image=ghcr.io/usestrix/strix-sandbox:1.3.0 caps=['NET_ADMIN', 'NET_RAW'] exposed_ports=[48080]
+2026-08-20 02:28:27.547 INFO    her-care_84f4 - strix.runtime.docker_client: Sandbox container created: id=279401e27edd image=ghcr.io/usestrix/strix-sandbox:1.3.0
+2026-08-20 02:28:28.370 DEBUG   her-care_84f4 - strix.runtime.session_manager: Caido host endpoint resolved: http://127.0.0.1:64959
+2026-08-20 02:28:28.371 INFO    her-care_84f4 - strix.runtime.caido_bootstrap: Bootstrapping Caido client (host=http://127.0.0.1:64959, container=http://127.0.0.1:48080)
+2026-08-20 02:28:28.596 INFO    her-care_84f4 - strix.runtime.caido_bootstrap: Caido project selected: a66851cb-8ec9-4ffc-9b82-8cacb65ffcb1
+2026-08-20 02:28:28.596 INFO    her-care_84f4 - strix.runtime.session_manager: Sandbox session for scan her-care_84f4 ready and cached
+2026-08-20 02:28:28.597 INFO    her-care_84f4 - strix.core.runner: Sandbox ready for scan her-care_84f4
+2026-08-20 02:28:28.600 DEBUG   her-care_84f4 - strix.skills: Loaded skill: scan_modes/quick -> quick
+2026-08-20 02:28:28.603 DEBUG   her-care_84f4 - strix.skills: Loaded skill: tooling/agent_browser -> agent_browser
+2026-08-20 02:28:28.606 DEBUG   her-care_84f4 - strix.skills: Loaded skill: tooling/python -> python
+2026-08-20 02:28:28.609 DEBUG   her-care_84f4 - strix.skills: Loaded skill: coordination/root_agent -> root_agent
+2026-08-20 02:28:28.613 DEBUG   her-care_84f4 - strix.skills: Loaded skill: coordination/source_aware_whitebox -> source_aware_whitebox
+2026-08-20 02:28:28.616 DEBUG   her-care_84f4 - strix.skills: Loaded skill: custom/source_aware_sast -> source_aware_sast
+2026-08-20 02:28:28.616 DEBUG   her-care_84f4 - strix.skills: load_skills: 6 skill(s) resolved
+2026-08-20 02:28:28.664 DEBUG   her-care_84f4 - strix.agents.prompt: render_system_prompt: scan_mode=quick root=True whitebox=True skills=6 prompt_len=81456
+2026-08-20 02:28:28.664 INFO    her-care_84f4 - strix.agents.factory: Built root agent 'Root Agent' (skills=0, tools=30, scan_mode=quick, whitebox=True)
+2026-08-20 02:28:28.664 INFO    her-care_84f4 - strix.core.agents: agent.register b0dba1c6 (Root Agent) parent=-
+2026-08-20 02:28:29.157 DEBUG   her-care_84f4 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 02:28:29.159 DEBUG   her-care_84f4 - openai.agents: Setting current trace: no-op
+2026-08-20 02:28:29.159 DEBUG   her-care_84f4 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:28:29.180 DEBUG   her-care_84f4 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:28:29.180 DEBUG   her-care_84f4 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 02:28:29.180 DEBUG   her-care_84f4 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:28:29.182 DEBUG   her-care_84f4 - openai.agents: No conversation_id available for request
+2026-08-20 02:28:29.182 DEBUG   her-care_84f4 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:28:29.185 DEBUG   her-care_84f4 - openai.agents: Calling LLM
+2026-08-20 02:28:29.378 DEBUG   her-care_84f4 - openai.agents: Resetting current trace
+2026-08-20 02:28:29.762 ERROR   her-care_84f4 - strix.core.execution: agent run failed for b0dba1c6; marking failed
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 260, in _make_common_async_call
+    response = await async_httpx_client.post(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\logging_utils.py", line 289, in async_wrapper
+    result: Final = await func(*args, **kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 706, in post
+    await _raise_masked_async_error(e, stream)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 465, in _raise_masked_async_error
+    raise MaskedHTTPStatusError(e, message=_body, text=_body) from None
+litellm.llms.custom_httpx.http_handler.MaskedHTTPStatusError: Client error '400 Bad Request' for url 'https://api.groq.com/openai/v1/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\main.py", line 639, in acompletion
+    response = await init_response
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 737, in acompletion_stream_function
+    completion_stream, _response_headers = await self.make_async_call_stream_helper(
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 796, in make_async_call_stream_helper
+    response: Final = await self._make_common_async_call(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 277, in _make_common_async_call
+    raise self._handle_error(e=e, provider_config=provider_config)
+          ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 5740, in _handle_error
+    raise provider_config.get_error_class(
+    ...<3 lines>...
+    )
+litellm.llms.openai.common_utils.OpenAIError: {"error":{"message":"invalid JSON schema for tool view_agent_graph, tools[24].function.parameters: 'required' present but 'properties' is missing","type":"invalid_request_error","param":"tool view_agent_graph, tools[24].function.parameters"}}
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 676, in _run_cycle
+    async for event in stream.stream_events():
+    ...<4 lines>...
+                logger.exception("stream event sink failed for %s", agent_id)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 931, in stream_events
+    raise self._stored_exception
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 1021, in _await_task_safely
+    await task
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 695, in _await_run_and_cleanup
+    result = await original_task
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1226, in start_streaming
+    turn_result = await run_single_turn_streamed(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1712, in run_single_turn_streamed
+    async for event in model_run_context_stream(retry_stream, tool_use_tracker):
+    ...<142 lines>...
+                    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\models\_run_context.py", line 31, in model_run_context_stream
+    async for item in stream:
+        yield item
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\model_retry.py", line 560, in stream_response_with_retry
+    event = await stream.__anext__()
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 354, in stream_response
+    async for event in _with_idle_timeout(stream, self._stream_idle_timeout):
+    ...<2 lines>...
+            yield guarded
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 378, in _with_idle_timeout
+    event = await asyncio.wait_for(iterator.__anext__(), timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 404, in stream_response
+    response, stream = await self._fetch_response(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 635, in _fetch_response
+    ret = await litellm.acompletion(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<19 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\utils.py", line 1850, in wrapper_async
+    raise e
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\utils.py", line 1667, in wrapper_async
+    result = await original_function(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\main.py", line 692, in acompletion
+    raise exception_type(
+          ~~~~~~~~~~~~~~^
+        model=model,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        extra_kwargs=kwargs,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 2503, in exception_type
+    raise e  # it's already mapped
+    ^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 2272, in exception_type
+    _map_openai_exception(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        model=model,
+        ^^^^^^^^^^^^
+    ...<5 lines>...
+        extra_information=extra_information,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 346, in _map_openai_exception
+    raise BadRequestError(
+    ...<6 lines>...
+    )
+litellm.exceptions.BadRequestError: litellm.BadRequestError: GroqException - {"error":{"message":"invalid JSON schema for tool view_agent_graph, tools[24].function.parameters: 'required' present but 'properties' is missing","type":"invalid_request_error","param":"tool view_agent_graph, tools[24].function.parameters"}}
+
+2026-08-20 02:28:29.779 INFO    her-care_84f4 - strix.core.agents: agent.status b0dba1c6=failed
+2026-08-20 02:28:29.780 ERROR   her-care_84f4 - strix.core.runner: Strix scan her-care_84f4 failed
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 260, in _make_common_async_call
+    response = await async_httpx_client.post(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\logging_utils.py", line 289, in async_wrapper
+    result: Final = await func(*args, **kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 706, in post
+    await _raise_masked_async_error(e, stream)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 465, in _raise_masked_async_error
+    raise MaskedHTTPStatusError(e, message=_body, text=_body) from None
+litellm.llms.custom_httpx.http_handler.MaskedHTTPStatusError: Client error '400 Bad Request' for url 'https://api.groq.com/openai/v1/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\main.py", line 639, in acompletion
+    response = await init_response
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 737, in acompletion_stream_function
+    completion_stream, _response_headers = await self.make_async_call_stream_helper(
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 796, in make_async_call_stream_helper
+    response: Final = await self._make_common_async_call(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 277, in _make_common_async_call
+    raise self._handle_error(e=e, provider_config=provider_config)
+          ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 5740, in _handle_error
+    raise provider_config.get_error_class(
+    ...<3 lines>...
+    )
+litellm.llms.openai.common_utils.OpenAIError: {"error":{"message":"invalid JSON schema for tool view_agent_graph, tools[24].function.parameters: 'required' present but 'properties' is missing","type":"invalid_request_error","param":"tool view_agent_graph, tools[24].function.parameters"}}
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\runner.py", line 395, in run_strix_scan
+    result = await run_agent_loop(
+             ^^^^^^^^^^^^^^^^^^^^^
+    ...<12 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 212, in run_agent_loop
+    result = await _run_until_lifecycle(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 485, in _run_until_lifecycle
+    result = await _run_cycle(
+             ^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 676, in _run_cycle
+    async for event in stream.stream_events():
+    ...<4 lines>...
+                logger.exception("stream event sink failed for %s", agent_id)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 931, in stream_events
+    raise self._stored_exception
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 1021, in _await_task_safely
+    await task
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 695, in _await_run_and_cleanup
+    result = await original_task
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1226, in start_streaming
+    turn_result = await run_single_turn_streamed(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1712, in run_single_turn_streamed
+    async for event in model_run_context_stream(retry_stream, tool_use_tracker):
+    ...<142 lines>...
+                    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\models\_run_context.py", line 31, in model_run_context_stream
+    async for item in stream:
+        yield item
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\model_retry.py", line 560, in stream_response_with_retry
+    event = await stream.__anext__()
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 354, in stream_response
+    async for event in _with_idle_timeout(stream, self._stream_idle_timeout):
+    ...<2 lines>...
+            yield guarded
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 378, in _with_idle_timeout
+    event = await asyncio.wait_for(iterator.__anext__(), timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 404, in stream_response
+    response, stream = await self._fetch_response(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 635, in _fetch_response
+    ret = await litellm.acompletion(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<19 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\utils.py", line 1850, in wrapper_async
+    raise e
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\utils.py", line 1667, in wrapper_async
+    result = await original_function(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\main.py", line 692, in acompletion
+    raise exception_type(
+          ~~~~~~~~~~~~~~^
+        model=model,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        extra_kwargs=kwargs,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 2503, in exception_type
+    raise e  # it's already mapped
+    ^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 2272, in exception_type
+    _map_openai_exception(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        model=model,
+        ^^^^^^^^^^^^
+    ...<5 lines>...
+        extra_information=extra_information,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 346, in _map_openai_exception
+    raise BadRequestError(
+    ...<6 lines>...
+    )
+litellm.exceptions.BadRequestError: litellm.BadRequestError: GroqException - {"error":{"message":"invalid JSON schema for tool view_agent_graph, tools[24].function.parameters: 'required' present but 'properties' is missing","type":"invalid_request_error","param":"tool view_agent_graph, tools[24].function.parameters"}}
+
+2026-08-20 02:28:29.951 INFO    her-care_84f4 - strix.core.agents: agent.status b0dba1c6=failed
+2026-08-20 02:28:29.953 INFO    her-care_84f4 - strix.core.runner: Tearing down sandbox session for scan her-care_84f4

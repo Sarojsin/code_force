@@ -1,0 +1,317 @@
+2026-08-20 02:34:25.438 INFO    backend_8559 - strix.core.runner: Starting Strix scan backend_8559 (image=ghcr.io/usestrix/strix-sandbox:1.3.0, max_turns=500, interactive=False, run_dir=E:\her_care\strix_runs\backend_8559)
+2026-08-20 02:34:25.439 INFO    backend_8559 - strix.core.runner: LLM model resolved: groq/qwen/qwen3.6-27b
+2026-08-20 02:34:25.439 INFO    backend_8559 - strix.core.runner: Bringing up sandbox session for scan backend_8559
+2026-08-20 02:34:25.439 DEBUG   backend_8559 - strix.runtime.backends: Selected sandbox backend: docker
+2026-08-20 02:34:25.440 INFO    backend_8559 - strix.runtime.session_manager: Creating sandbox session for scan backend_8559 (backend=docker, image=ghcr.io/usestrix/strix-sandbox:1.3.0)
+2026-08-20 02:34:25.632 DEBUG   backend_8559 - strix.runtime.docker_client: Creating sandbox container: image=ghcr.io/usestrix/strix-sandbox:1.3.0 caps=['NET_ADMIN', 'NET_RAW'] exposed_ports=[48080]
+2026-08-20 02:34:25.740 INFO    backend_8559 - strix.runtime.docker_client: Sandbox container created: id=fcf94f384f46 image=ghcr.io/usestrix/strix-sandbox:1.3.0
+2026-08-20 02:34:26.446 DEBUG   backend_8559 - strix.runtime.session_manager: Caido host endpoint resolved: http://127.0.0.1:64980
+2026-08-20 02:34:26.446 INFO    backend_8559 - strix.runtime.caido_bootstrap: Bootstrapping Caido client (host=http://127.0.0.1:64980, container=http://127.0.0.1:48080)
+2026-08-20 02:34:26.666 INFO    backend_8559 - strix.runtime.caido_bootstrap: Caido project selected: 1d6923bb-ce1a-4b70-9b18-6640db06d031
+2026-08-20 02:34:26.666 INFO    backend_8559 - strix.runtime.session_manager: Sandbox session for scan backend_8559 ready and cached
+2026-08-20 02:34:26.666 INFO    backend_8559 - strix.core.runner: Sandbox ready for scan backend_8559
+2026-08-20 02:34:26.670 DEBUG   backend_8559 - strix.skills: Loaded skill: scan_modes/quick -> quick
+2026-08-20 02:34:26.673 DEBUG   backend_8559 - strix.skills: Loaded skill: tooling/agent_browser -> agent_browser
+2026-08-20 02:34:26.677 DEBUG   backend_8559 - strix.skills: Loaded skill: tooling/python -> python
+2026-08-20 02:34:26.680 DEBUG   backend_8559 - strix.skills: Loaded skill: coordination/root_agent -> root_agent
+2026-08-20 02:34:26.683 DEBUG   backend_8559 - strix.skills: Loaded skill: coordination/source_aware_whitebox -> source_aware_whitebox
+2026-08-20 02:34:26.686 DEBUG   backend_8559 - strix.skills: Loaded skill: custom/source_aware_sast -> source_aware_sast
+2026-08-20 02:34:26.687 DEBUG   backend_8559 - strix.skills: load_skills: 6 skill(s) resolved
+2026-08-20 02:34:26.747 DEBUG   backend_8559 - strix.agents.prompt: render_system_prompt: scan_mode=quick root=True whitebox=True skills=6 prompt_len=81463
+2026-08-20 02:34:26.747 INFO    backend_8559 - strix.agents.factory: Built root agent 'Root Agent' (skills=0, tools=30, scan_mode=quick, whitebox=True)
+2026-08-20 02:34:26.748 INFO    backend_8559 - strix.core.agents: agent.register 3ae9e95a (Root Agent) parent=-
+2026-08-20 02:34:27.159 DEBUG   backend_8559 - openai.agents: Tracing is disabled. Not creating trace
+2026-08-20 02:34:27.160 DEBUG   backend_8559 - openai.agents: Setting current trace: no-op
+2026-08-20 02:34:27.160 DEBUG   backend_8559 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:27.182 DEBUG   backend_8559 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:27.182 DEBUG   backend_8559 - openai.agents: Starting turn 1, current_agent=Root Agent
+2026-08-20 02:34:27.182 DEBUG   backend_8559 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:27.184 DEBUG   backend_8559 - openai.agents: No conversation_id available for request
+2026-08-20 02:34:27.184 DEBUG   backend_8559 - openai.agents: Tracing is disabled. Not creating span
+2026-08-20 02:34:27.187 DEBUG   backend_8559 - openai.agents: Calling LLM
+2026-08-20 02:34:27.393 DEBUG   backend_8559 - openai.agents: Resetting current trace
+2026-08-20 02:34:27.690 ERROR   backend_8559 - strix.core.execution: agent run failed for 3ae9e95a; marking failed
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 260, in _make_common_async_call
+    response = await async_httpx_client.post(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\logging_utils.py", line 289, in async_wrapper
+    result: Final = await func(*args, **kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 706, in post
+    await _raise_masked_async_error(e, stream)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 465, in _raise_masked_async_error
+    raise MaskedHTTPStatusError(e, message=_body, text=_body) from None
+litellm.llms.custom_httpx.http_handler.MaskedHTTPStatusError: Client error '400 Bad Request' for url 'https://api.groq.com/openai/v1/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\main.py", line 639, in acompletion
+    response = await init_response
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 737, in acompletion_stream_function
+    completion_stream, _response_headers = await self.make_async_call_stream_helper(
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 796, in make_async_call_stream_helper
+    response: Final = await self._make_common_async_call(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 277, in _make_common_async_call
+    raise self._handle_error(e=e, provider_config=provider_config)
+          ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 5740, in _handle_error
+    raise provider_config.get_error_class(
+    ...<3 lines>...
+    )
+litellm.llms.openai.common_utils.OpenAIError: {"error":{"message":"`reasoning_effort` must be one of `none` or `default`","type":"invalid_request_error"}}
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 676, in _run_cycle
+    async for event in stream.stream_events():
+    ...<4 lines>...
+                logger.exception("stream event sink failed for %s", agent_id)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 931, in stream_events
+    raise self._stored_exception
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 1021, in _await_task_safely
+    await task
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 695, in _await_run_and_cleanup
+    result = await original_task
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1226, in start_streaming
+    turn_result = await run_single_turn_streamed(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1712, in run_single_turn_streamed
+    async for event in model_run_context_stream(retry_stream, tool_use_tracker):
+    ...<142 lines>...
+                    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\models\_run_context.py", line 31, in model_run_context_stream
+    async for item in stream:
+        yield item
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\model_retry.py", line 560, in stream_response_with_retry
+    event = await stream.__anext__()
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 354, in stream_response
+    async for event in _with_idle_timeout(stream, self._stream_idle_timeout):
+    ...<2 lines>...
+            yield guarded
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 378, in _with_idle_timeout
+    event = await asyncio.wait_for(iterator.__anext__(), timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 404, in stream_response
+    response, stream = await self._fetch_response(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 635, in _fetch_response
+    ret = await litellm.acompletion(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<19 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\utils.py", line 1850, in wrapper_async
+    raise e
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\utils.py", line 1667, in wrapper_async
+    result = await original_function(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\main.py", line 692, in acompletion
+    raise exception_type(
+          ~~~~~~~~~~~~~~^
+        model=model,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        extra_kwargs=kwargs,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 2503, in exception_type
+    raise e  # it's already mapped
+    ^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 2272, in exception_type
+    _map_openai_exception(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        model=model,
+        ^^^^^^^^^^^^
+    ...<5 lines>...
+        extra_information=extra_information,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 346, in _map_openai_exception
+    raise BadRequestError(
+    ...<6 lines>...
+    )
+litellm.exceptions.BadRequestError: litellm.BadRequestError: GroqException - {"error":{"message":"`reasoning_effort` must be one of `none` or `default`","type":"invalid_request_error"}}
+
+2026-08-20 02:34:27.700 INFO    backend_8559 - strix.core.agents: agent.status 3ae9e95a=failed
+2026-08-20 02:34:27.701 ERROR   backend_8559 - strix.core.runner: Strix scan backend_8559 failed
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 260, in _make_common_async_call
+    response = await async_httpx_client.post(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\logging_utils.py", line 289, in async_wrapper
+    result: Final = await func(*args, **kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 706, in post
+    await _raise_masked_async_error(e, stream)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\http_handler.py", line 465, in _raise_masked_async_error
+    raise MaskedHTTPStatusError(e, message=_body, text=_body) from None
+litellm.llms.custom_httpx.http_handler.MaskedHTTPStatusError: Client error '400 Bad Request' for url 'https://api.groq.com/openai/v1/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\main.py", line 639, in acompletion
+    response = await init_response
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 737, in acompletion_stream_function
+    completion_stream, _response_headers = await self.make_async_call_stream_helper(
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 796, in make_async_call_stream_helper
+    response: Final = await self._make_common_async_call(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 277, in _make_common_async_call
+    raise self._handle_error(e=e, provider_config=provider_config)
+          ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\llms\custom_httpx\llm_http_handler.py", line 5740, in _handle_error
+    raise provider_config.get_error_class(
+    ...<3 lines>...
+    )
+litellm.llms.openai.common_utils.OpenAIError: {"error":{"message":"`reasoning_effort` must be one of `none` or `default`","type":"invalid_request_error"}}
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\runner.py", line 395, in run_strix_scan
+    result = await run_agent_loop(
+             ^^^^^^^^^^^^^^^^^^^^^
+    ...<12 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 212, in run_agent_loop
+    result = await _run_until_lifecycle(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 485, in _run_until_lifecycle
+    result = await _run_cycle(
+             ^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\core\execution.py", line 676, in _run_cycle
+    async for event in stream.stream_events():
+    ...<4 lines>...
+                logger.exception("stream event sink failed for %s", agent_id)
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 931, in stream_events
+    raise self._stored_exception
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 1021, in _await_task_safely
+    await task
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\result.py", line 695, in _await_run_and_cleanup
+    result = await original_task
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1226, in start_streaming
+    turn_result = await run_single_turn_streamed(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<15 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\run_loop.py", line 1712, in run_single_turn_streamed
+    async for event in model_run_context_stream(retry_stream, tool_use_tracker):
+    ...<142 lines>...
+                    )
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\models\_run_context.py", line 31, in model_run_context_stream
+    async for item in stream:
+        yield item
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\run_internal\model_retry.py", line 560, in stream_response_with_retry
+    event = await stream.__anext__()
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 354, in stream_response
+    async for event in _with_idle_timeout(stream, self._stream_idle_timeout):
+    ...<2 lines>...
+            yield guarded
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\strix\config\models.py", line 378, in _with_idle_timeout
+    event = await asyncio.wait_for(iterator.__anext__(), timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 404, in stream_response
+    response, stream = await self._fetch_response(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\agents\extensions\models\litellm_model.py", line 635, in _fetch_response
+    ret = await litellm.acompletion(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<19 lines>...
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\utils.py", line 1850, in wrapper_async
+    raise e
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\utils.py", line 1667, in wrapper_async
+    result = await original_function(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\main.py", line 692, in acompletion
+    raise exception_type(
+          ~~~~~~~~~~~~~~^
+        model=model,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        extra_kwargs=kwargs,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 2503, in exception_type
+    raise e  # it's already mapped
+    ^^^^^^^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 2272, in exception_type
+    _map_openai_exception(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        model=model,
+        ^^^^^^^^^^^^
+    ...<5 lines>...
+        extra_information=extra_information,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\U S E R\AppData\Local\Programs\Python\Python313\Lib\site-packages\litellm\litellm_core_utils\exception_mapping_utils.py", line 346, in _map_openai_exception
+    raise BadRequestError(
+    ...<6 lines>...
+    )
+litellm.exceptions.BadRequestError: litellm.BadRequestError: GroqException - {"error":{"message":"`reasoning_effort` must be one of `none` or `default`","type":"invalid_request_error"}}
+
+2026-08-20 02:34:27.717 INFO    backend_8559 - strix.core.agents: agent.status 3ae9e95a=failed
+2026-08-20 02:34:27.722 INFO    backend_8559 - strix.core.runner: Tearing down sandbox session for scan backend_8559
