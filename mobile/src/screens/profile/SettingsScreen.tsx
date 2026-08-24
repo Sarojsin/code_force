@@ -71,6 +71,7 @@ const SettingRow = memo(function SettingRowComponent({ label, iconKey, descripti
       accessibilityRole={hasSwitch ? 'switch' : 'button'}
       accessibilityState={{ checked: value, disabled: isDisabled }}
       accessibilityHint={hasSwitch ? 'Tap to toggle' : undefined}
+      hitSlop={8}
     >
       {iconPath && (
         <View style={[styles.settingIcon, { borderRadius: 10, backgroundColor: 'rgba(255,107,138,0.08)' }]}>
@@ -95,13 +96,28 @@ const SettingRow = memo(function SettingRowComponent({ label, iconKey, descripti
   );
 });
 
-function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+function SettingsSection({ title, defaultOpen = true, children }: { title: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <View style={{ marginBottom: 20 }}>
-      <Txt style={styles.sectionTitle}>{title}</Txt>
-      <View style={[styles.sectionCard, { backgroundColor: '#fff', borderRadius: 16 }]}>
-        {children}
-      </View>
+      <Pressable
+        onPress={() => setOpen((v) => !v)}
+        style={styles.sectionHeader}
+        accessibilityRole="button"
+        accessibilityLabel={`${title} section`}
+        accessibilityState={{ expanded: open }}
+        hitSlop={8}
+      >
+        <Txt variant="label" style={styles.sectionTitle}>{title}</Txt>
+        <Txt variant="body" color="secondary" style={styles.sectionChevron}>
+          {open ? '⌃' : '⌄'}
+        </Txt>
+      </Pressable>
+      {open && (
+        <View style={[styles.sectionCard, { backgroundColor: '#fff', borderRadius: 16 }]}>
+          {children}
+        </View>
+      )}
     </View>
   );
 }
@@ -400,8 +416,8 @@ export function SettingsScreen() {
           <View style={[styles.profileAvatar, { borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.2)' }]}>
             <Txt style={{ color: '#fff', fontSize: 28, fontWeight: '800' }}>{avatarLetter}</Txt>
           </View>
-          <Txt style={styles.profileName}>{displayName}</Txt>
-          <Txt style={styles.profileEmail}>{displayEmail}</Txt>
+          <Txt variant="title" style={styles.profileName}>{displayName}</Txt>
+          <Txt variant="detail" style={styles.profileEmail}>{displayEmail}</Txt>
           <View style={styles.profilePills}>
             <View style={[styles.pill, { backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 100 }]}>
               <Txt style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>✨ Premium</Txt>
@@ -450,14 +466,14 @@ export function SettingsScreen() {
           />
         </SettingsSection>
 
-        <SettingsSection title="AI & MODELS">
+        <SettingsSection title="AI & MODELS" defaultOpen={false}>
           <SettingRow label="Offline AI Models" description="Enable on-device predictions" value={offlineAI} onToggle={toggleOfflineAI} accessibilityLabel="Toggle offline AI models" />
           <SettingRow label="Auto-download Updates" description="Keep models up to date" value={autoUpdateModels} onToggle={toggleAutoUpdateModels} accessibilityLabel="Toggle auto-update models" />
           <SettingRow label="Manage Downloads" description="View installed models" showDisclosure onPress={handleNotAvailable} accessibilityLabel="Manage downloaded models" />
           <SettingRow label="Clear Model Cache" description="Remove downloaded models" showDisclosure onPress={handleNotAvailable} accessibilityLabel="Clear model cache" />
         </SettingsSection>
 
-        <SettingsSection title="COMPANION">
+        <SettingsSection title="COMPANION" defaultOpen={false}>
           {companionHydrated && installStatus === 'ready' && (
             <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 }}>
@@ -544,7 +560,7 @@ export function SettingsScreen() {
           )}
         </SettingsSection>
 
-        <SettingsSection title="DIARY MODULE">
+        <SettingsSection title="DIARY MODULE" defaultOpen={false}>
           {diaryHydrated && diaryInstallStatus === 'ready' && (
             <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border, paddingHorizontal: 16, paddingVertical: 10 }}>
               <Txt style={{ fontSize: 24, marginRight: 10 }}>{'\u{1F4D6}'}</Txt>
@@ -666,12 +682,10 @@ const styles = StyleSheet.create({
   },
   profileName: {
     color: '#fff',
-    fontSize: 21,
     fontWeight: '800',
   },
   profileEmail: {
     color: 'rgba(255,255,255,0.82)',
-    fontSize: 13,
     marginTop: 2,
   },
   profilePills: {
@@ -684,12 +698,22 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   sectionTitle: {
-    fontSize: 10,
     fontWeight: '800',
     color: 'rgba(160,120,136,0.8)',
     letterSpacing: 1.5,
     marginBottom: 8,
     paddingHorizontal: 4,
+  },
+  sectionChevron: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   sectionCard: {
     overflow: 'hidden',

@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { FlatList, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, Text as Txt } from 'src/components/ui';
+import { ScreenSkeleton, Text as Txt, ErrorState, EmptyState } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useBreathingExercises } from 'src/services/queries/wellness';
 import { BreathingExerciseCard, BreathingTimer } from 'src/components/ui/wellness/BreathingExerciseCard';
@@ -9,7 +9,7 @@ import type { BreathingExercise } from 'src/services/api';
 
 export function BreathingListScreen() {
   const theme = useTheme();
-  const { data: exercises, isLoading } = useBreathingExercises();
+  const { data: exercises, isLoading, isError, refetch } = useBreathingExercises();
   const [activeExercise, setActiveExercise] = useState<BreathingExercise | null>(null);
 
   const handlePress = useCallback((exercise: BreathingExercise) => {
@@ -33,10 +33,16 @@ export function BreathingListScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView
-        style={[styles.safe, styles.centered, { backgroundColor: theme.colors.background }]}
-      >
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+        <ScreenSkeleton variant="list" count={4} label="Loading exercises…" />
+      </SafeAreaView>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+        <ErrorState message="Couldn't load breathing exercises." onRetry={() => refetch()} />
       </SafeAreaView>
     );
   }
@@ -59,11 +65,10 @@ export function BreathingListScreen() {
           </View>
         }
         ListEmptyComponent={
-          <Card>
-            <Txt variant="body" color="secondary" align="center">
-              No exercises available.
-            </Txt>
-          </Card>
+          <EmptyState
+            title="Nothing here yet"
+            message="No exercises available right now."
+          />
         }
       />
 

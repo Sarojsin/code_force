@@ -1,9 +1,9 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 
-import { Card, Text as Txt } from 'src/components/ui';
+import { Card, ScreenSkeleton, Text as Txt, ErrorState } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { wellnessService } from 'src/services/api/wellness';
 import type { WellnessInsights } from 'src/services/api/wellness';
@@ -18,15 +18,23 @@ const INSIGHT_CARDS = [
 export function InsightsScreen() {
   const theme = useTheme();
 
-  const { data: insights, isLoading } = useQuery<WellnessInsights>({
+  const { data: insights, isLoading, isError, refetch } = useQuery<WellnessInsights>({
     queryKey: ['wellness', 'insights'],
     queryFn: () => wellnessService.getInsights(),
   });
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+        <ScreenSkeleton variant="editor" count={2} label="Loading insights…" />
+      </SafeAreaView>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+        <ErrorState message="Couldn't load your insights." onRetry={() => refetch()} />
       </SafeAreaView>
     );
   }

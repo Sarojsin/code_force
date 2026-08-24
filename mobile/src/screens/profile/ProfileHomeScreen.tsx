@@ -80,8 +80,8 @@ export function ProfileHomeScreen() {
           <View style={[styles.profileAvatar, { borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.2)' }]}>
             <Txt style={{ color: '#fff', fontSize: 28, fontWeight: '800' }}>{initial}</Txt>
           </View>
-          <Txt style={styles.profileName}>{displayName}</Txt>
-          <Txt style={styles.profileEmail}>{displayEmail}</Txt>
+          <Txt variant="title" style={styles.profileName}>{displayName}</Txt>
+          <Txt variant="detail" style={styles.profileEmail}>{displayEmail}</Txt>
           <View style={styles.profilePills}>
             <View style={[styles.pill, { backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 100 }]}>
               <Txt style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>✨ Premium</Txt>
@@ -171,12 +171,10 @@ const styles = StyleSheet.create({
   },
   profileName: {
     color: '#fff',
-    fontSize: 21,
     fontWeight: '800',
   },
   profileEmail: {
     color: 'rgba(255,255,255,0.82)',
-    fontSize: 13,
     marginTop: 2,
   },
   profilePills: {

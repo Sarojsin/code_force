@@ -2,7 +2,7 @@
  * EditHealthScreen — update health/lifestyle fields (age, height, weight, stress, exercise, sleep, diet).
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View, ScrollView } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,9 +11,9 @@ import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { z } from 'zod';
 
-import { Button, FormField, PickerField, KeyboardAvoidingWrapper, Text as Txt, Loader } from 'src/components/ui';
+import { Button, FormField, PickerField, KeyboardAvoidingWrapper, Text as Txt, ScreenSkeleton } from 'src/components/ui';
 import { useTheme } from 'src/theme';
-import { onboardingService } from 'src/services/api';
+import { useOnboardingProfile, useUpdateLifestyle } from 'src/services/queries/onboarding';
 import { logger } from 'src/utils';
 import type { ProfileStackParamList } from 'src/navigation/types';
 
@@ -51,8 +51,9 @@ const DIET_ITEMS = [
 export function EditHealthScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+
+  const { data, isPending } = useOnboardingProfile();
+  const updateLifestyle = useUpdateLifestyle();
 
   const { control, handleSubmit, formState, reset } = useForm<HealthForm>({
     resolver: zodResolver(healthSchema),
@@ -69,53 +70,39 @@ export function EditHealthScreen() {
   });
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await onboardingService.get();
-        if (cancelled) return;
-        reset({
-          age: data.age,
-          heightCm: data.height_cm,
-          weightKg: data.weight_kg,
-          stressLevel: data.stress_level,
-          exerciseFrequency: data.exercise_frequency,
-          sleepHours: data.sleep_hours,
-          diet: data.diet,
-        });
-      } catch (err) {
-        logger.warn('EditHealthScreen.fetch.failed', err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [reset]);
+    if (!data) return;
+    reset({
+      age: data.age,
+      heightCm: data.height_cm,
+      weightKg: data.weight_kg,
+      stressLevel: data.stress_level,
+      exerciseFrequency: data.exercise_frequency,
+      sleepHours: data.sleep_hours,
+      diet: data.diet,
+    });
+  }, [data, reset]);
 
-  const onSubmit = async (data: HealthForm) => {
-    setSaving(true);
+  const onSubmit = async (values: HealthForm) => {
     try {
-      await onboardingService.updateLifestyle({
-        age: data.age,
-        height_cm: data.heightCm,
-        weight_kg: data.weightKg,
-        stress_level: data.stressLevel,
-        exercise_frequency: data.exerciseFrequency,
-        sleep_hours: data.sleepHours,
-        diet: data.diet,
+      await updateLifestyle.mutateAsync({
+        age: values.age,
+        height_cm: values.heightCm,
+        weight_kg: values.weightKg,
+        stress_level: values.stressLevel,
+        exercise_frequency: values.exerciseFrequency,
+        sleep_hours: values.sleepHours,
+        diet: values.diet,
       });
       navigation.goBack();
     } catch (err) {
       logger.error('EditHealthScreen.submit.failed', err);
-    } finally {
-      setSaving(false);
     }
   };
 
-  if (loading) {
+  if (isPending) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-        <Loader />
+        <ScreenSkeleton variant="editor" count={3} label="Loading your health info…" />
       </SafeAreaView>
     );
   }
@@ -145,8 +132,8 @@ export function EditHealthScreen() {
           <Button
             label="Save changes"
             onPress={handleSubmit(onSubmit)}
-            disabled={!formState.isValid || saving}
-            loading={saving}
+            disabled={!formState.isValid || updateLifestyle.isPending}
+            loading={updateLifestyle.isPending}
             fullWidth
           />
           <View style={{ height: theme.spacing.lg }} />

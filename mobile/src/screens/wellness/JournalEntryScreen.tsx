@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, TextInput, ActivityIndicator, Pressable } from 'react-native';
+import { StyleSheet, View, TextInput, Pressable } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -8,13 +8,16 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { Button, Text as Txt, KeyboardAvoidingWrapper, MoodPicker, Card } from 'src/components/ui';
+import { Button, ScreenSkeleton, Text as Txt, KeyboardAvoidingWrapper, MoodPicker, Card, ErrorState } from 'src/components/ui';
 import { ScreenContainer } from 'src/components/core';
 
 import { useTheme } from 'src/theme';
 import { EncryptedStorage } from 'src/services/storage';
 import { logger } from 'src/utils';
 import { wellnessService } from 'src/services/api/wellness';
+import type { JournalEntry } from 'src/services/api/wellness';
+import { getWellnessKeys } from 'src/services/queries/wellness';
+import { useAuthStore } from 'src/stores/authStore';
 import { z } from 'zod';
 
 type Nav = any;
@@ -60,10 +63,22 @@ export function JournalEntryScreen() {
     mode: 'onChange',
   });
 
-  const { data: existingEntry, isLoading: entryLoading } = useQuery({
+  const { data: existingEntry, isLoading: entryLoading, isError: entryError, refetch: refetchEntry } = useQuery({
     queryKey: ['wellness', 'journal', id],
     queryFn: () => wellnessService.getJournalEntry(id),
     enabled: !isNew,
+    staleTime: 10 * 60_000,
+    placeholderData: () => {
+      if (isNew) return undefined;
+      const userId = useAuthStore.getState().user?.id;
+      if (!userId) return undefined;
+      const keys = getWellnessKeys(userId);
+      const list = queryClient.getQueryData<JournalEntry[]>([...keys.journal, { page: 0, per_page: 50 }]);
+      if (!list) return undefined;
+      const item = list.find((e) => e.id === id);
+      if (!item) return undefined;
+      return item;
+    },
   });
 
   useEffect(() => {
@@ -171,9 +186,15 @@ export function JournalEntryScreen() {
   if (entryLoading) {
     return (
       <ScreenContainer style={{ backgroundColor: theme.colors.background }}>
-        <View style={[styles.loadingCenter]}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
+        <ScreenSkeleton variant="editor" count={1} label="Loading entry…" />
+      </ScreenContainer>
+    );
+  }
+
+  if (entryError) {
+    return (
+      <ScreenContainer style={{ backgroundColor: theme.colors.background }}>
+        <ErrorState message="Couldn't load this entry." onRetry={() => refetchEntry()} />
       </ScreenContainer>
     );
   }

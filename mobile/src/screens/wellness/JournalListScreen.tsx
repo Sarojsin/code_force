@@ -1,12 +1,12 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, View, Pressable, ActivityIndicator, Modal, TouchableOpacity } from 'react-native';
+import { FlatList, StyleSheet, View, Pressable, Modal, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
 
-import { Button, Card, Text as Txt } from 'src/components/ui';
+import { Button, Card, ScreenSkeleton, Text as Txt } from 'src/components/ui';
 import { useTheme } from 'src/theme';
 import { useJournalEntries } from 'src/services/queries/wellness';
 import { useNetworkStatus } from 'src/services/sync';
@@ -105,8 +105,8 @@ export function JournalListScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.safe, styles.loadingCenter, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+        <ScreenSkeleton variant="list" label="Loading entries…" />
       </SafeAreaView>
     );
   }
