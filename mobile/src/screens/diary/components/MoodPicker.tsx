@@ -1,4 +1,5 @@
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { typography } from 'src/theme';
 
 const MOODS = [
   { mood: 'happy', emoji: '😊' },
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 },
   moodItem: { alignItems: 'center', width: 64, paddingVertical: 8, borderRadius: 12, backgroundColor: '#fffcf5', borderWidth: 1, borderColor: '#f0eee6' },
   emoji: { fontSize: 28, marginBottom: 4 },
-  label: { fontFamily: 'WorkSans_500Medium', fontSize: 10, color: '#554240' },
+  label: { fontFamily: 'WorkSans_500Medium', fontSize: typography.label.fontSize, color: '#554240' },
   cancel: { marginTop: 16, alignItems: 'center' },
   cancelText: { fontFamily: 'WorkSans_500Medium', fontSize: 14, color: '#88726f' },
 });

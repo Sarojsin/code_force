@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDiarySearch } from '../../services/queries/diary';
 import { diaryLocal } from '../../services/localDb';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { ErrorState } from '../../components/ui';
 
 const SearchResultCard = memo(function SearchResultCard({
   title,
@@ -25,7 +26,7 @@ export function DiarySearchScreen({ navigation }: any) {
   const [query, setQuery] = useState('');
   const [localResults, setLocalResults] = useState<any[]>([]);
   const debouncedQuery = useDebouncedValue(query, 250);
-  const { data: serverResults } = useDiarySearch({ q: debouncedQuery });
+  const { data: serverResults, isError, refetch } = useDiarySearch({ q: debouncedQuery });
 
   useEffect(() => {
     let cancelled = false;
@@ -35,6 +36,8 @@ export function DiarySearchScreen({ navigation }: any) {
     }
     diaryLocal.search.search(debouncedQuery).then((results) => {
       if (!cancelled) setLocalResults(results);
+    }).catch(() => {
+      if (!cancelled) setLocalResults([]);
     });
     return () => { cancelled = true; };
   }, [debouncedQuery]);
@@ -47,6 +50,30 @@ export function DiarySearchScreen({ navigation }: any) {
     ),
     [],
   );
+
+  if (isError && debouncedQuery.length > 0 && localResults.length === 0) {
+    return (
+      <View style={[styles.container, { paddingTop: top }]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.back}>←</Text>
+          </TouchableOpacity>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="🔍 Search sunset, birthday, mom..."
+            placeholderTextColor="#88726f"
+            value={query}
+            onChangeText={setQuery}
+            autoFocus
+          />
+        </View>
+        <ErrorState
+          message="Search is unavailable right now."
+          onRetry={() => refetch()}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>

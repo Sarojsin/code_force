@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, PanResponder, StyleSheet,
 } from 'react-native';
+import { typography } from 'src/theme';
 import { Image } from 'expo-image';
 import { PolaroidFrame } from './PolaroidFrame';
 import { ResizeHandles } from './ResizeHandles';
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   videoIcon: { fontSize: 32 },
-  videoLabel: { fontFamily: 'WorkSans_500Medium', fontSize: 10, color: '#fff', marginTop: 4 },
+  videoLabel: { fontFamily: 'WorkSans_500Medium', fontSize: typography.label.fontSize, color: '#fff', marginTop: 4 },
   voice: {
     width: '100%', height: '100%', backgroundColor: '#f0eee6', borderRadius: 8,
     justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8,

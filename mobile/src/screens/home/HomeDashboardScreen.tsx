@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, View, Pressable, Dimensions, AppState, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 
 import { Text, Skeleton, AnimatedSection } from 'src/components/ui';
@@ -34,10 +35,14 @@ type Nav = any;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 12;
 const STAGGER = [50, 100, 150, 200, 250, 300, 350, 400, 450];
+// Luna dock floats above the tab bar (~112 pt tall + 18 pt offset + breathing room);
+// content must scroll clear of it so the last card is not obscured.
+const LUNA_DOCK_CLEARANCE = 140;
 
 export function HomeDashboardScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
+  const tabBarHeight = useBottomTabBarHeight();
   const { cycleDay, hasCycleData, phaseKey, phaseLabel, phaseEmoji, phaseAccent, phaseDesc, nextPeriodDays, predictedCycleLength, calData, isLoading: loading, error, refetch } = useCurrentCycleState(3, 3);
   const user = useAuthStore((s) => s.user);
   const displayName = user?.display_name ?? '';
@@ -163,7 +168,10 @@ export function HomeDashboardScreen() {
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: 24 + tabBarHeight + LUNA_DOCK_CLEARANCE }]}
+        showsVerticalScrollIndicator={false}
+      >
         {error && (
           <View style={[styles.errorBanner, { backgroundColor: theme.colors.danger + '15', borderColor: theme.colors.danger + '30', borderRadius: theme.radius.md }]}>
             <Text variant="bodySmall" style={[styles.errorText, { color: theme.colors.danger }]}>

@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
+import { typography } from 'src/theme';
 
 interface DateStampProps {
   date: string;
@@ -47,13 +48,13 @@ const styles = StyleSheet.create({
   right: { justifyContent: 'center' },
   month: {
     fontFamily: 'WorkSans_600SemiBold',
-    fontSize: 10,
+    fontSize: typography.label.fontSize,
     color: '#554240',
     letterSpacing: 1.5,
   },
   dow: {
     fontFamily: 'WorkSans_400Regular',
-    fontSize: 9,
+    fontSize: typography.annotation.fontSize,
     color: '#88726f',
     letterSpacing: 0.5,
   },

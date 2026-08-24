@@ -2,6 +2,7 @@ import { memo, useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDiaryTimeline } from '../../services/queries/diary';
+import { ScreenSkeleton, ErrorState } from '../../components/ui';
 
 const TimelineEntryCard = memo(function TimelineEntryCard({
   date,
@@ -23,7 +24,7 @@ export function DiaryTimelineScreen({ navigation }: any) {
   const now = new Date();
   const [year] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const { data: entries } = useDiaryTimeline(year, month);
+  const { data: entries, isLoading, isError, refetch } = useDiaryTimeline(year, month);
 
   const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
 
@@ -33,6 +34,22 @@ export function DiaryTimelineScreen({ navigation }: any) {
     ),
     [],
   );
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { paddingTop: top }]}>
+        <ScreenSkeleton variant="list" count={7} label="Loading timeline…" />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={[styles.container, { paddingTop: top }]}>
+        <ErrorState message="Couldn't load this month's timeline." onRetry={() => refetch()} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>

@@ -82,7 +82,7 @@ export function PregnancyCalendarScreen() {
               >
                 <Txt
                   style={{
-                    fontSize: 10,
+                    fontSize: theme.typography.label.fontSize,
                     fontWeight: '700',
                     color: active ? theme.colors.primary : theme.colors.textSoft,
                   }}
@@ -97,7 +97,7 @@ export function PregnancyCalendarScreen() {
         <Card style={{ marginBottom: 16 }}>
           <Txt
             style={{
-              fontSize: 10,
+              fontSize: theme.typography.label.fontSize,
               fontWeight: '800',
               color: theme.colors.textSoft,
               letterSpacing: 1.5,
@@ -126,7 +126,7 @@ export function PregnancyCalendarScreen() {
                 >
                   <Txt
                     style={{
-                      fontSize: 10,
+                      fontSize: theme.typography.label.fontSize,
                       fontWeight: isSelected || isCurrent ? '800' : '600',
                       color: isSelected ? '#fff' : theme.colors.textPrimary,
                     }}
@@ -142,7 +142,7 @@ export function PregnancyCalendarScreen() {
         <Card style={{ marginBottom: 16 }}>
           <View style={[styles.weekDetail, { borderBottomColor: theme.colors.border }]}>
             <View style={[styles.badge, { backgroundColor: theme.colors.primaryLight, borderRadius: 100 }]}>
-              <Txt style={{ fontSize: 10, fontWeight: '700', color: theme.colors.primary }}>
+              <Txt style={{ fontSize: theme.typography.label.fontSize, fontWeight: '700', color: theme.colors.primary }}>
                 WEEK {selectedWeek}
               </Txt>
             </View>
@@ -184,7 +184,7 @@ export function PregnancyCalendarScreen() {
         <Card style={{ marginBottom: 16 }}>
           <Txt
             style={{
-              fontSize: 10,
+              fontSize: theme.typography.label.fontSize,
               fontWeight: '800',
               color: theme.colors.textSoft,
               letterSpacing: 1.5,

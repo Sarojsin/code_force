@@ -2,8 +2,9 @@ import React, { memo, useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { format, addDays, startOfMonth, endOfMonth } from 'date-fns';
-import { useTheme } from 'src/theme';
-import { Text } from 'src/components/ui';
+import { keepPreviousData } from '@tanstack/react-query';
+import { useTheme, typography } from 'src/theme';
+import { Text, ScreenSkeleton, ErrorState } from 'src/components/ui';
 import { useCycleDays } from 'src/services/queries/cycle';
 import type { DailyDay } from 'src/services/api/cycle';
 import Svg, { Path } from 'react-native-svg';
@@ -138,7 +139,9 @@ export function DailyLogScreen() {
     return { start, end };
   }, [targetDate]);
 
-  const { data: days = [], isLoading } = useCycleDays(range);
+  const { data: days = [], isLoading, isFetching, isError, refetch } = useCycleDays(range, {
+    placeholderData: keepPreviousData,
+  });
 
   const sortedDays = useMemo(() => {
     return [...days].sort((a, b) => b.log_date.localeCompare(a.log_date));
@@ -179,25 +182,39 @@ export function DailyLogScreen() {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
+        <ScreenSkeleton variant="list" count={5} label="Loading your cycle…" />
+      ) : isError ? (
+        <ErrorState message="Couldn't load your cycle logs." onRetry={() => refetch()} />
       ) : sortedDays.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text variant="body" style={{ color: theme.colors.textSecondary, textAlign: 'center' }}>
-            No day logs for this month.{'\n'}Tap a day on the calendar to start logging.
-          </Text>
-        </View>
+        isFetching ? (
+          <ScreenSkeleton variant="list" count={5} label="Loading your cycle…" />
+        ) : (
+          <View style={styles.emptyState}>
+            <Text variant="body" style={{ color: theme.colors.textSecondary, textAlign: 'center' }}>
+              No day logs for this month.{'\n'}Tap a day on the calendar to start logging.
+            </Text>
+          </View>
+        )
       ) : (
-        <FlatList
-          data={sortedDays}
-          keyExtractor={(item) => item.id || item.log_date}
-          renderItem={renderItem}
-          initialNumToRender={7}
-          maxToRenderPerBatch={10}
-          windowSize={10}
-          removeClippedSubviews={true}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-        />
+        <>
+          {isFetching && (
+            <View style={styles.refreshingRow}>
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <Text variant="caption" color="muted">Loading {monthLabel}…</Text>
+            </View>
+          )}
+          <FlatList
+            data={sortedDays}
+            keyExtractor={(item) => item.id || item.log_date}
+            renderItem={renderItem}
+            initialNumToRender={7}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            removeClippedSubviews={true}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+          />
+        </>
       )}
     </SafeAreaView>
   );
@@ -223,6 +240,13 @@ const styles = StyleSheet.create({
   navBtnDisabled: { opacity: 0.3 },
   monthLabel: { fontSize: 16, fontWeight: '700' },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  refreshingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   list: { padding: 16, paddingBottom: 48 },
   card: {
@@ -237,7 +261,7 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 12, fontWeight: '600' },
   metricsRow: { flexDirection: 'row', gap: 8, marginBottom: 10, flexWrap: 'wrap' },
   metricChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, minWidth: 60, alignItems: 'center' },
-  metricLabel: { fontSize: 10, fontWeight: '500', marginBottom: 2 },
+  metricLabel: { fontSize: typography.label.fontSize, fontWeight: '500', marginBottom: 2 },
   metricValue: { fontSize: 13, fontWeight: '700' },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
   tag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
